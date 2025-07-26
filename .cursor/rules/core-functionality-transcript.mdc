@@ -1,0 +1,99 @@
+Transcript Summary: Honey Rae Platform – Functional Discussion Recap
+
+---
+
+Kevin: I’m thinking React, TypeScript, Convex, all things React and best practices — similar to the Theo Browne T3 stack.
+
+We decided that Convex would manage state and backend logic, but files like photos (potentially 20–50 per client) would go into AWS S3 for cost efficiency. We confirmed S3 is 10x cheaper than Convex for large media storage.
+
+Each organization signs up and creates a branded experience (white-labeled). This is optionally powered by QR codes or subdomain URLs for branding.
+
+Clients belong to an org. Each client will likely have:
+- 20–50 photos stored with tags
+- SMS/Email history
+- Notes and appointment history
+- Patient journey with milestones (e.g., first visit, post-treatment check-in)
+
+We talked about uploading photos via drag-and-drop with cropping tools and tagging (before, after, inspiration, etc.). Files will be served via pre-signed S3 URLs and stored in folders by org → client → file.
+
+Messaging: Users can create dynamic templates using variables like {{first_name}} and send them via SMS (SNS) or Email (SES). We want smart workflows that can send messages based on triggers like “appointment complete” or “3 days after consult.”
+
+Workflow builder: drag-and-drop editor for scheduling actions with conditions, branches, delays, and dynamic templates. Example: after an appointment, send a follow-up SMS, wait 2 days, then send a review request if the client hasn’t responded.
+
+Social media scheduler: Drag-and-drop Instagram, TikTok, Google Business, etc., with image cropping, time-based posting, and multi-platform previews.
+
+We discussed team roles: Admin, Manager, Staff. Each with permissions and audit logging.
+
+Google Calendar sync was brought up — linking appointments from Google directly into the app and triggering workflows.
+
+Analytics: We want to track things like:
+- Number of clients added
+- Messages sent
+- Workflows triggered
+- Which content performs best
+
+Billing: Stripe integration. Plan-based billing (Starter, Premium). Track usage per org and warn them when they near limits (SMS, storage, etc.).
+
+Long-term features we mentioned:
+- Referral engine with credits
+- AI-generated workflows
+- Annotating uploaded images (like circling areas of concern)
+- HIPAA-compliance toggle
+- Smart assistant to analyze client photos and recommend follow-ups
+
+---
+
+This document provides a conversational, human-readable summary of everything discussed to complement the technical spec.
+
+Honey Rae Automation Platform – Full Conversational Context Recap (Transcript Style)
+
+---
+
+Kevin: I’m thinking React, TypeScript, TanStack Query, Convex – basically the modern T3 stack approach. I want everything clean, performant, and scalable with full org/user/client structure.
+
+We aligned that Convex is our backend/state layer, and AWS S3 will be used for media storage — especially since each client could have 50+ images. Storing in Convex is ~10x more expensive than S3 for this scale (5000 clients × 50 images = 250,000 images). S3 will use folders like: `org-id/client-id/image.jpg`.
+
+Entities:
+- Org: the signed-up business
+- User: belongs to org, can be admin, manager, staff
+- Client: the actual end-customer, gets media, notes, appointments
+- Appointments: tied to Google Calendar
+- Workflows: conditional automation logic for actions (text, email, tag)
+- MessageTemplate: reusable SMS/email templates with merge tags
+- Files: photos tagged (before, after, inspiration), cropped, previewed, stored in S3
+
+Core features include:
+1. **Photo Gallery** – Drag/drop upload, cropping, tag support, S3-hosted.
+2. **Workflows** – Triggers (appointment complete, new client), delays, conditions, actions (text/email).
+3. **Text/Email Engine** – Tag support (`{{first_name}}`, etc.), AWS SNS/SES backed, schedule or trigger-based.
+4. **Client Timeline** – Horizontal UI timeline with events: appointments, photos, notes, messages, custom events.
+5. **Social Scheduler** – Create/publish to Instagram, Google Business, TikTok. Cropping per-platform, multi-preview.
+6. **Team Management** – Invite users, assign roles, audit logging.
+7. **Billing** – Stripe integration. Usage tracking per org: SMS, storage, workflows triggered. Pricing tiers with dynamic upgrades.
+8. **Analytics Dashboard** – Clients added, messages sent, workflows triggered, platform performance, best-performing templates.
+9. **Patient Journey** – Track treatment stages per client, show photo progress, alert for check-ins.
+10. **Onboarding Import** – Full CSV import of fields: name, email, gender, phones, dob, address, referral source, etc.
+11. **QR/Subdomain White Labeling** – Clinics can customize login via subdomain or QR, unique branding, logo, templates.
+12. **Google Calendar Sync** – Auto-import events by provider, link to clients by email/name, use as workflow triggers.
+13. **File Tagging & Cropping** – Store crop coordinates, tags, and thumbnail. Group by tag/date in UI.
+14. **AI Future Roadmap** – Automatic workflow generation, post captions, image analysis, journey milestone predictions.
+
+We walked through cost comparisons:
+- Convex is great for state/workflows/data, but not for heavy file storage
+- AWS S3: $1.61/month for 70 GB (vs. Convex $14 for same)
+- SNS (SMS): ~$20–40/month for 20k messages
+- SES (Email): ~$3/month for 30k emails
+
+We also talked about handling:
+- Referral source tracking
+- Memberships
+- Staff notes per client
+- Appointment follow-ups
+- Client portal statuses
+- Fire/dismissal tracking
+
+Kevin: I want this so detailed I can paste it into Cursor and have AI pick up right where I left off. Everything we build needs to scale, stay flexible for future features (like an AI assistant or HIPAA toggle), and follow strict React/TypeScript best practices — no for loops, everything alphabetized, no `any`.
+
+---
+
+This conversational-style doc complements the technical spec and ensures nothing gets lost in translation across devs, AI tools, or teams.

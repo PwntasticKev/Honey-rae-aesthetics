@@ -1,0 +1,7 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Command Line
+ - run sudo with everything. ( sudo npm i) for example. but if youre deleting anything other than node_modules or package json. I want to be warned

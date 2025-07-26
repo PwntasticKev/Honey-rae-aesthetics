@@ -1,0 +1,218 @@
+# Honey Rae Automation Platform – Master Technical & Product Specification (v2)
+
+This document is an exhaustive technical and business context for your multi-tenant automation platform for aesthetic practices. It is structured to align with Cursor, development onboarding, and architectural reference.
+
+---
+
+## 🧱 1. Project Scope & Stack
+
+- **Frontend**: React (TS), Tailwind, shadcn/ui
+- **Backend**: Convex (data/functions), AWS S3 (files), AWS SES/SNS (messaging)
+- **State & Forms**: React Query, react-hook-form, Zod
+- **Other Services**: Stripe (billing), Google Calendar API, OpenAI (AI tools)
+- **White-labelable**: QR-based branding flow + subdomain logic
+
+---
+
+## 🧩 2. Entities & Data Modeling
+
+### `Org`
+- Represents a company
+- Fields: name, logo, domain, qrKey, stripe_customer_id, limits, createdAt
+
+### `User`
+- Belongs to an Org
+- Fields: name, email, role (admin/manager/staff), lastLogin, invited_by
+
+### `Client`
+- Aesthetic customer
+- Fields: full name, gender, DOB, phones, email, tags[], address, referral_source, client_portal_status, profile_image_url
+
+### `Appointment`
+- Linked to Client
+- Fields: dateTime, type, provider, notes, Google Event ID
+
+### `Note`
+- Tagged notes (e.g. goal, outcome)
+- Fields: text, author, timestamp, tag
+
+### `Workflow`
+- Contains trigger, conditions, actions[]
+- Triggers: new client, appointment completed, etc
+- Actions: send text/email, delay, tag, conditional branch
+
+### `MessageTemplate`
+- Email/SMS reusable content
+- Supports merge tags like {{first_name}}
+
+### `File`
+- Images/docs on S3
+- Fields: orgId, clientId, key, filename, type, cropData, tag, thumbnail_url
+
+---
+
+## 📸 3. File Upload & Gallery
+
+- Upload via drag-and-drop or mobile
+- Crop UI on upload; store params
+- Tag images (before, after, reference, raw)
+- Display thumbnails in gallery grouped by tag/date
+- Stored in S3: `s3://bucket/org-id/client-id/file.jpg`
+
+---
+
+## 🗓 4. Google Calendar Sync
+
+- Import events per provider/org
+- Match to clients by name/email
+- Trigger workflows from appointments
+- Store Google event IDs to avoid duplicates
+
+---
+
+## 🔄 5. Workflow System
+
+- Drag-and-drop workflow builder
+- Types:
+  - Trigger: e.g., “appointment complete”
+  - Delay: e.g., “3 days later”
+  - Conditional: e.g., “if tag == 'Botox'”
+  - Actions: text, email, tag, etc.
+- Support dynamic scheduling
+- Optional phase 2: AI assistant generates workflows
+
+---
+
+## 💬 6. Messaging
+
+- SMS via AWS SNS
+- Email via AWS SES
+- Templates support: `{{first_name}}`, `{{dob}}`, etc.
+- Messages stored per-client
+- Schedule messages per contact or batch
+
+---
+
+## 🧠 7. Patient Journey Timeline
+
+- Horizontal UI timeline per client
+- Milestones:
+  - First consult
+  - Appointments
+  - Photos uploaded
+  - Notes
+  - Messages sent
+- Color coded
+- Add manual events
+
+---
+
+## 📲 8. Social Scheduler
+
+- Platforms: Instagram, FB, TikTok, LinkedIn, Google Business
+- Drag-and-drop builder
+- Schedule to 1 or many platforms
+- Cropping + preview for each platform
+- CRUD post drafts
+- Reusable content blocks
+
+---
+
+## 👥 9. Team Management
+
+- Roles: Admin, Manager, Staff
+- Manage invites
+- CRUD teammates
+- Audit log for logins, updates
+- Role-based dashboard
+
+---
+
+## 🔐 10. Auth & Security
+
+- Google or email/password login
+- MFA optional (OTP email or SMS)
+- Session: 1 week, tracked by device/IP
+- Sensitive settings require OTP
+- Audit log on critical actions
+
+---
+
+## 💳 11. Billing
+
+- Stripe integration
+- Plans:
+  - Starter: $100/mo
+  - Premium: $200/mo (AI credits, extra features)
+- Track usage:
+  - # clients
+  - File storage
+  - Message count
+- Refund via admin panel
+- Webhooks sync tier in Convex
+
+---
+
+## 📊 12. Analytics
+
+- Per-org dashboard:
+  - Clients added this month
+  - Messages sent
+  - Workflow executions
+  - Most booked service
+  - Conversion rates (e.g. from text to booking)
+
+---
+
+## 📦 13. Cost Model (5000 clients, 50 images each)
+
+| Resource        | Usage     | Monthly Cost     |
+|-----------------|-----------|------------------|
+| S3 Storage      | ~70 GB    | ~$1.61           |
+| S3 Bandwidth    | ~120 GB   | ~$10.80          |
+| Convex DB       | ~100 MB   | Free (< 0.5 GB)  |
+| SMS (SNS)       | ~20k msgs | ~$20–40          |
+| Email (SES)     | ~30k msgs | ~$3              |
+
+---
+
+## 🧬 14. Folder Structure
+
+```
+/src
+├── components/
+├── features/
+│   ├── clients/
+│   ├── workflows/
+│   ├── messaging/
+│   ├── social/
+│   ├── team/
+├── convex/functions/
+├── utils/
+├── styles/
+├── pages/
+```
+
+---
+
+## 🚀 15. Future Features
+
+- AI-powered consult bot
+- Client self-service portal
+- Referral engine with payouts
+- Image annotation (draw on face)
+- HIPAA mode toggle
+- Org-wide announcements (text/email)
+
+---
+
+## ✅ Platform Flow Summary
+
+1. Clinic signs up (branded via QR or subdomain)
+2. Imports clients from Aesthetic Record CSV
+3. Adds workflows (e.g. review requests, follow-ups)
+4. Uploads client images with tags
+5. Sends bulk/scheduled campaigns
+6. Views engagement analytics
+7. Schedules social content
+8. Operates with full team roles & access control
