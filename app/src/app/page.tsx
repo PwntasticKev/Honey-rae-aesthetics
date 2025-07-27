@@ -1,479 +1,524 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery, useMutation } from "convex/react";
-import { api } from "../../convex/_generated/api";
-import { 
-	Users, 
-	Calendar, 
-	Image, 
-	MessageSquare, 
-	Settings, 
-	BarChart3,
-	Plus,
-	Search,
-	Bell,
-	X
-} from "lucide-react";
-import { ClientForm } from "@/components/ClientForm";
-import { ClientList } from "@/components/ClientList";
-import { AppointmentForm } from "@/components/AppointmentForm";
-import { AppointmentList } from "@/components/AppointmentList";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { 
+	Menu, 
+	Search, 
+	Bell, 
+	Heart, 
+	Calendar, 
+	MessageSquare, 
+	Camera, 
+	Zap, 
+	Activity, 
+	UserPlus, 
+	Workflow,
+	Sparkles,
+	LogOut,
+	Users,
+	Share2,
+	BarChart3,
+	CreditCard,
+	Settings,
+	FileText
+} from "lucide-react";
+import { Sidebar } from "@/components/Sidebar";
+import { useAuth } from "@/hooks/useAuth";
+import { ClientList } from "@/components/ClientList";
+import { WorkflowList } from "@/components/WorkflowList";
+import { AppointmentList } from "@/components/AppointmentList";
+import { PhotoGallery } from "@/components/PhotoGallery";
+import { TemplateList } from "@/components/TemplateList";
+import { SocialMediaManager } from "@/components/SocialMediaManager";
+import { MessagingCenter } from "@/components/MessagingCenter";
+import { AnalyticsDashboard } from "@/components/AnalyticsDashboard";
+import { TeamManager } from "@/components/TeamManager";
+import { BillingManager } from "@/components/BillingManager";
+import { DataManager } from "@/components/DataManager";
 
 export default function Dashboard() {
-	const [activeTab, setActiveTab] = useState("clients");
-	const [showClientModal, setShowClientModal] = useState(false);
-	const [editingClient, setEditingClient] = useState<any>(null);
-	const [showAppointmentModal, setShowAppointmentModal] = useState(false);
-	const [editingAppointment, setEditingAppointment] = useState<any>(null);
+	const { user, isAuthenticated, isLoading, logout } = useAuth();
+	const [sidebarOpen, setSidebarOpen] = useState(false);
+	const [activeTab, setActiveTab] = useState("dashboard");
 
-	// For demo purposes, we'll use a hardcoded org ID
-	// In a real app, this would come from authentication
-	// You can get the actual org ID from the setup page
-	const demoOrgId = "demo-org-id";
-	
-	// Check if we have any orgs in the database
-	const orgs = useQuery(api.orgs.list) || [];
-	const currentOrgId = orgs.length > 0 ? orgs[0]._id : null;
-
-	const createClient = useMutation(api.clients.create);
-	const updateClient = useMutation(api.clients.update);
-	const deleteClient = useMutation(api.clients.remove);
-	const createAppointment = useMutation(api.appointments.create);
-	const updateAppointment = useMutation(api.appointments.update);
-	const deleteAppointment = useMutation(api.appointments.remove);
-
-	// Fetch data - always call hooks but handle empty results
-	const clients = useQuery(api.clients.getByOrg, { orgId: currentOrgId || "demo-org-id" as any }) || [];
-	const appointments = useQuery(api.appointments.getByOrg, { orgId: currentOrgId || "demo-org-id" as any }) || [];
-	const files = useQuery(api.files.getByOrg, { orgId: currentOrgId || "demo-org-id" as any }) || [];
-	const messages = useQuery(api.messages.getByOrg, { orgId: currentOrgId || "demo-org-id" as any }) || [];
-
-	const tabs = [
-		{ id: "clients", label: "Clients", icon: Users },
-		{ id: "appointments", label: "Appointments", icon: Calendar },
-		{ id: "gallery", label: "Gallery", icon: Image },
-		{ id: "messaging", label: "Messaging", icon: MessageSquare },
-		{ id: "workflows", label: "Workflows", icon: BarChart3 },
-		{ id: "settings", label: "Settings", icon: Settings },
+	// Mock data for testing
+	const [clients, setClients] = useState([
+		{ 
+			_id: "1", 
+			fullName: "Sarah Johnson", 
+			email: "sarah@example.com", 
+			phones: ["+15551234567"],
+			gender: "female",
+			tags: ["VIP", "returning"],
+			referralSource: "Instagram",
+			clientPortalStatus: "active",
+			createdAt: Date.now() - 86400000 * 30
+		},
+		{ 
+			_id: "2", 
+			fullName: "Michael Chen", 
+			email: "michael@example.com", 
+			phones: ["+15559876543"],
+			gender: "male",
+			tags: ["consultation"],
+			referralSource: "Referral",
+			clientPortalStatus: "pending",
+			createdAt: Date.now() - 86400000 * 7
+		},
+	]);
+	const appointments = [
+		{ _id: "1", dateTime: Date.now(), type: "Consultation", provider: "Dr. Rae" },
+		{ _id: "2", dateTime: Date.now() + 86400000, type: "Treatment", provider: "Dr. Rae" },
 	];
+	const files = [
+		{ _id: "1", filename: "before1.jpg", tag: "before" },
+		{ _id: "2", filename: "after1.jpg", tag: "after" },
+	];
+	const messages = [
+		{ _id: "1", content: "Welcome message", status: "sent" },
+		{ _id: "2", content: "Follow-up reminder", status: "sent" },
+	];
+	
+	// Mock workflow data
+	const [workflows, setWorkflows] = useState([
+		{
+			_id: "1",
+			name: "Google Review Request",
+			description: "Send a Google review request 15 minutes after appointment completion",
+			trigger: "appointment_completed",
+			enabled: true,
+			steps: [
+				{
+					id: "1",
+					type: "delay",
+					config: { delayMinutes: 15 },
+				},
+				{
+					id: "2",
+					type: "send_message",
+					config: {
+						channel: "sms",
+						message: "Hi {{first_name}}, thank you for your appointment today! We'd love if you could leave us a Google review. It really helps our practice grow. Thank you!",
+					},
+				},
+			],
+			createdAt: Date.now() - 86400000 * 7,
+			lastRun: Date.now() - 3600000,
+			runCount: 12,
+		},
+		{
+			_id: "2",
+			name: "New Client Welcome",
+			description: "Welcome new clients with a series of messages",
+			trigger: "client_added",
+			enabled: true,
+			steps: [
+				{
+					id: "1",
+					type: "send_message",
+					config: {
+						channel: "sms",
+						message: "Welcome {{first_name}}! Thank you for choosing Honey Rae Aesthetics. We're excited to help you on your beauty journey!",
+					},
+				},
+				{
+					id: "2",
+					type: "delay",
+					config: { delayMinutes: 60 },
+				},
+				{
+					id: "3",
+					type: "send_message",
+					config: {
+						channel: "email",
+						message: "Hi {{first_name}}, here's your welcome packet with everything you need to know about your upcoming appointment.",
+					},
+				},
+			],
+			createdAt: Date.now() - 86400000 * 14,
+			lastRun: Date.now() - 7200000,
+			runCount: 8,
+		},
+	]);
 
-	const handleAddClient = () => {
-		setEditingClient(null);
-		setShowClientModal(true);
-	};
-
-	const handleEditClient = (clientId: string) => {
-		const client = clients.find(c => c._id === clientId);
-		setEditingClient(client);
-		setShowClientModal(true);
-	};
-
-	const handleDeleteClient = async (clientId: string) => {
-		if (confirm("Are you sure you want to delete this client?")) {
-			await deleteClient({ id: clientId as any });
-		}
-	};
-
-	const handleAddAppointment = () => {
-		setEditingAppointment(null);
-		setShowAppointmentModal(true);
-	};
-
-	const handleEditAppointment = (appointmentId: string) => {
-		const appointment = appointments.find(a => a._id === appointmentId);
-		setEditingAppointment(appointment);
-		setShowAppointmentModal(true);
-	};
-
-	const handleDeleteAppointment = async (appointmentId: string) => {
-		if (confirm("Are you sure you want to delete this appointment?")) {
-			await deleteAppointment({ id: appointmentId as any });
-		}
-	};
-
-	const handleAppointmentSubmit = async (data: any) => {
-		try {
-			if (editingAppointment) {
-				await updateAppointment({
-					id: editingAppointment._id,
-					...data,
-				});
-			} else {
-				if (!currentOrgId) {
-					alert("Please setup demo data first by visiting /setup");
-					return;
-				}
-				await createAppointment({
-					orgId: currentOrgId,
-					...data,
-					dateTime: new Date(data.dateTime).getTime(),
-				});
-			}
-			setShowAppointmentModal(false);
-			setEditingAppointment(null);
-		} catch (error) {
-			console.error("Error saving appointment:", error);
-			alert("Error saving appointment. Please try again.");
-		}
-	};
-
-	const handleAppointmentCancel = () => {
-		setShowAppointmentModal(false);
-		setEditingAppointment(null);
-	};
-
-	const handleClientSubmit = async (data: any) => {
-		try {
-			if (editingClient) {
-				await updateClient({
-					id: editingClient._id,
-					...data,
-				});
-			} else {
-				if (!currentOrgId) {
-					alert("Please setup demo data first by visiting /setup");
-					return;
-				}
-				await createClient({
-					orgId: currentOrgId,
-					...data,
-				});
-			}
-			setShowClientModal(false);
-			setEditingClient(null);
-		} catch (error) {
-			console.error("Error saving client:", error);
-			alert("Error saving client. Please try again.");
-		}
-	};
-
-	const handleClientCancel = () => {
-		setShowClientModal(false);
-		setEditingClient(null);
-	};
-
-	// Calculate stats
+	// Calculate today's appointments
 	const today = new Date();
 	const todayAppointments = appointments.filter(apt => {
 		const aptDate = new Date(apt.dateTime);
 		return aptDate.toDateString() === today.toDateString();
 	});
+	const upcomingAppointments = appointments.filter(apt => {
+		const aptDate = new Date(apt.dateTime);
+		return aptDate > today;
+	});
+
+	// Client handlers
+	const handleAddClient = () => {
+		console.log("Add client");
+	};
+
+	const handleEditClient = (clientId: string) => {
+		console.log("Edit client:", clientId);
+	};
+
+	const handleDeleteClient = (clientId: string) => {
+		console.log("Delete client:", clientId);
+	};
+
+	// Workflow handlers
+	const handleAddWorkflow = () => {
+		console.log("Add workflow");
+	};
+
+	const handleEditWorkflow = (workflowId: string) => {
+		console.log("Edit workflow:", workflowId);
+	};
+
+	const handleDeleteWorkflow = (workflowId: string) => {
+		console.log("Delete workflow:", workflowId);
+	};
+
+	const handleToggleWorkflow = (workflowId: string) => {
+		console.log("Toggle workflow:", workflowId);
+	};
+
+	if (isLoading) {
+		return (
+			<div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-rose-50 flex items-center justify-center">
+				<div className="text-center">
+					<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500 mx-auto mb-4"></div>
+					<p className="text-muted-foreground">Loading...</p>
+				</div>
+			</div>
+		);
+	}
+
+	if (!isAuthenticated) {
+		return (
+			<div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-rose-50 flex items-center justify-center">
+				<div className="text-center">
+					<p className="text-muted-foreground">Please log in to continue.</p>
+				</div>
+			</div>
+		);
+	}
 
 	return (
-		<div className="min-h-screen bg-gray-50">
-			{/* Header */}
-			<header className="bg-white shadow-sm border-b">
-				<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-					<div className="flex justify-between items-center h-16">
+		<div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-rose-50">
+			{/* Sidebar */}
+			<Sidebar
+				isOpen={sidebarOpen}
+				onToggle={() => setSidebarOpen(!sidebarOpen)}
+				activeTab={activeTab}
+				onTabChange={setActiveTab}
+			/>
+
+			{/* Main Content */}
+			<div className="flex-1 flex flex-col lg:ml-80 relative">
+				{/* Header */}
+				<header className="glass border-b border-pink-100/50 backdrop-blur-xl">
+					<div className="flex items-center justify-between px-6 h-16">
 						<div className="flex items-center">
-							<h1 className="text-xl font-semibold text-gray-900">
+							<Button
+								variant="ghost"
+								size="icon"
+								onClick={() => setSidebarOpen(true)}
+								className="lg:hidden z-10"
+								data-testid="mobile-menu-button"
+							>
+								<Menu className="h-5 w-5" />
+							</Button>
+							<h1 className="text-xl font-bold gradient-text ml-2 lg:ml-0">
 								Honey Rae Aesthetics
 							</h1>
 						</div>
+						
 						<div className="flex items-center space-x-4">
-							<div className="relative">
-								<Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-								<input
+							{/* Search */}
+							<div className="relative hidden md:block">
+								<Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+								<Input
 									type="text"
 									placeholder="Search clients, appointments..."
-									className="pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+									className="pl-10 pr-4 w-64 bg-white/50 border-pink-200/50 focus:border-pink-300"
 								/>
 							</div>
-							<button className="p-2 text-gray-400 hover:text-gray-600">
+							
+							{/* Notifications */}
+							<Button variant="ghost" size="icon" className="relative">
 								<Bell className="h-5 w-5" />
-							</button>
-							<div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-								<span className="text-white text-sm font-medium">KR</span>
+								<Badge className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 text-xs bg-pink-500">
+									3
+								</Badge>
+							</Button>
+							
+							{/* User Menu */}
+							<div className="flex items-center space-x-2">
+								<Avatar className="w-10 h-10">
+									<AvatarImage src="/avatar.jpg" />
+									<AvatarFallback className="bg-gradient-to-br from-pink-400 to-rose-500 text-white">
+										{user?.email?.charAt(0).toUpperCase() || "A"}
+									</AvatarFallback>
+								</Avatar>
+								<Button
+									variant="ghost"
+									size="icon"
+									onClick={logout}
+									title="Logout"
+								>
+									<LogOut className="h-4 w-4" />
+								</Button>
 							</div>
 						</div>
 					</div>
-				</div>
-			</header>
+				</header>
 
-			<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-				{/* Quick Stats */}
-				<div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-					<div className="bg-white rounded-lg shadow p-6">
-						<div className="flex items-center">
-							<div className="p-2 bg-blue-100 rounded-lg">
-								<Users className="h-6 w-6 text-blue-600" />
-							</div>
-							<div className="ml-4">
-								<p className="text-sm font-medium text-gray-600">Total Clients</p>
-								<p className="text-2xl font-semibold text-gray-900">{clients.length}</p>
-							</div>
-						</div>
-					</div>
-					<div className="bg-white rounded-lg shadow p-6">
-						<div className="flex items-center">
-							<div className="p-2 bg-green-100 rounded-lg">
-								<Calendar className="h-6 w-6 text-green-600" />
-							</div>
-							<div className="ml-4">
-								<p className="text-sm font-medium text-gray-600">Today's Appointments</p>
-								<p className="text-2xl font-semibold text-gray-900">{todayAppointments.length}</p>
-							</div>
-						</div>
-					</div>
-					<div className="bg-white rounded-lg shadow p-6">
-						<div className="flex items-center">
-							<div className="p-2 bg-purple-100 rounded-lg">
-								<MessageSquare className="h-6 w-6 text-purple-600" />
-							</div>
-							<div className="ml-4">
-								<p className="text-sm font-medium text-gray-600">Messages Sent</p>
-								<p className="text-2xl font-semibold text-gray-900">{messages.length}</p>
-							</div>
-						</div>
-					</div>
-					<div className="bg-white rounded-lg shadow p-6">
-						<div className="flex items-center">
-							<div className="p-2 bg-orange-100 rounded-lg">
-								<Image className="h-6 w-6 text-orange-600" />
-							</div>
-							<div className="ml-4">
-								<p className="text-sm font-medium text-gray-600">Photos Uploaded</p>
-								<p className="text-2xl font-semibold text-gray-900">{files.length}</p>
-							</div>
-						</div>
-					</div>
-				</div>
-
-				{/* Main Content */}
-				<div className="bg-white rounded-lg shadow">
-					{/* Tab Navigation */}
-					<div className="border-b border-gray-200">
-						<nav className="-mb-px flex space-x-8 px-6">
-							{tabs.map((tab) => {
-								const Icon = tab.icon;
-								return (
-																<button
-								key={tab.id}
-								data-testid={`${tab.id}-tab`}
-								onClick={() => setActiveTab(tab.id)}
-								className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center space-x-2 ${
-									activeTab === tab.id
-										? "border-blue-500 text-blue-600"
-										: "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-								}`}
-							>
-										<Icon className="h-4 w-4" />
-										<span>{tab.label}</span>
-									</button>
-								);
-							})}
-						</nav>
-					</div>
-
-					{/* Tab Content */}
-					<div className="p-6">
-						{activeTab === "clients" && (
-							currentOrgId ? (
-								<ClientList
-									orgId={currentOrgId}
-									onAddClient={handleAddClient}
-									onEditClient={handleEditClient}
-									onDeleteClient={handleDeleteClient}
-								/>
-							) : (
-								<div className="bg-gray-50 rounded-lg p-8 text-center">
-									<h3 className="text-lg font-medium text-gray-900 mb-2">
-										No organization found
-									</h3>
-									<p className="text-gray-500 mb-4">
-										Please setup demo data first by visiting the setup page.
-									</p>
-									<Button onClick={() => window.location.href = '/setup'}>
-										Setup Demo Data
-									</Button>
-								</div>
-							)
-						)}
-
-						{activeTab === "appointments" && (
-							currentOrgId ? (
-								<AppointmentList
-									orgId={currentOrgId}
-									onAddAppointment={handleAddAppointment}
-									onEditAppointment={handleEditAppointment}
-									onDeleteAppointment={handleDeleteAppointment}
-								/>
-							) : (
-								<div className="bg-gray-50 rounded-lg p-8 text-center">
-									<h3 className="text-lg font-medium text-gray-900 mb-2">
-										No organization found
-									</h3>
-									<p className="text-gray-500 mb-4">
-										Please setup demo data first by visiting the setup page.
-									</p>
-									<Button onClick={() => window.location.href = '/setup'}>
-										Setup Demo Data
-									</Button>
-								</div>
-							)
-						)}
-
-						{activeTab === "gallery" && (
-							<div>
-								<div className="flex justify-between items-center mb-6">
-									<h2 className="text-lg font-medium text-gray-900">Photo Gallery</h2>
-									<Button className="flex items-center space-x-2">
-										<Plus className="h-4 w-4" />
-										<span>Upload Photos</span>
-									</Button>
-								</div>
-								<div className="bg-gray-50 rounded-lg p-8 text-center">
-									<Image className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-									<h3 className="text-lg font-medium text-gray-900 mb-2">
-										No photos uploaded
-									</h3>
-									<p className="text-gray-500 mb-4">
-										Upload before and after photos to track client progress.
-									</p>
-									<Button>
-										Upload Photos
-									</Button>
-								</div>
-							</div>
-						)}
-
-						{activeTab === "messaging" && (
-							<div>
-								<div className="flex justify-between items-center mb-6">
-									<h2 className="text-lg font-medium text-gray-900">Messaging</h2>
-									<Button className="flex items-center space-x-2">
-										<Plus className="h-4 w-4" />
-										<span>Send Message</span>
-									</Button>
-								</div>
-								<div className="bg-gray-50 rounded-lg p-8 text-center">
-									<MessageSquare className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-									<h3 className="text-lg font-medium text-gray-900 mb-2">
-										No messages sent
-									</h3>
-									<p className="text-gray-500 mb-4">
-										Start communicating with your clients via SMS or email.
-									</p>
-									<Button>
-										Send Message
-									</Button>
-								</div>
-							</div>
-						)}
-
-						{activeTab === "workflows" && (
-							<div>
-								<div className="flex justify-between items-center mb-6">
-									<h2 className="text-lg font-medium text-gray-900">Workflows</h2>
-									<Button className="flex items-center space-x-2">
-										<Plus className="h-4 w-4" />
-										<span>Create Workflow</span>
-									</Button>
-								</div>
-								<div className="bg-gray-50 rounded-lg p-8 text-center">
-									<BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-									<h3 className="text-lg font-medium text-gray-900 mb-2">
-										No workflows created
-									</h3>
-									<p className="text-gray-500 mb-4">
-										Automate your client communication with custom workflows.
-									</p>
-									<Button>
-										Create Workflow
-									</Button>
-								</div>
-							</div>
-						)}
-
-						{activeTab === "settings" && (
-							<div>
-								<h2 className="text-lg font-medium text-gray-900 mb-6">Settings</h2>
-								<div className="space-y-6">
-									<div className="border border-gray-200 rounded-lg p-4">
-										<h3 className="text-md font-medium text-gray-900 mb-2">
-											Organization Settings
-										</h3>
-										<p className="text-gray-500 text-sm">
-											Manage your clinic's information, branding, and preferences.
-										</p>
+				{/* Page Content */}
+				<main className="flex-1 p-6 space-y-6">
+					{/* Dashboard */}
+					{activeTab === "dashboard" && (
+						<div className="space-y-6">
+							{/* Welcome Section */}
+							<div className="glass rounded-2xl p-6">
+								<div className="flex items-center justify-between">
+									<div>
+										<h2 className="text-2xl font-bold gradient-text mb-2">Welcome back, Dr. Rae! ✨</h2>
+										<p className="text-muted-foreground">Here's what's happening with your practice today.</p>
 									</div>
-									<div className="border border-gray-200 rounded-lg p-4">
-										<h3 className="text-md font-medium text-gray-900 mb-2">
-											Team Management
-										</h3>
-										<p className="text-gray-500 text-sm">
-											Invite team members and manage their roles and permissions.
-										</p>
-									</div>
-									<div className="border border-gray-200 rounded-lg p-4">
-										<h3 className="text-md font-medium text-gray-900 mb-2">
-											Integrations
-										</h3>
-										<p className="text-gray-500 text-sm">
-											Connect with Google Calendar, Stripe, and other services.
-										</p>
+									<div className="text-right">
+										<p className="text-sm text-muted-foreground">Today</p>
+										<p className="text-2xl font-bold text-foreground">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
 									</div>
 								</div>
 							</div>
-						)}
-					</div>
-				</div>
+
+							{/* Quick Stats */}
+							<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+								<Card className="glass border-pink-200/50 hover:shadow-lg transition-all duration-300">
+									<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+										<CardTitle className="text-sm font-medium">Total Clients</CardTitle>
+										<Heart className="h-4 w-4 text-pink-500" />
+									</CardHeader>
+									<CardContent>
+										<div className="text-2xl font-bold gradient-text">{clients.length}</div>
+										<p className="text-xs text-muted-foreground">
+											+12% from last month
+										</p>
+									</CardContent>
+								</Card>
+								
+								<Card className="glass border-pink-200/50 hover:shadow-lg transition-all duration-300">
+									<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+										<CardTitle className="text-sm font-medium">Today's Appointments</CardTitle>
+										<Calendar className="h-4 w-4 text-rose-500" />
+									</CardHeader>
+									<CardContent>
+										<div className="text-2xl font-bold gradient-text">{todayAppointments.length}</div>
+										<p className="text-xs text-muted-foreground">
+											{upcomingAppointments.length} upcoming
+										</p>
+									</CardContent>
+								</Card>
+								
+								<Card className="glass border-pink-200/50 hover:shadow-lg transition-all duration-300">
+									<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+										<CardTitle className="text-sm font-medium">Messages Sent</CardTitle>
+										<MessageSquare className="h-4 w-4 text-purple-500" />
+									</CardHeader>
+									<CardContent>
+										<div className="text-2xl font-bold gradient-text">{messages.length}</div>
+										<p className="text-xs text-muted-foreground">
+											+8% from last week
+										</p>
+									</CardContent>
+								</Card>
+								
+								<Card className="glass border-pink-200/50 hover:shadow-lg transition-all duration-300">
+									<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+										<CardTitle className="text-sm font-medium">Active Workflows</CardTitle>
+										<Zap className="h-4 w-4 text-yellow-500" />
+									</CardHeader>
+									<CardContent>
+										<div className="text-2xl font-bold gradient-text">{workflows.filter(w => w.enabled).length}</div>
+										<p className="text-xs text-muted-foreground">
+											{workflows.reduce((total, w) => total + w.runCount, 0)} total runs
+										</p>
+									</CardContent>
+								</Card>
+								
+								<Card className="glass border-pink-200/50 hover:shadow-lg transition-all duration-300">
+									<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+										<CardTitle className="text-sm font-medium">Photos Uploaded</CardTitle>
+										<Camera className="h-4 w-4 text-orange-500" />
+									</CardHeader>
+									<CardContent>
+										<div className="text-2xl font-bold gradient-text">{files.length}</div>
+										<p className="text-xs text-muted-foreground">
+											+5 new this week
+										</p>
+									</CardContent>
+								</Card>
+							</div>
+
+							{/* Quick Actions & Recent Activity */}
+							<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+								{/* Quick Actions */}
+								<Card className="glass border-pink-200/50">
+									<CardHeader>
+										<CardTitle className="flex items-center gap-2">
+											<Zap className="h-5 w-5 text-pink-500" />
+											Quick Actions
+										</CardTitle>
+									</CardHeader>
+									<CardContent className="space-y-3">
+										<Button 
+											className="w-full justify-start bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600"
+										>
+											<UserPlus className="w-4 h-4 mr-2" />
+											Add New Client
+										</Button>
+										<Button 
+											variant="outline"
+											className="w-full justify-start border-pink-200 text-pink-700 hover:bg-pink-50"
+										>
+											<Calendar className="w-4 h-4 mr-2" />
+											Schedule Appointment
+										</Button>
+										<Button 
+											variant="outline"
+											className="w-full justify-start border-pink-200 text-pink-700 hover:bg-pink-50"
+										>
+											<Workflow className="w-4 h-4 mr-2" />
+											Create Workflow
+										</Button>
+									</CardContent>
+								</Card>
+
+								{/* Recent Activity */}
+								<Card className="glass border-pink-200/50">
+									<CardHeader>
+										<CardTitle className="flex items-center gap-2">
+											<Activity className="h-5 w-5 text-pink-500" />
+											Recent Activity
+										</CardTitle>
+									</CardHeader>
+									<CardContent>
+										<div className="space-y-4">
+											<div className="flex items-center space-x-3">
+												<div className="w-2 h-2 bg-pink-500 rounded-full"></div>
+												<div className="flex-1">
+													<p className="text-sm font-medium">New client added</p>
+													<p className="text-xs text-muted-foreground">Sarah Johnson • 2 hours ago</p>
+												</div>
+											</div>
+											<div className="flex items-center space-x-3">
+												<div className="w-2 h-2 bg-rose-500 rounded-full"></div>
+												<div className="flex-1">
+													<p className="text-sm font-medium">Appointment scheduled</p>
+													<p className="text-xs text-muted-foreground">Michael Chen • 4 hours ago</p>
+												</div>
+											</div>
+											<div className="flex items-center space-x-3">
+												<div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+												<div className="flex-1">
+													<p className="text-sm font-medium">Message sent</p>
+													<p className="text-xs text-muted-foreground">Welcome message • 6 hours ago</p>
+												</div>
+											</div>
+										</div>
+									</CardContent>
+								</Card>
+							</div>
+						</div>
+					)}
+
+					{/* Clients */}
+					{activeTab === "clients" && (
+						<ClientList
+							clients={clients}
+							onAddClient={handleAddClient}
+							onEditClient={handleEditClient}
+							onDeleteClient={handleDeleteClient}
+						/>
+					)}
+
+					{/* Appointments */}
+					{activeTab === "appointments" && (
+						<AppointmentList 
+							orgId="org1"
+							onAddAppointment={() => console.log("Add appointment")}
+							onEditAppointment={(id) => console.log("Edit appointment:", id)}
+							onDeleteAppointment={(id) => console.log("Delete appointment:", id)}
+						/>
+					)}
+
+					{/* Photo Gallery */}
+					{activeTab === "gallery" && (
+						<PhotoGallery orgId="org1" />
+					)}
+
+					{/* Templates */}
+					{activeTab === "templates" && (
+						<TemplateList 
+							orgId="org1"
+							type="sms"
+							onAddTemplate={() => console.log("Add template")}
+							onEditTemplate={(id) => console.log("Edit template:", id)}
+							onDeleteTemplate={(id) => console.log("Delete template:", id)}
+						/>
+					)}
+
+					{/* Workflows */}
+					{activeTab === "workflows" && (
+						<WorkflowList
+							workflows={workflows}
+							onAddWorkflow={handleAddWorkflow}
+							onEditWorkflow={handleEditWorkflow}
+							onDeleteWorkflow={handleDeleteWorkflow}
+							onToggleWorkflow={handleToggleWorkflow}
+						/>
+					)}
+
+					{/* Social Media */}
+					{activeTab === "social" && (
+						<SocialMediaManager 
+							onCreatePost={() => console.log("Create post")}
+							onEditPost={(id) => console.log("Edit post:", id)}
+							onDeletePost={(id) => console.log("Delete post:", id)}
+						/>
+					)}
+
+					{/* Messaging */}
+					{activeTab === "messaging" && (
+						<MessagingCenter orgId="org1" />
+					)}
+
+					{/* Analytics */}
+					{activeTab === "analytics" && (
+						<AnalyticsDashboard orgId="org1" />
+					)}
+
+					{/* Team */}
+					{activeTab === "team" && (
+						<TeamManager orgId="org1" />
+					)}
+
+					{/* Billing */}
+					{activeTab === "billing" && (
+						<BillingManager orgId="org1" />
+					)}
+
+					{/* Settings */}
+					{activeTab === "settings" && (
+						<DataManager orgId="org1" />
+					)}
+				</main>
 			</div>
-
-			{/* Client Modal */}
-			{showClientModal && (
-				<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-					<div className="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-						<div className="flex justify-between items-center p-6 border-b">
-							<h2 className="text-xl font-semibold text-gray-900">
-								{editingClient ? "Edit Client" : "Add New Client"}
-							</h2>
-							<button
-								onClick={handleClientCancel}
-								className="text-gray-400 hover:text-gray-600"
-							>
-								<X className="h-6 w-6" />
-							</button>
-						</div>
-						<div className="p-6">
-							<ClientForm
-								onSubmit={handleClientSubmit}
-								onCancel={handleClientCancel}
-								initialData={editingClient}
-							/>
-						</div>
-					</div>
-				</div>
-			)}
-
-			{/* Appointment Modal */}
-			{showAppointmentModal && (
-				<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-					<div className="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-						<div className="flex justify-between items-center p-6 border-b">
-							<h2 className="text-xl font-semibold text-gray-900">
-								{editingAppointment ? "Edit Appointment" : "Schedule New Appointment"}
-							</h2>
-							<button
-								onClick={handleAppointmentCancel}
-								className="text-gray-400 hover:text-gray-600"
-							>
-								<X className="h-6 w-6" />
-							</button>
-						</div>
-						<div className="p-6">
-							<AppointmentForm
-								orgId={demoOrgId}
-								onSubmit={handleAppointmentSubmit}
-								onCancel={handleAppointmentCancel}
-								initialData={editingAppointment}
-							/>
-						</div>
-					</div>
-				</div>
-			)}
 		</div>
 	);
 }

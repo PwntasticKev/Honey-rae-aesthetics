@@ -1,223 +1,262 @@
 "use client";
 
 import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { useQuery } from "convex/react";
-import { api } from "../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
-import { Calendar, Clock, User, FileText } from "lucide-react";
-
-const appointmentSchema = z.object({
-	clientId: z.string().min(1, "Please select a client"),
-	dateTime: z.string().min(1, "Please select a date and time"),
-	type: z.string().min(1, "Appointment type is required"),
-	provider: z.string().min(1, "Provider is required"),
-	notes: z.string().optional(),
-});
-
-type AppointmentFormData = z.infer<typeof appointmentSchema>;
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Calendar, Clock, User, Phone, Mail } from "lucide-react";
 
 interface AppointmentFormProps {
-	orgId: any; // Using any for now since we're passing from parent
-	onSubmit: (data: AppointmentFormData) => void;
+	onSubmit: (data: any) => void;
 	onCancel: () => void;
-	initialData?: Partial<AppointmentFormData>;
+	initialData?: any;
+	clients?: any[];
 }
 
-export function AppointmentForm({ orgId, onSubmit, onCancel, initialData }: AppointmentFormProps) {
-	const [selectedDate, setSelectedDate] = useState("");
-	const [selectedTime, setSelectedTime] = useState("");
-
-	const clients = useQuery(api.clients.getByOrg, { orgId: orgId }) || [];
-
-	const {
-		register,
-		handleSubmit,
-		formState: { errors },
-		setValue,
-	} = useForm<AppointmentFormData>({
-		resolver: zodResolver(appointmentSchema),
-		defaultValues: {
-			clientId: initialData?.clientId || "",
-			dateTime: initialData?.dateTime || "",
-			type: initialData?.type || "",
-			provider: initialData?.provider || "Dr. Kevin Rae",
-			notes: initialData?.notes || "",
-		},
+export function AppointmentForm({ onSubmit, onCancel, initialData, clients = [] }: AppointmentFormProps) {
+	const [formData, setFormData] = useState({
+		clientId: initialData?.clientId || "",
+		dateTime: initialData?.dateTime || "",
+		type: initialData?.type || "consultation",
+		duration: initialData?.duration || 60,
+		provider: initialData?.provider || "Dr. Rae",
+		status: initialData?.status || "scheduled",
+		notes: initialData?.notes || "",
+		location: initialData?.location || "Main Office",
+		reminderSent: initialData?.reminderSent || false,
 	});
 
-	const handleDateTimeChange = () => {
-		if (selectedDate && selectedTime) {
-			const dateTime = new Date(`${selectedDate}T${selectedTime}`);
-			setValue("dateTime", dateTime.toISOString());
-		}
+	const appointmentTypes = [
+		{ value: "consultation", label: "Consultation" },
+		{ value: "treatment", label: "Treatment" },
+		{ value: "follow-up", label: "Follow-up" },
+		{ value: "emergency", label: "Emergency" },
+		{ value: "maintenance", label: "Maintenance" },
+	];
+
+	const appointmentStatuses = [
+		{ value: "scheduled", label: "Scheduled" },
+		{ value: "confirmed", label: "Confirmed" },
+		{ value: "in-progress", label: "In Progress" },
+		{ value: "completed", label: "Completed" },
+		{ value: "cancelled", label: "Cancelled" },
+		{ value: "no-show", label: "No Show" },
+	];
+
+	const durationOptions = [
+		{ value: 30, label: "30 minutes" },
+		{ value: 60, label: "1 hour" },
+		{ value: 90, label: "1.5 hours" },
+		{ value: 120, label: "2 hours" },
+	];
+
+	const handleInputChange = (field: string, value: any) => {
+		setFormData(prev => ({
+			...prev,
+			[field]: value,
+		}));
 	};
 
-	const appointmentTypes = [
-		"Consultation",
-		"Botox Treatment",
-		"Filler Treatment",
-		"Laser Treatment",
-		"Chemical Peel",
-		"Microdermabrasion",
-		"Follow-up",
-		"Other",
-	];
+	const handleSubmit = (e: React.FormEvent) => {
+		e.preventDefault();
+		
+		// Validate required fields
+		if (!formData.clientId) {
+			alert("Please select a client");
+			return;
+		}
+		
+		if (!formData.dateTime) {
+			alert("Please select a date and time");
+			return;
+		}
+		
+		onSubmit(formData);
+	};
 
-	const providers = [
-		"Dr. Kevin Rae",
-		"Dr. Sarah Smith",
-		"Nurse Practitioner Johnson",
-		"Esthetician Davis",
-	];
+	const selectedClient = clients.find(client => client._id === formData.clientId);
 
 	return (
-		<form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-			<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-				{/* Client Selection */}
-				<div className="space-y-4">
-					<h3 className="text-lg font-medium text-gray-900">Client Information</h3>
-					
-					<div>
-						<label className="block text-sm font-medium text-gray-700">
-							Client *
-						</label>
-						<select
-							{...register("clientId")}
-							className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+		<form onSubmit={handleSubmit} className="space-y-6">
+			{/* Client Selection */}
+			<Card>
+				<CardHeader>
+					<CardTitle>Client Information</CardTitle>
+					<CardDescription>Select the client for this appointment</CardDescription>
+				</CardHeader>
+				<CardContent className="space-y-4">
+					<div className="space-y-2">
+						<Label htmlFor="clientId">Client *</Label>
+						<Select
+							value={formData.clientId}
+							onValueChange={(value) => handleInputChange("clientId", value)}
 						>
-							<option value="">Select a client</option>
-							{clients.map((client) => (
-								<option key={client._id} value={client._id}>
-									{client.fullName} - {client.phones[0]}
-								</option>
-							))}
-						</select>
-						{errors.clientId && (
-							<p className="mt-1 text-sm text-red-600">{errors.clientId.message}</p>
-						)}
-					</div>
-				</div>
-
-				{/* Appointment Details */}
-				<div className="space-y-4">
-					<h3 className="text-lg font-medium text-gray-900">Appointment Details</h3>
-					
-					<div>
-						<label className="block text-sm font-medium text-gray-700">
-							Appointment Type *
-						</label>
-						<select
-							{...register("type")}
-							className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-						>
-							<option value="">Select appointment type</option>
-							{appointmentTypes.map((type) => (
-								<option key={type} value={type}>
-									{type}
-								</option>
-							))}
-						</select>
-						{errors.type && (
-							<p className="mt-1 text-sm text-red-600">{errors.type.message}</p>
-						)}
+							<SelectTrigger>
+								<SelectValue placeholder="Select a client" />
+							</SelectTrigger>
+							<SelectContent>
+								{clients.map((client) => (
+									<SelectItem key={client._id} value={client._id}>
+										{client.fullName}
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
 					</div>
 
-					<div>
-						<label className="block text-sm font-medium text-gray-700">
-							Provider *
-						</label>
-						<select
-							{...register("provider")}
-							className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-						>
-							{providers.map((provider) => (
-								<option key={provider} value={provider}>
-									{provider}
-								</option>
-							))}
-						</select>
-						{errors.provider && (
-							<p className="mt-1 text-sm text-red-600">{errors.provider.message}</p>
-						)}
-					</div>
-				</div>
-			</div>
+					{selectedClient && (
+						<div className="p-4 bg-gray-50 rounded-lg">
+							<div className="flex items-center space-x-3 mb-2">
+								<User className="h-4 w-4 text-gray-500" />
+								<span className="font-medium">{selectedClient.fullName}</span>
+							</div>
+							{selectedClient.email && (
+								<div className="flex items-center space-x-2 text-sm text-gray-600">
+									<Mail className="h-4 w-4" />
+									<span>{selectedClient.email}</span>
+								</div>
+							)}
+							{selectedClient.phones && selectedClient.phones.length > 0 && (
+								<div className="flex items-center space-x-2 text-sm text-gray-600">
+									<Phone className="h-4 w-4" />
+									<span>{selectedClient.phones[0]}</span>
+								</div>
+							)}
+						</div>
+					)}
+				</CardContent>
+			</Card>
 
-			{/* Date and Time */}
-			<div className="space-y-4">
-				<h3 className="text-lg font-medium text-gray-900">Schedule</h3>
-				<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-					<div>
-						<label className="block text-sm font-medium text-gray-700">
-							Date *
-						</label>
-						<div className="mt-1 relative">
-							<Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-							<input
-								type="date"
-								value={selectedDate}
-								onChange={(e) => {
-									setSelectedDate(e.target.value);
-									handleDateTimeChange();
-								}}
-								className="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-								min={new Date().toISOString().split('T')[0]}
+			{/* Appointment Details */}
+			<Card>
+				<CardHeader>
+					<CardTitle>Appointment Details</CardTitle>
+					<CardDescription>Set the appointment time and details</CardDescription>
+				</CardHeader>
+				<CardContent className="space-y-4">
+					<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+						<div className="space-y-2">
+							<Label htmlFor="dateTime">Date & Time *</Label>
+							<Input
+								id="dateTime"
+								type="datetime-local"
+								value={formData.dateTime}
+								onChange={(e) => handleInputChange("dateTime", e.target.value)}
+								required
+							/>
+						</div>
+						<div className="space-y-2">
+							<Label htmlFor="duration">Duration</Label>
+							<Select
+								value={formData.duration.toString()}
+								onValueChange={(value) => handleInputChange("duration", parseInt(value))}
+							>
+								<SelectTrigger>
+									<SelectValue />
+								</SelectTrigger>
+								<SelectContent>
+									{durationOptions.map((option) => (
+										<SelectItem key={option.value} value={option.value.toString()}>
+											{option.label}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</div>
+					</div>
+
+					<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+						<div className="space-y-2">
+							<Label htmlFor="type">Appointment Type</Label>
+							<Select
+								value={formData.type}
+								onValueChange={(value) => handleInputChange("type", value)}
+							>
+								<SelectTrigger>
+									<SelectValue />
+								</SelectTrigger>
+								<SelectContent>
+									{appointmentTypes.map((type) => (
+										<SelectItem key={type.value} value={type.value}>
+											{type.label}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</div>
+						<div className="space-y-2">
+							<Label htmlFor="provider">Provider</Label>
+							<Input
+								id="provider"
+								value={formData.provider}
+								onChange={(e) => handleInputChange("provider", e.target.value)}
+								placeholder="Dr. Rae"
 							/>
 						</div>
 					</div>
-					
-					<div>
-						<label className="block text-sm font-medium text-gray-700">
-							Time *
-						</label>
-						<div className="mt-1 relative">
-							<Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-							<input
-								type="time"
-								value={selectedTime}
-								onChange={(e) => {
-									setSelectedTime(e.target.value);
-									handleDateTimeChange();
-								}}
-								className="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+
+					<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+						<div className="space-y-2">
+							<Label htmlFor="status">Status</Label>
+							<Select
+								value={formData.status}
+								onValueChange={(value) => handleInputChange("status", value)}
+							>
+								<SelectTrigger>
+									<SelectValue />
+								</SelectTrigger>
+								<SelectContent>
+									{appointmentStatuses.map((status) => (
+										<SelectItem key={status.value} value={status.value}>
+											{status.label}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</div>
+						<div className="space-y-2">
+							<Label htmlFor="location">Location</Label>
+							<Input
+								id="location"
+								value={formData.location}
+								onChange={(e) => handleInputChange("location", e.target.value)}
+								placeholder="Main Office"
 							/>
 						</div>
 					</div>
-				</div>
-				{errors.dateTime && (
-					<p className="text-sm text-red-600">{errors.dateTime.message}</p>
-				)}
-			</div>
+				</CardContent>
+			</Card>
 
 			{/* Notes */}
-			<div className="space-y-4">
-				<h3 className="text-lg font-medium text-gray-900">Additional Information</h3>
-				<div>
-					<label className="block text-sm font-medium text-gray-700">
-						Notes
-					</label>
-					<div className="mt-1 relative">
-						<FileText className="absolute left-3 top-3 text-gray-400 h-4 w-4" />
-						<textarea
-							{...register("notes")}
+			<Card>
+				<CardHeader>
+					<CardTitle>Notes</CardTitle>
+					<CardDescription>Add any additional notes for this appointment</CardDescription>
+				</CardHeader>
+				<CardContent>
+					<div className="space-y-2">
+						<Label htmlFor="notes">Appointment Notes</Label>
+						<Textarea
+							id="notes"
+							value={formData.notes}
+							onChange={(e) => handleInputChange("notes", e.target.value)}
+							placeholder="Enter any notes about this appointment..."
 							rows={4}
-							className="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-							placeholder="Add any notes about this appointment..."
 						/>
 					</div>
-				</div>
-			</div>
+				</CardContent>
+			</Card>
 
 			{/* Form Actions */}
-			<div className="flex justify-end space-x-3 pt-6 border-t">
+			<div className="flex justify-end space-x-2">
 				<Button type="button" variant="outline" onClick={onCancel}>
 					Cancel
 				</Button>
 				<Button type="submit">
-					{initialData ? "Update Appointment" : "Schedule Appointment"}
+					{initialData ? "Update Appointment" : "Create Appointment"}
 				</Button>
 			</div>
 		</form>

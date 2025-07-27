@@ -1,10 +1,10 @@
 /// <reference types="cypress" />
 
-// Custom commands for Honey Rae Aesthetics platform
+export {}
 
 declare global {
   namespace Cypress {
-    interface Chainable {
+    interface Chainable<Subject> {
       /**
        * Custom command to setup demo data
        * @example cy.setupDemoData()
@@ -45,7 +45,12 @@ Cypress.Commands.add('setupDemoData', () => {
 })
 
 // Add a new client
-Cypress.Commands.add('addClient', (clientData) => {
+Cypress.Commands.add('addClient', (clientData: {
+  fullName: string
+  email?: string
+  phones?: string[]
+  gender?: 'male' | 'female' | 'other'
+}) => {
   cy.visit('/')
   cy.get('[data-testid="clients-tab"]').click()
   cy.get('button').contains('Add Client').click()
@@ -66,7 +71,13 @@ Cypress.Commands.add('addClient', (clientData) => {
 })
 
 // Schedule an appointment
-Cypress.Commands.add('scheduleAppointment', (appointmentData) => {
+Cypress.Commands.add('scheduleAppointment', (appointmentData: {
+  clientName: string
+  type: string
+  provider?: string
+  date?: string
+  time?: string
+}) => {
   cy.visit('/')
   cy.get('[data-testid="appointments-tab"]').click()
   cy.get('button').contains('Schedule Appointment').click()

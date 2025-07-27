@@ -1,242 +1,292 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery } from "convex/react";
-import { api } from "../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
-import { Search, Plus, Edit, Trash2, Phone, Mail, Tag } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Input } from "@/components/ui/input";
+import { 
+	Search, 
+	Plus, 
+	Edit, 
+	Trash2, 
+	Phone, 
+	Mail, 
+	MapPin,
+	Filter,
+	MoreHorizontal
+} from "lucide-react";
+import { ClientForm } from "./ClientForm";
+
+interface Client {
+	_id: string;
+	fullName: string;
+	email?: string;
+	phones: string[];
+	gender: string;
+	tags: string[];
+	referralSource?: string;
+	clientPortalStatus: string;
+	createdAt: number;
+}
 
 interface ClientListProps {
-	orgId: string;
+	clients: Client[];
 	onAddClient: () => void;
 	onEditClient: (clientId: string) => void;
 	onDeleteClient: (clientId: string) => void;
 }
 
-export function ClientList({ orgId, onAddClient, onEditClient, onDeleteClient }: ClientListProps) {
+export function ClientList({ clients, onAddClient, onEditClient, onDeleteClient }: ClientListProps) {
 	const [searchTerm, setSearchTerm] = useState("");
-	const [filterTag, setFilterTag] = useState("");
-
-	const clients = useQuery(api.clients.getByOrg, { orgId: orgId as any }) || [];
+	const [statusFilter, setStatusFilter] = useState("all");
+	const [showAddForm, setShowAddForm] = useState(false);
+	const [editingClient, setEditingClient] = useState<Client | null>(null);
 
 	const filteredClients = clients.filter(client => {
 		const matchesSearch = client.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
 			client.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
 			client.phones.some(phone => phone.includes(searchTerm));
 		
-		const matchesTag = !filterTag || client.tags.includes(filterTag);
+		const matchesStatus = statusFilter === "all" || client.clientPortalStatus === statusFilter;
 		
-		return matchesSearch && matchesTag;
+		return matchesSearch && matchesStatus;
 	});
 
-	const allTags = Array.from(new Set(clients.flatMap(client => client.tags)));
+	const handleAddClient = (data: any) => {
+		// In a real app, this would call an API
+		console.log("Adding client:", data);
+		
+		// Add the new client to the list
+		const newClient = {
+			_id: Date.now().toString(),
+			...data,
+			createdAt: Date.now(),
+		};
+		
+		// This would normally update the parent state
+		// For now, we'll just close the form
+		setShowAddForm(false);
+		onAddClient();
+	};
 
-	const formatPhone = (phone: string) => {
-		// Simple phone formatting
-		const cleaned = phone.replace(/\D/g, "");
-		if (cleaned.length === 10) {
-			return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
+	const handleEditClient = (data: any) => {
+		// In a real app, this would call an API
+		console.log("Updating client:", data);
+		setEditingClient(null);
+		onEditClient(editingClient!._id);
+	};
+
+	const handleDeleteClient = (clientId: string) => {
+		if (confirm("Are you sure you want to delete this client?")) {
+			onDeleteClient(clientId);
 		}
-		return phone;
 	};
 
-	const formatDate = (dateString: string) => {
-		return new Date(dateString).toLocaleDateString();
+	const getStatusColor = (status: string) => {
+		switch (status) {
+			case "active": return "bg-green-100 text-green-800";
+			case "inactive": return "bg-gray-100 text-gray-800";
+			case "pending": return "bg-yellow-100 text-yellow-800";
+			default: return "bg-gray-100 text-gray-800";
+		}
 	};
+
+	if (showAddForm) {
+		return (
+			<div className="space-y-6">
+				<div className="flex items-center justify-between">
+					<h2 className="text-2xl font-bold gradient-text">Add New Client</h2>
+					<Button variant="outline" onClick={() => setShowAddForm(false)}>
+						Cancel
+					</Button>
+				</div>
+				<ClientForm
+					onSubmit={handleAddClient}
+					onCancel={() => setShowAddForm(false)}
+				/>
+			</div>
+		);
+	}
+
+	if (editingClient) {
+		return (
+			<div className="space-y-6">
+				<div className="flex items-center justify-between">
+					<h2 className="text-2xl font-bold gradient-text">Edit Client</h2>
+					<Button variant="outline" onClick={() => setEditingClient(null)}>
+						Cancel
+					</Button>
+				</div>
+				<ClientForm
+					onSubmit={handleEditClient}
+					onCancel={() => setEditingClient(null)}
+					initialData={editingClient}
+				/>
+			</div>
+		);
+	}
 
 	return (
 		<div className="space-y-6">
-			{/* Header with Search and Filters */}
-			<div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
-				<div className="flex-1 max-w-md">
-					<div className="relative">
-						<Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-						<input
-							type="text"
-							placeholder="Search clients..."
-							value={searchTerm}
-							onChange={(e) => setSearchTerm(e.target.value)}
-							className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-						/>
-					</div>
+			{/* Header */}
+			<div className="flex items-center justify-between">
+				<div>
+					<h2 className="text-2xl font-bold gradient-text">Clients</h2>
+					<p className="text-muted-foreground">
+						Manage your client database ({filteredClients.length} clients)
+					</p>
 				</div>
-				
-				<div className="flex gap-2">
-					<select
-						value={filterTag}
-						onChange={(e) => setFilterTag(e.target.value)}
-						className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-					>
-						<option value="">All Tags</option>
-						{allTags.map(tag => (
-							<option key={tag} value={tag}>{tag}</option>
-						))}
-					</select>
-					
-					<Button onClick={onAddClient} className="flex items-center space-x-2">
-						<Plus className="h-4 w-4" />
-						<span>Add Client</span>
-					</Button>
-				</div>
+				<Button onClick={() => setShowAddForm(true)} className="bg-gradient-to-r from-pink-500 to-purple-600">
+					<Plus className="w-4 h-4 mr-2" />
+					Add Client
+				</Button>
 			</div>
 
-			{/* Client Count */}
-			<div className="text-sm text-gray-600">
-				{filteredClients.length} of {clients.length} clients
-			</div>
-
-			{/* Client List */}
-			<div className="bg-white rounded-lg shadow overflow-hidden">
-				{filteredClients.length === 0 ? (
-					<div className="p-8 text-center">
-						<div className="text-gray-400 mb-4">
-							{clients.length === 0 ? (
-								<>
-									<Search className="h-12 w-12 mx-auto mb-4" />
-									<h3 className="text-lg font-medium text-gray-900 mb-2">
-										No clients yet
-									</h3>
-									<p className="text-gray-500 mb-4">
-										Start by adding your first client to the system.
-									</p>
-									<Button onClick={onAddClient}>
-										Add Your First Client
-									</Button>
-								</>
-							) : (
-								<>
-									<Search className="h-12 w-12 mx-auto mb-4" />
-									<h3 className="text-lg font-medium text-gray-900 mb-2">
-										No clients found
-									</h3>
-									<p className="text-gray-500">
-										Try adjusting your search or filter criteria.
-									</p>
-								</>
-							)}
+			{/* Filters */}
+			<Card>
+				<CardContent className="pt-6">
+					<div className="flex flex-col md:flex-row gap-4">
+						<div className="flex-1 relative">
+							<Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+							<Input
+								placeholder="Search clients..."
+								value={searchTerm}
+								onChange={(e) => setSearchTerm(e.target.value)}
+								className="pl-10"
+							/>
+						</div>
+						<div className="flex items-center gap-2">
+							<Filter className="h-4 w-4 text-muted-foreground" />
+							<select
+								value={statusFilter}
+								onChange={(e) => setStatusFilter(e.target.value)}
+								className="border border-gray-300 rounded-md px-3 py-2 text-sm"
+							>
+								<option value="all">All Status</option>
+								<option value="active">Active</option>
+								<option value="inactive">Inactive</option>
+								<option value="pending">Pending</option>
+							</select>
 						</div>
 					</div>
-				) : (
-					<div className="overflow-x-auto">
-						<table className="min-w-full divide-y divide-gray-200">
-							<thead className="bg-gray-50">
-								<tr>
-									<th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-										Client
-									</th>
-									<th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-										Contact
-									</th>
-									<th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-										Tags
-									</th>
-									<th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-										Status
-									</th>
-									<th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-										Created
-									</th>
-									<th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-										Actions
-									</th>
-								</tr>
-							</thead>
-							<tbody className="bg-white divide-y divide-gray-200">
-								{filteredClients.map((client) => (
-									<tr key={client._id} className="hover:bg-gray-50">
-										<td className="px-6 py-4 whitespace-nowrap">
-											<div className="flex items-center">
-												<div className="flex-shrink-0 h-10 w-10">
-													{client.profileImageUrl ? (
-														<img
-															className="h-10 w-10 rounded-full"
-															src={client.profileImageUrl}
-															alt={client.fullName}
-														/>
-													) : (
-														<div className="h-10 w-10 rounded-full bg-blue-500 flex items-center justify-center">
-															<span className="text-white font-medium">
-																{client.fullName.charAt(0).toUpperCase()}
-															</span>
-														</div>
-													)}
-												</div>
-												<div className="ml-4">
-													<div className="text-sm font-medium text-gray-900">
-														{client.fullName}
-													</div>
-													<div className="text-sm text-gray-500">
-														{client.gender} • {client.dateOfBirth ? formatDate(client.dateOfBirth) : "No DOB"}
-													</div>
-												</div>
-											</div>
-										</td>
-										<td className="px-6 py-4 whitespace-nowrap">
-											<div className="space-y-1">
-												{client.phones.map((phone, index) => (
-													<div key={index} className="flex items-center text-sm text-gray-900">
-														<Phone className="h-3 w-3 mr-1 text-gray-400" />
-														{formatPhone(phone)}
-													</div>
-												))}
-												{client.email && (
-													<div className="flex items-center text-sm text-gray-900">
-														<Mail className="h-3 w-3 mr-1 text-gray-400" />
-														{client.email}
-													</div>
-												)}
-											</div>
-										</td>
-										<td className="px-6 py-4 whitespace-nowrap">
-											<div className="flex flex-wrap gap-1">
-												{client.tags.map((tag) => (
-													<span
-														key={tag}
-														className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800"
-													>
-														<Tag className="h-3 w-3 mr-1" />
-														{tag}
-													</span>
-												))}
-											</div>
-										</td>
-										<td className="px-6 py-4 whitespace-nowrap">
-											<span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-												client.clientPortalStatus === "active"
-													? "bg-green-100 text-green-800"
-													: client.clientPortalStatus === "inactive"
-													? "bg-red-100 text-red-800"
-													: "bg-yellow-100 text-yellow-800"
-											}`}>
-												{client.clientPortalStatus}
-											</span>
-										</td>
-										<td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+				</CardContent>
+			</Card>
+
+			{/* Client Grid */}
+			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+				{filteredClients.map((client) => (
+					<Card key={client._id} className="hover:shadow-lg transition-shadow">
+						<CardHeader className="pb-3">
+							<div className="flex items-start justify-between">
+								<div className="flex items-center space-x-3">
+									<Avatar className="w-12 h-12">
+										<AvatarImage src={`/api/avatar/${client._id}`} />
+										<AvatarFallback className="bg-gradient-to-br from-pink-400 to-rose-500 text-white">
+											{client.fullName.charAt(0).toUpperCase()}
+										</AvatarFallback>
+									</Avatar>
+									<div>
+										<CardTitle className="text-lg">{client.fullName}</CardTitle>
+										<CardDescription>
+											{client.gender.charAt(0).toUpperCase() + client.gender.slice(1)} • 
 											{new Date(client.createdAt).toLocaleDateString()}
-										</td>
-										<td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-											<div className="flex justify-end space-x-2">
-												<button
-													onClick={() => onEditClient(client._id)}
-													className="text-blue-600 hover:text-blue-900"
-												>
-													<Edit className="h-4 w-4" />
-												</button>
-												<button
-													onClick={() => onDeleteClient(client._id)}
-													className="text-red-600 hover:text-red-900"
-												>
-													<Trash2 className="h-4 w-4" />
-												</button>
-											</div>
-										</td>
-									</tr>
-								))}
-							</tbody>
-						</table>
-					</div>
-				)}
+										</CardDescription>
+									</div>
+								</div>
+								<div className="flex items-center space-x-1">
+									<Button
+										variant="ghost"
+										size="icon"
+										onClick={() => setEditingClient(client)}
+										title="Edit"
+									>
+										<Edit className="h-4 w-4" />
+									</Button>
+									<Button
+										variant="ghost"
+										size="icon"
+										onClick={() => handleDeleteClient(client._id)}
+										title="Delete"
+									>
+										<Trash2 className="h-4 w-4" />
+									</Button>
+								</div>
+							</div>
+						</CardHeader>
+						<CardContent className="space-y-3">
+							{/* Contact Info */}
+							<div className="space-y-2">
+								{client.email && (
+									<div className="flex items-center space-x-2 text-sm">
+										<Mail className="h-4 w-4 text-muted-foreground" />
+										<span>{client.email}</span>
+									</div>
+								)}
+								{client.phones.length > 0 && (
+									<div className="flex items-center space-x-2 text-sm">
+										<Phone className="h-4 w-4 text-muted-foreground" />
+										<span>{client.phones[0]}</span>
+									</div>
+								)}
+							</div>
+
+							{/* Tags */}
+							{client.tags.length > 0 && (
+								<div className="flex flex-wrap gap-1">
+									{client.tags.slice(0, 3).map((tag) => (
+										<Badge key={tag} variant="secondary" className="text-xs">
+											{tag}
+										</Badge>
+									))}
+									{client.tags.length > 3 && (
+										<Badge variant="outline" className="text-xs">
+											+{client.tags.length - 3} more
+										</Badge>
+									)}
+								</div>
+							)}
+
+							{/* Status */}
+							<div className="flex items-center justify-between">
+								<Badge className={getStatusColor(client.clientPortalStatus)}>
+									{client.clientPortalStatus.charAt(0).toUpperCase() + client.clientPortalStatus.slice(1)}
+								</Badge>
+								{client.referralSource && (
+									<span className="text-xs text-muted-foreground">
+										via {client.referralSource}
+									</span>
+								)}
+							</div>
+						</CardContent>
+					</Card>
+				))}
 			</div>
+
+			{/* Empty State */}
+			{filteredClients.length === 0 && (
+				<Card className="text-center py-12">
+					<CardContent>
+						<div className="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+							<Plus className="w-8 h-8 text-gray-400" />
+						</div>
+						<h3 className="text-lg font-medium text-gray-900 mb-2">No clients found</h3>
+						<p className="text-gray-500 mb-4">
+							{searchTerm || statusFilter !== "all" 
+								? "Try adjusting your search or filters"
+								: "Get started by adding your first client"
+							}
+						</p>
+						{!searchTerm && statusFilter === "all" && (
+							<Button onClick={() => setShowAddForm(true)}>
+								<Plus className="w-4 h-4 mr-2" />
+								Add Your First Client
+							</Button>
+						)}
+					</CardContent>
+				</Card>
+			)}
 		</div>
 	);
 } 

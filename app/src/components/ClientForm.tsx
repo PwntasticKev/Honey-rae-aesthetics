@@ -1,294 +1,321 @@
 "use client";
 
 import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { X, Plus } from "lucide-react";
 
-const clientSchema = z.object({
-	fullName: z.string().min(1, "Full name is required"),
-	gender: z.enum(["male", "female", "other"]),
-	dateOfBirth: z.string().optional(),
-	email: z.string().email("Invalid email address").optional().or(z.literal("")),
-	phones: z.array(z.string().min(1, "Phone number is required")).min(1, "At least one phone number is required"),
-	referralSource: z.string().optional(),
-	address: z.object({
-		street: z.string(),
-		city: z.string(),
-		state: z.string(),
-		zip: z.string(),
-	}).optional(),
-	tags: z.array(z.string()),
-});
-
-type ClientFormData = z.infer<typeof clientSchema>;
-
 interface ClientFormProps {
-	onSubmit: (data: ClientFormData) => void;
+	onSubmit: (data: any) => void;
 	onCancel: () => void;
-	initialData?: Partial<ClientFormData>;
+	initialData?: any;
 }
 
 export function ClientForm({ onSubmit, onCancel, initialData }: ClientFormProps) {
-	const [phones, setPhones] = useState<string[]>(initialData?.phones || [""]);
-	const [tags, setTags] = useState<string[]>(initialData?.tags || []);
-	const [newTag, setNewTag] = useState("");
-
-	const {
-		register,
-		handleSubmit,
-		formState: { errors },
-	} = useForm<ClientFormData>({
-		resolver: zodResolver(clientSchema),
-		defaultValues: {
-			fullName: initialData?.fullName || "",
-			gender: initialData?.gender || "female",
-			dateOfBirth: initialData?.dateOfBirth || "",
-			email: initialData?.email || "",
-			phones: initialData?.phones || [""],
-			referralSource: initialData?.referralSource || "",
-			address: initialData?.address || { street: "", city: "", state: "", zip: "" },
-			tags: initialData?.tags || [],
+	const [formData, setFormData] = useState({
+		fullName: initialData?.fullName || "",
+		email: initialData?.email || "",
+		gender: initialData?.gender || "female",
+		dateOfBirth: initialData?.dateOfBirth || "",
+		phones: initialData?.phones || [""],
+		tags: initialData?.tags || [],
+		referralSource: initialData?.referralSource || "",
+		clientPortalStatus: initialData?.clientPortalStatus || "active",
+		address: initialData?.address || {
+			street: "",
+			city: "",
+			state: "",
+			zip: "",
 		},
 	});
 
-	const addPhone = () => {
-		setPhones([...phones, ""]);
+	const [newTag, setNewTag] = useState("");
+	const [newPhone, setNewPhone] = useState("");
+
+	const handleInputChange = (field: string, value: any) => {
+		setFormData(prev => ({
+			...prev,
+			[field]: value,
+		}));
 	};
 
-	const removePhone = (index: number) => {
-		if (phones.length > 1) {
-			setPhones(phones.filter((_, i) => i !== index));
+	const handleAddressChange = (field: string, value: string) => {
+		setFormData(prev => ({
+			...prev,
+			address: {
+				...prev.address,
+				[field]: value,
+			},
+		}));
+	};
+
+	const addPhone = () => {
+		if (newPhone.trim()) {
+			setFormData(prev => ({
+				...prev,
+				phones: [...prev.phones, newPhone.trim()],
+			}));
+			setNewPhone("");
 		}
 	};
 
-	const updatePhone = (index: number, value: string) => {
-		const newPhones = [...phones];
-		newPhones[index] = value;
-		setPhones(newPhones);
+	const removePhone = (index: number) => {
+		setFormData(prev => ({
+			...prev,
+			phones: prev.phones.filter((_: string, i: number) => i !== index),
+		}));
 	};
 
 	const addTag = () => {
-		if (newTag.trim() && !tags.includes(newTag.trim())) {
-			setTags([...tags, newTag.trim()]);
+		if (newTag.trim() && !formData.tags.includes(newTag.trim())) {
+			setFormData(prev => ({
+				...prev,
+				tags: [...prev.tags, newTag.trim()],
+			}));
 			setNewTag("");
 		}
 	};
 
-	const removeTag = (tagToRemove: string) => {
-		setTags(tags.filter(tag => tag !== tagToRemove));
+	const removeTag = (tag: string) => {
+		setFormData(prev => ({
+			...prev,
+			tags: prev.tags.filter((t: string) => t !== tag),
+		}));
 	};
 
-	const handleFormSubmit = (data: ClientFormData) => {
-		onSubmit({
-			...data,
-			phones: phones.filter(phone => phone.trim() !== ""),
-			tags,
-		});
+	const handleSubmit = (e: React.FormEvent) => {
+		e.preventDefault();
+		
+		// Validate required fields
+		if (!formData.fullName.trim()) {
+			alert("Full name is required");
+			return;
+		}
+		
+		if (formData.phones.length === 0 || !formData.phones[0].trim()) {
+			alert("At least one phone number is required");
+			return;
+		}
+		
+		// Filter out empty phones
+		const cleanData = {
+			...formData,
+			phones: formData.phones.filter((phone: string) => phone.trim() !== ""),
+		};
+		
+		onSubmit(cleanData);
 	};
 
 	return (
-		<form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
-			<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-				{/* Basic Information */}
-				<div className="space-y-4">
-					<h3 className="text-lg font-medium text-gray-900">Basic Information</h3>
-					
-					<div>
-						<label className="block text-sm font-medium text-gray-700">
-							Full Name *
-						</label>
-						<input
-							type="text"
-							{...register("fullName")}
-							className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-						/>
-						{errors.fullName && (
-							<p className="mt-1 text-sm text-red-600">{errors.fullName.message}</p>
-						)}
-					</div>
-
-					<div>
-						<label className="block text-sm font-medium text-gray-700">
-							Gender *
-						</label>
-						<select
-							{...register("gender")}
-							className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-						>
-							<option value="female">Female</option>
-							<option value="male">Male</option>
-							<option value="other">Other</option>
-						</select>
-					</div>
-
-					<div>
-						<label className="block text-sm font-medium text-gray-700">
-							Date of Birth
-						</label>
-						<input
-							type="date"
-							{...register("dateOfBirth")}
-							className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-						/>
-					</div>
-
-					<div>
-						<label className="block text-sm font-medium text-gray-700">
-							Email
-						</label>
-						<input
-							type="email"
-							{...register("email")}
-							className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-						/>
-						{errors.email && (
-							<p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
-						)}
-					</div>
-				</div>
-
-				{/* Contact Information */}
-				<div className="space-y-4">
-					<h3 className="text-lg font-medium text-gray-900">Contact Information</h3>
-					
-					<div>
-						<label className="block text-sm font-medium text-gray-700">
-							Phone Numbers *
-						</label>
+		<form onSubmit={handleSubmit} className="space-y-6">
+			{/* Basic Information */}
+			<Card>
+				<CardHeader>
+					<CardTitle>Basic Information</CardTitle>
+					<CardDescription>Enter the client's basic details</CardDescription>
+				</CardHeader>
+				<CardContent className="space-y-4">
+					<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 						<div className="space-y-2">
-							{phones.map((phone, index) => (
-								<div key={index} className="flex space-x-2">
-									<input
-										type="tel"
-										value={phone}
-										onChange={(e) => updatePhone(index, e.target.value)}
-										className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-										placeholder="(555) 123-4567"
-									/>
-									{phones.length > 1 && (
-										<button
-											type="button"
-											onClick={() => removePhone(index)}
-											className="p-2 text-red-600 hover:text-red-800"
-										>
-											<X className="h-4 w-4" />
-										</button>
-									)}
-								</div>
-							))}
-							<button
-								type="button"
-								onClick={addPhone}
-								className="flex items-center space-x-2 text-blue-600 hover:text-blue-800"
-							>
-								<Plus className="h-4 w-4" />
-								<span>Add Phone Number</span>
-							</button>
+							<Label htmlFor="fullName">Full Name *</Label>
+							<Input
+								id="fullName"
+								value={formData.fullName}
+								onChange={(e) => handleInputChange("fullName", e.target.value)}
+								placeholder="Enter full name"
+								required
+							/>
+						</div>
+						<div className="space-y-2">
+							<Label htmlFor="email">Email</Label>
+							<Input
+								id="email"
+								type="email"
+								value={formData.email}
+								onChange={(e) => handleInputChange("email", e.target.value)}
+								placeholder="Enter email address"
+							/>
 						</div>
 					</div>
 
-					<div>
-						<label className="block text-sm font-medium text-gray-700">
-							Referral Source
-						</label>
-						<input
-							type="text"
-							{...register("referralSource")}
-							className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-							placeholder="e.g., Social Media, Referral, Walk-in"
-						/>
+					<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+						<div className="space-y-2">
+							<Label htmlFor="gender">Gender *</Label>
+							<Select
+								value={formData.gender}
+								onValueChange={(value) => handleInputChange("gender", value)}
+							>
+								<SelectTrigger>
+									<SelectValue placeholder="Select gender" />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value="female">Female</SelectItem>
+									<SelectItem value="male">Male</SelectItem>
+									<SelectItem value="other">Other</SelectItem>
+								</SelectContent>
+							</Select>
+						</div>
+						<div className="space-y-2">
+							<Label htmlFor="dateOfBirth">Date of Birth</Label>
+							<Input
+								id="dateOfBirth"
+								type="date"
+								value={formData.dateOfBirth}
+								onChange={(e) => handleInputChange("dateOfBirth", e.target.value)}
+							/>
+						</div>
 					</div>
-				</div>
-			</div>
+				</CardContent>
+			</Card>
 
-			{/* Address */}
-			<div className="space-y-4">
-				<h3 className="text-lg font-medium text-gray-900">Address (Optional)</h3>
-				<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-					<div>
-						<label className="block text-sm font-medium text-gray-700">Street</label>
-						<input
-							type="text"
-							{...register("address.street")}
-							className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-						/>
+			{/* Contact Information */}
+			<Card>
+				<CardHeader>
+					<CardTitle>Contact Information</CardTitle>
+					<CardDescription>Phone numbers and address</CardDescription>
+				</CardHeader>
+				<CardContent className="space-y-4">
+					<div className="space-y-2">
+						<Label>Phone Numbers</Label>
+						{formData.phones.map((phone: string, index: number) => (
+							<div key={index} className="flex gap-2">
+								<Input
+									value={phone}
+									onChange={(e) => {
+										const newPhones = [...formData.phones];
+										newPhones[index] = e.target.value;
+										handleInputChange("phones", newPhones);
+									}}
+									placeholder="Enter phone number"
+								/>
+								{formData.phones.length > 1 && (
+									<Button
+										type="button"
+										variant="outline"
+										size="icon"
+										onClick={() => removePhone(index)}
+									>
+										<X className="h-4 w-4" />
+									</Button>
+								)}
+							</div>
+						))}
+						<div className="flex gap-2">
+							<Input
+								value={newPhone}
+								onChange={(e) => setNewPhone(e.target.value)}
+								placeholder="Add another phone number"
+							/>
+							<Button type="button" variant="outline" onClick={addPhone}>
+								<Plus className="h-4 w-4" />
+							</Button>
+						</div>
 					</div>
-					<div>
-						<label className="block text-sm font-medium text-gray-700">City</label>
-						<input
-							type="text"
-							{...register("address.city")}
-							className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-						/>
-					</div>
-					<div>
-						<label className="block text-sm font-medium text-gray-700">State</label>
-						<input
-							type="text"
-							{...register("address.state")}
-							className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-						/>
-					</div>
-					<div>
-						<label className="block text-sm font-medium text-gray-700">ZIP Code</label>
-						<input
-							type="text"
-							{...register("address.zip")}
-							className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-						/>
-					</div>
-				</div>
-			</div>
 
-			{/* Tags */}
-			<div className="space-y-4">
-				<h3 className="text-lg font-medium text-gray-900">Tags</h3>
-				<div className="space-y-2">
-					<div className="flex space-x-2">
-						<input
-							type="text"
-							value={newTag}
-							onChange={(e) => setNewTag(e.target.value)}
-							onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), addTag())}
-							className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-							placeholder="Add a tag..."
-						/>
-						<Button type="button" onClick={addTag} variant="outline">
-							Add
-						</Button>
+					<div className="space-y-2">
+						<Label>Address</Label>
+						<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+							<Input
+								value={formData.address.street}
+								onChange={(e) => handleAddressChange("street", e.target.value)}
+								placeholder="Street address"
+							/>
+							<Input
+								value={formData.address.city}
+								onChange={(e) => handleAddressChange("city", e.target.value)}
+								placeholder="City"
+							/>
+							<Input
+								value={formData.address.state}
+								onChange={(e) => handleAddressChange("state", e.target.value)}
+								placeholder="State"
+							/>
+							<Input
+								value={formData.address.zip}
+								onChange={(e) => handleAddressChange("zip", e.target.value)}
+								placeholder="ZIP code"
+							/>
+						</div>
 					</div>
-					{tags.length > 0 && (
-						<div className="flex flex-wrap gap-2">
-							{tags.map((tag) => (
-								<span
-									key={tag}
-									className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
-								>
+				</CardContent>
+			</Card>
+
+			{/* Additional Information */}
+			<Card>
+				<CardHeader>
+					<CardTitle>Additional Information</CardTitle>
+					<CardDescription>Tags, referral source, and status</CardDescription>
+				</CardHeader>
+				<CardContent className="space-y-4">
+					<div className="space-y-2">
+						<Label>Tags</Label>
+						<div className="flex flex-wrap gap-2 mb-2">
+							{formData.tags.map((tag: string) => (
+								<Badge key={tag} variant="secondary" className="gap-1">
 									{tag}
 									<button
 										type="button"
 										onClick={() => removeTag(tag)}
-										className="ml-1 text-blue-600 hover:text-blue-800"
+										className="ml-1 hover:text-red-500"
 									>
 										<X className="h-3 w-3" />
 									</button>
-								</span>
+								</Badge>
 							))}
 						</div>
-					)}
-				</div>
-			</div>
+						<div className="flex gap-2">
+							<Input
+								value={newTag}
+								onChange={(e) => setNewTag(e.target.value)}
+								placeholder="Add a tag"
+							/>
+							<Button type="button" variant="outline" onClick={addTag}>
+								<Plus className="h-4 w-4" />
+							</Button>
+						</div>
+					</div>
+
+					<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+						<div className="space-y-2">
+							<Label htmlFor="referralSource">Referral Source</Label>
+							<Input
+								id="referralSource"
+								value={formData.referralSource}
+								onChange={(e) => handleInputChange("referralSource", e.target.value)}
+								placeholder="How did they find you?"
+							/>
+						</div>
+						<div className="space-y-2">
+							<Label htmlFor="clientPortalStatus">Portal Status</Label>
+							<Select
+								value={formData.clientPortalStatus}
+								onValueChange={(value) => handleInputChange("clientPortalStatus", value)}
+							>
+								<SelectTrigger>
+									<SelectValue />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value="active">Active</SelectItem>
+									<SelectItem value="inactive">Inactive</SelectItem>
+									<SelectItem value="pending">Pending</SelectItem>
+								</SelectContent>
+							</Select>
+						</div>
+					</div>
+				</CardContent>
+			</Card>
 
 			{/* Form Actions */}
-			<div className="flex justify-end space-x-3 pt-6 border-t">
+			<div className="flex justify-end space-x-2">
 				<Button type="button" variant="outline" onClick={onCancel}>
 					Cancel
 				</Button>
 				<Button type="submit">
-					Save Client
+					{initialData ? "Update Client" : "Create Client"}
 				</Button>
 			</div>
 		</form>

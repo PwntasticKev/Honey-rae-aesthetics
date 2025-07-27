@@ -1,29 +1,13 @@
-import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { v } from "convex/values";
 
-export const create = mutation({
-	args: {
-		orgId: v.id("orgs"),
-		clientId: v.id("clients"),
-		authorId: v.id("users"),
-		text: v.string(),
-		tag: v.string(),
-	},
+export const getByOrg = query({
+	args: { orgId: v.id("orgs") },
 	handler: async (ctx, args) => {
-		const now = Date.now();
-		const noteId = await ctx.db.insert("notes", {
-			...args,
-			createdAt: now,
-			updatedAt: now,
-		});
-		return noteId;
-	},
-});
-
-export const get = query({
-	args: { id: v.id("notes") },
-	handler: async (ctx, args) => {
-		return await ctx.db.get(args.id);
+		return await ctx.db
+			.query("notes")
+			.withIndex("by_org", (q) => q.eq("orgId", args.orgId))
+			.collect();
 	},
 });
 
@@ -33,18 +17,6 @@ export const getByClient = query({
 		return await ctx.db
 			.query("notes")
 			.withIndex("by_client", (q) => q.eq("clientId", args.clientId))
-			.order("desc")
-			.collect();
-	},
-});
-
-export const getByOrg = query({
-	args: { orgId: v.id("orgs") },
-	handler: async (ctx, args) => {
-		return await ctx.db
-			.query("notes")
-			.withIndex("by_org", (q) => q.eq("orgId", args.orgId))
-			.order("desc")
 			.collect();
 	},
 });
@@ -56,8 +28,29 @@ export const getByTag = query({
 			.query("notes")
 			.withIndex("by_org", (q) => q.eq("orgId", args.orgId))
 			.filter((q) => q.eq(q.field("tag"), args.tag))
-			.order("desc")
 			.collect();
+	},
+});
+
+export const create = mutation({
+	args: {
+		orgId: v.id("orgs"),
+		clientId: v.id("clients"),
+		authorId: v.id("users"),
+		text: v.string(),
+		tag: v.string(),
+	},
+	handler: async (ctx, args) => {
+		const noteId = await ctx.db.insert("notes", {
+			orgId: args.orgId,
+			clientId: args.clientId,
+			authorId: args.authorId,
+			text: args.text,
+			tag: args.tag,
+			createdAt: Date.now(),
+			updatedAt: Date.now(),
+		});
+		return noteId;
 	},
 });
 
