@@ -147,7 +147,7 @@ export default function TestPage() {
 	return (
 		<div className="min-h-screen bg-gray-100 p-8">
 			<div className="max-w-7xl mx-auto bg-white p-6 rounded-lg shadow-md">
-				<h1 className="text-3xl font-bold text-gray-900 mb-6">Honey Rae Platform</h1>
+				<h1 className="text-3xl font-bold text-gray-900 mb-6">Workflow Management</h1>
 				
 				{/* Tabs */}
 				<div className="border-b border-gray-200 mb-6">

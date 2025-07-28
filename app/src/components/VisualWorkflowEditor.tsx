@@ -1258,54 +1258,54 @@ function WorkflowEditor({ workflow, onSave, onCancel }: VisualWorkflowEditorProp
 						</div>
 					)}
 
-					{/* Test Panel Overlay */}
+					{/* Test Panel - Right Side */}
 					{showTestPanel && (
-						<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-							<div className="bg-white rounded-lg p-6 w-96 max-w-md">
-								<div className="flex items-center justify-between mb-4">
-									<h3 className="text-lg font-semibold">Run A Test For Contact</h3>
-									<Button
-										variant="ghost"
-										size="sm"
+						<div className="fixed right-0 top-0 h-full w-80 bg-white border-l border-gray-200 shadow-lg z-40">
+							<div className="p-6">
+								<div className="flex justify-between items-center mb-6">
+									<h3 className="text-lg font-semibold">Test Workflow</h3>
+									<button
 										onClick={() => setShowTestPanel(false)}
-										className="h-8 w-8 p-0"
+										className="text-gray-500 hover:text-gray-700"
 									>
-										<X className="h-4 w-4" />
-									</Button>
+										<X className="h-5 w-5" />
+									</button>
 								</div>
 								
-								<p className="text-sm text-gray-600 mb-4">
-									Select Contact to test this workflow
-								</p>
-
-								<div className="space-y-4">
+								<div className="space-y-6">
 									<div>
-										<Label htmlFor="test-contact" className="text-sm font-medium">
-											SELECT CONTACTS
-										</Label>
-										<Select value={selectedTestContact} onValueChange={setSelectedTestContact}>
-											<SelectTrigger className="w-full">
-												<SelectValue placeholder="Select a contact..." />
+										<Label htmlFor="test-contact" className="text-sm font-medium">Select Contact</Label>
+										<Select
+											value={selectedTestContact}
+											onValueChange={setSelectedTestContact}
+										>
+											<SelectTrigger className="mt-2">
+												<SelectValue placeholder="Choose a contact to test with" />
 											</SelectTrigger>
 											<SelectContent>
-												<SelectItem value="kevin lee (pwntastickevin@gmail.com)">
-													kevin lee (pwntastickevin@gmail.com)
-												</SelectItem>
-												<SelectItem value="sarah johnson (sarah.johnson@email.com)">
-													sarah johnson (sarah.johnson@email.com)
-												</SelectItem>
-												<SelectItem value="michael chen (michael.chen@email.com)">
-													michael chen (michael.chen@email.com)
-												</SelectItem>
+												<SelectItem value="kevin lee (pwntastickevin@gmail.com)">kevin lee (pwntastickevin@gmail.com)</SelectItem>
+												<SelectItem value="sarah smith (sarah@example.com)">sarah smith (sarah@example.com)</SelectItem>
+												<SelectItem value="john doe (john@example.com)">john doe (john@example.com)</SelectItem>
 											</SelectContent>
 										</Select>
 									</div>
-
+									
+									<div className="bg-gray-50 p-4 rounded-lg">
+										<h4 className="text-sm font-medium mb-2">Test Instructions</h4>
+										<ul className="text-xs text-gray-600 space-y-1">
+											<li>• Select a contact to simulate workflow execution</li>
+											<li>• Delays will actually wait for the specified time</li>
+											<li>• Emails/SMS will show alerts with content</li>
+											<li>• Check console for detailed execution logs</li>
+										</ul>
+									</div>
+									
 									<Button 
-										onClick={testWorkflow}
-										className="w-full bg-blue-600 hover:bg-blue-700"
+										onClick={testWorkflow} 
+										className="w-full"
 										disabled={!selectedTestContact}
 									>
+										<Play className="h-4 w-4 mr-2" />
 										Run Test
 									</Button>
 								</div>

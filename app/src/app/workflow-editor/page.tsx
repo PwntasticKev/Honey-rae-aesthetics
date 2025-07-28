@@ -65,6 +65,7 @@ export default function WorkflowEditorPage() {
 	const handleSave = (workflow: any) => {
 		console.log("Saving workflow:", workflow);
 		// In real app, save to backend
+		alert('✅ Workflow saved successfully!');
 		router.push('/test?tab=workflows');
 	};
 
