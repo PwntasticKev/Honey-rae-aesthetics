@@ -16,9 +16,16 @@ import {
 	Mail,
 	Calendar,
 	Settings,
-	Edit3
+	Edit3,
+	Send,
+	Smartphone
 } from "lucide-react";
 import { WorkflowForm } from "./WorkflowForm";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface Workflow {
 	_id: string;
@@ -39,6 +46,110 @@ interface WorkflowListProps {
 	onDeleteWorkflow: (id: string) => void;
 	onToggleWorkflow: (id: string, enabled: boolean) => void;
 }
+
+interface TestWorkflowModalProps {
+	workflow: Workflow;
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+}
+
+const TestWorkflowModal = ({ workflow, open, onOpenChange }: TestWorkflowModalProps) => {
+	const [testType, setTestType] = useState<'email' | 'sms'>('email');
+	const [recipient, setRecipient] = useState('');
+	const [message, setMessage] = useState('');
+	const [isSending, setIsSending] = useState(false);
+
+	const handleSendTest = async () => {
+		setIsSending(true);
+		
+		// Simulate sending a test message
+		await new Promise(resolve => setTimeout(resolve, 2000));
+		
+		console.log(`Sending test ${testType} to ${recipient}:`, message);
+		
+		// In a real app, this would call your backend API
+		// await fetch('/api/test-workflow', {
+		//   method: 'POST',
+		//   headers: { 'Content-Type': 'application/json' },
+		//   body: JSON.stringify({ workflowId: workflow._id, type: testType, recipient, message })
+		// });
+		
+		setIsSending(false);
+		onOpenChange(false);
+		alert(`Test ${testType.toUpperCase()} sent to ${recipient}!`);
+	};
+
+	return (
+		<Dialog open={open} onOpenChange={onOpenChange}>
+			<DialogContent className="sm:max-w-md">
+				<DialogHeader>
+					<DialogTitle>Test Workflow: {workflow.name}</DialogTitle>
+				</DialogHeader>
+				<div className="space-y-4">
+					<div>
+						<Label htmlFor="test-type">Test Type</Label>
+						<Select value={testType} onValueChange={(value: 'email' | 'sms') => setTestType(value)}>
+							<SelectTrigger>
+								<SelectValue />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="email">
+									<div className="flex items-center space-x-2">
+										<Mail className="w-4 h-4" />
+										<span>Email</span>
+									</div>
+								</SelectItem>
+								<SelectItem value="sms">
+									<div className="flex items-center space-x-2">
+										<Smartphone className="w-4 h-4" />
+										<span>SMS</span>
+									</div>
+								</SelectItem>
+							</SelectContent>
+						</Select>
+					</div>
+					
+					<div>
+						<Label htmlFor="recipient">
+							{testType === 'email' ? 'Email Address' : 'Phone Number'}
+						</Label>
+						<Input
+							id="recipient"
+							type={testType === 'email' ? 'email' : 'tel'}
+							placeholder={testType === 'email' ? 'test@example.com' : '+1234567890'}
+							value={recipient}
+							onChange={(e) => setRecipient(e.target.value)}
+						/>
+					</div>
+					
+					<div>
+						<Label htmlFor="message">Message</Label>
+						<Textarea
+							id="message"
+							placeholder="Enter your test message..."
+							value={message}
+							onChange={(e) => setMessage(e.target.value)}
+							rows={4}
+						/>
+					</div>
+					
+					<div className="flex justify-end space-x-2">
+						<Button variant="outline" onClick={() => onOpenChange(false)}>
+							Cancel
+						</Button>
+						<Button 
+							onClick={handleSendTest} 
+							disabled={!recipient || !message || isSending}
+							className="bg-gradient-to-r from-pink-500 to-purple-600"
+						>
+							{isSending ? 'Sending...' : `Send Test ${testType.toUpperCase()}`}
+						</Button>
+					</div>
+				</div>
+			</DialogContent>
+		</Dialog>
+	);
+};
 
 const getWorkflowIcon = (trigger: string) => {
 	switch (trigger) {
@@ -66,6 +177,8 @@ export function WorkflowList({ workflows, onAddWorkflow, onEditWorkflow, onDelet
 	const [filteredWorkflows, setFilteredWorkflows] = useState<Workflow[]>(workflows);
 	const [showAddForm, setShowAddForm] = useState(false);
 	const [editingWorkflow, setEditingWorkflow] = useState<Workflow | null>(null);
+	const [testWorkflow, setTestWorkflow] = useState<Workflow | null>(null);
+	const [showTestModal, setShowTestModal] = useState(false);
 
 	// Debug logging
 	console.log('WorkflowList received workflows:', workflows);
@@ -96,6 +209,11 @@ export function WorkflowList({ workflows, onAddWorkflow, onEditWorkflow, onDelet
 	const handleViewWorkflow = (id: string) => {
 		// Navigate to the workflow editor page with the workflow ID
 		router.push(`/workflow-editor?id=${id}`);
+	};
+
+	const handleTestWorkflow = (workflow: Workflow) => {
+		setTestWorkflow(workflow);
+		setShowTestModal(true);
 	};
 
 	if (showAddForm) {
@@ -180,58 +298,73 @@ export function WorkflowList({ workflows, onAddWorkflow, onEditWorkflow, onDelet
 				);
 			},
 		},
-		{
-			key: "actions",
-			label: "Actions",
-			render: (workflow: Workflow) => {
-				if (!workflow) return <div>No actions</div>;
-				return (
-					<div className="flex items-center space-x-2">
-						<Button
-							variant="outline"
-							size="sm"
-							onClick={() => onToggleWorkflow(workflow._id, !(workflow.enabled || false))}
-						>
-							{workflow.enabled ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-						</Button>
-						<Button
-							variant="outline"
-							size="sm"
-							onClick={() => handleEditWorkflow(workflow._id)}
-							data-testid="edit-workflow"
-						>
-							<Edit3 className="w-4 h-4" />
-						</Button>
-					</div>
-				);
-			},
-		},
 	];
 
+	const renderCustomActions = (workflow: Workflow) => {
+		if (!workflow) return null;
+		return (
+			<div className="flex items-center space-x-2">
+				<Button
+					variant="outline"
+					size="sm"
+					onClick={() => onToggleWorkflow(workflow._id, !(workflow.enabled || false))}
+				>
+					{workflow.enabled ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+				</Button>
+				<Button
+					variant="outline"
+					size="sm"
+					onClick={() => handleEditWorkflow(workflow._id)}
+					data-testid="edit-workflow"
+				>
+					<Edit3 className="w-4 h-4" />
+				</Button>
+				<Button
+					variant="outline"
+					size="sm"
+					onClick={() => handleTestWorkflow(workflow)}
+					data-testid="test-workflow"
+				>
+					<Send className="w-4 h-4" />
+				</Button>
+			</div>
+		);
+	};
+
 	return (
-		<DataTable
-			data={filteredWorkflows}
-			columns={columns}
-			title="Workflows"
-			description={`Automate your practice with Zapier-like workflows (${filteredWorkflows.length} workflows)`}
-			searchPlaceholder="Search workflows..."
-			onSearch={handleSearch}
-			onEdit={handleEditWorkflow}
-			onDelete={handleDeleteWorkflow}
-			onView={handleViewWorkflow}
-			actions={
-				<div className="flex space-x-2">
-					<Button
-						onClick={handleAddWorkflow}
-						className="bg-gradient-to-r from-pink-500 to-purple-600"
-						data-testid="add-workflow-button"
-					>
-						<Plus className="w-4 h-4 mr-2" />
-						Add Workflow
-					</Button>
-				</div>
-			}
-			data-testid="workflow-list"
-		/>
+		<>
+			<DataTable
+				data={filteredWorkflows}
+				columns={columns}
+				searchPlaceholder="Search workflows..."
+				onSearch={handleSearch}
+				onEdit={handleEditWorkflow}
+				onDelete={handleDeleteWorkflow}
+				onView={handleViewWorkflow}
+				customActions={renderCustomActions}
+				actions={
+					<div className="flex space-x-2">
+						<Button
+							onClick={handleAddWorkflow}
+							className="bg-gradient-to-r from-pink-500 to-purple-600"
+							data-testid="add-workflow-button"
+						>
+							<Plus className="w-4 h-4 mr-2" />
+							Add Workflow
+						</Button>
+					</div>
+				}
+				data-testid="workflow-list"
+			/>
+			
+			{/* Test Workflow Modal */}
+			{testWorkflow && (
+				<TestWorkflowModal
+					workflow={testWorkflow}
+					open={showTestModal}
+					onOpenChange={setShowTestModal}
+				/>
+			)}
+		</>
 	);
 } 

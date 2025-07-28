@@ -38,6 +38,7 @@ interface DataTableProps {
 	actions?: React.ReactNode;
 	cardView?: boolean;
 	onToggleView?: (view: 'table' | 'card') => void;
+	customActions?: (row: any) => React.ReactNode;
 }
 
 export function DataTable({
@@ -52,7 +53,8 @@ export function DataTable({
 	description,
 	actions,
 	cardView = false,
-	onToggleView
+	onToggleView,
+	customActions
 }: DataTableProps) {
 	const [searchTerm, setSearchTerm] = useState("");
 	const [sortColumn, setSortColumn] = useState<string | null>(null);
@@ -147,7 +149,7 @@ export function DataTable({
 												</div>
 											</th>
 										))}
-										{(onEdit || onDelete || onView) && (
+										{(onEdit || onDelete || onView || customActions) && (
 											<th className="text-right py-3 px-4 font-medium text-gray-700">
 												Actions
 											</th>
@@ -165,39 +167,45 @@ export function DataTable({
 													}
 												</td>
 											))}
-											{(onEdit || onDelete || onView) && (
+											{(onEdit || onDelete || onView || customActions) && (
 												<td className="py-4 px-4">
 													<div className="flex items-center justify-end space-x-2">
-														{onView && (
-															<Button
-																variant="ghost"
-																size="sm"
-																onClick={() => onView(row._id)}
-																title="View"
-															>
-																<Eye className="h-4 w-4" />
-															</Button>
-														)}
-														{onEdit && (
-															<Button
-																variant="ghost"
-																size="sm"
-																onClick={() => onEdit(row._id)}
-																title="Edit"
-															>
-																<Edit className="h-4 w-4" />
-															</Button>
-														)}
-														{onDelete && (
-															<Button
-																variant="ghost"
-																size="sm"
-																onClick={() => onDelete(row._id)}
-																title="Delete"
-																className="text-red-600 hover:text-red-700"
-															>
-																<Trash2 className="h-4 w-4" />
-															</Button>
+														{customActions ? (
+															customActions(row)
+														) : (
+															<>
+																{onView && (
+																	<Button
+																		variant="ghost"
+																		size="sm"
+																		onClick={() => onView(row._id)}
+																		title="View"
+																	>
+																		<Eye className="h-4 w-4" />
+																	</Button>
+																)}
+																{onEdit && (
+																	<Button
+																		variant="ghost"
+																		size="sm"
+																		onClick={() => onEdit(row._id)}
+																		title="Edit"
+																	>
+																		<Edit className="h-4 w-4" />
+																	</Button>
+																)}
+																{onDelete && (
+																	<Button
+																		variant="ghost"
+																		size="sm"
+																		onClick={() => onDelete(row._id)}
+																		title="Delete"
+																		className="text-red-600 hover:text-red-700"
+																	>
+																		<Trash2 className="h-4 w-4" />
+																	</Button>
+																)}
+															</>
 														)}
 													</div>
 												</td>
