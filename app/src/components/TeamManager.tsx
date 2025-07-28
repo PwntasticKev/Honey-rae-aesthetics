@@ -25,6 +25,13 @@ interface TeamManagerProps {
 export function TeamManager({ orgId }: TeamManagerProps) {
 	const [searchTerm, setSearchTerm] = useState("");
 	const [roleFilter, setRoleFilter] = useState("all");
+	const [showAddForm, setShowAddForm] = useState(false);
+
+	const handleAddTeamMember = () => {
+		// In a real app, this would open a form or modal
+		console.log("Adding team member for org:", orgId);
+		alert("Add Team Member functionality would open a form here");
+	};
 
 	// Mock data
 	const teamMembers = [
@@ -119,7 +126,7 @@ export function TeamManager({ orgId }: TeamManagerProps) {
 						Manage your team members and their roles
 					</p>
 				</div>
-				<Button className="bg-gradient-to-r from-pink-500 to-purple-600">
+				<Button onClick={handleAddTeamMember} className="bg-gradient-to-r from-pink-500 to-purple-600">
 					<UserPlus className="w-4 h-4 mr-2" />
 					Add Team Member
 				</Button>

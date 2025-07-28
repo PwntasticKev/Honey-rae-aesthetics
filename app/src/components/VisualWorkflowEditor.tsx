@@ -1,418 +1,845 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import ReactFlow, {
+	Node,
+	Edge,
+	addEdge,
+	Connection,
+	useNodesState,
+	useEdgesState,
+	Controls,
+	Background,
+	MiniMap,
+	Panel,
+	Handle,
+	Position,
+	MarkerType,
+	ReactFlowProvider,
+	useReactFlow,
+	XYPosition,
+	ConnectionLineType,
+} from "reactflow";
+import "reactflow/dist/style.css";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
-	Zap, 
-	Clock, 
-	MessageSquare, 
-	Mail, 
-	Calendar,
-	Plus,
+	Plus, 
+	Trash2, 
+	Settings, 
+	Save,
 	X,
-	Settings,
-	Play,
-	ArrowRight,
-	ArrowDown,
-	CheckCircle,
-	AlertCircle,
-	User,
+	Zap,
+	Clock,
+	MessageSquare,
+	Mail,
 	Tag,
-	Database,
+	GitBranch,
+	Play,
+	Pause,
 	ChevronDown,
 	ChevronRight,
 	Move,
-	GripVertical,
-	Minus,
-	Maximize2,
-	ZoomIn,
-	ZoomOut,
-	MoreHorizontal,
-	Phone,
-	Star,
+	Copy,
+	RotateCcw,
+	Edit3,
 	FileText,
-	Target,
-	Heart,
-	Shield,
-	TrendingUp
+	Eye,
+	ArrowLeft
 } from "lucide-react";
 
-interface WorkflowStep {
-	id: string;
-	type: 'trigger' | 'condition' | 'action' | 'delay';
-	subType?: string;
-	config: any;
-	order: number;
+interface ConfigField {
+	key: string;
+	label: string;
+	type: 'input' | 'textarea' | 'number' | 'select';
+	placeholder?: string;
+	options?: { value: string; label: string; }[];
 }
 
-interface Workflow {
-	id: string;
-	name: string;
+interface BlockType {
+	type: string;
+	label: string;
+	icon: any;
 	description: string;
-	steps: WorkflowStep[];
-	enabled: boolean;
+	color: string;
+	config: any;
+	configFields?: ConfigField[];
 }
 
-interface FormWorkflowEditorProps {
-	workflow: Workflow | null;
-	onSave: (workflow: Workflow) => void;
+interface WorkflowBlock {
+	id: string;
+	type: string;
+	position: { x: number; y: number };
+	width: number;
+	height: number;
+	config: any;
+	connections: string[];
+}
+
+interface WorkflowConnection {
+	id: string;
+	from: string;
+	to: string;
+	fromPort: string;
+	toPort: string;
+}
+
+interface VisualWorkflowEditorProps {
+	workflow?: {
+		id: string;
+		name: string;
+		description: string;
+		enabled: boolean;
+		blocks: WorkflowBlock[];
+		connections: WorkflowConnection[];
+	};
+	onSave: (workflow: any) => void;
 	onCancel: () => void;
 }
 
-const stepTypes = {
-	trigger: [
-		{ id: 'appointment_completed', label: 'Appointment Completed', icon: CheckCircle, color: 'bg-blue-500' },
-		{ id: 'appointment_scheduled', label: 'Appointment Scheduled', icon: Calendar, color: 'bg-green-500' },
-		{ id: 'client_added', label: 'New Client Added', icon: User, color: 'bg-purple-500' },
-		{ id: 'follow_up_due', label: 'Follow-up Due', icon: Clock, color: 'bg-orange-500' },
-	],
-	condition: [
-		{ id: 'if', label: 'If Statement', icon: AlertCircle, color: 'bg-yellow-500' },
-		{ id: 'wait', label: 'Wait/Delay', icon: Clock, color: 'bg-gray-500' },
-	],
-	action: [
-		{ id: 'send_sms', label: 'Send SMS', icon: MessageSquare, color: 'bg-green-500' },
-		{ id: 'send_email', label: 'Send Email', icon: Mail, color: 'bg-blue-500' },
-		{ id: 'add_tag', label: 'Add Tag', icon: Tag, color: 'bg-purple-500' },
-		{ id: 'create_appointment', label: 'Schedule Appointment', icon: Calendar, color: 'bg-orange-500' },
-	],
+const blockTypes: BlockType[] = [
+	{
+		type: "trigger",
+		label: "Trigger",
+		icon: Zap,
+		description: "Start of workflow",
+		color: "bg-blue-500",
+		config: {
+			event: "appointment_completed"
+		},
+		configFields: [
+			{
+				key: "event",
+				label: "Trigger Event",
+				type: "select",
+				options: [
+					{ value: "appointment_completed", label: "Appointment Completed" },
+					{ value: "appointment_scheduled", label: "Appointment Scheduled" },
+					{ value: "client_added", label: "New Client Added" },
+					{ value: "follow_up_due", label: "Follow-up Due" },
+					{ value: "birthday", label: "Client Birthday" },
+					{ value: "contact_created", label: "Contact Created" },
+					{ value: "contact_changed", label: "Contact Changed" },
+					{ value: "note_added", label: "Note Added" },
+					{ value: "task_added", label: "Task Added" }
+				]
+			}
+		]
+	},
+	{
+		type: "delay",
+		label: "Delay",
+		icon: Clock,
+		description: "Wait for time",
+		color: "bg-yellow-500",
+		config: {
+			minutes: 15
+		},
+		configFields: [
+			{
+				key: "minutes",
+				label: "Delay (minutes)",
+				type: "number",
+				placeholder: "15"
+			}
+		]
+	},
+	{
+		type: "send_sms",
+		label: "Send SMS",
+		icon: MessageSquare,
+		description: "Send text message",
+		color: "bg-green-500",
+		config: {
+			message: "{{first_name}}, thank you for your appointment!"
+		},
+		configFields: [
+			{
+				key: "message",
+				label: "Message",
+				type: "textarea",
+				placeholder: "Enter your message here..."
+			}
+		]
+	},
+	{
+		type: "send_email",
+		label: "Send Email",
+		icon: Mail,
+		description: "Send email",
+		color: "bg-purple-500",
+		config: {
+			subject: "Follow-up",
+			message: "Thank you for your appointment!"
+		},
+		configFields: [
+			{
+				key: "subject",
+				label: "Subject",
+				type: "input",
+				placeholder: "Email subject..."
+			},
+			{
+				key: "message",
+				label: "Message",
+				type: "textarea",
+				placeholder: "Enter your email message..."
+			}
+		]
+	},
+	{
+		type: "add_tag",
+		label: "Add Tag",
+		icon: Tag,
+		description: "Add client tag",
+		color: "bg-orange-500",
+		config: {
+			tag: "followed_up"
+		},
+		configFields: [
+			{
+				key: "tag",
+				label: "Tag Name",
+				type: "input",
+				placeholder: "Enter tag name..."
+			}
+		]
+	},
+	{
+		type: "if",
+		label: "Condition",
+		icon: GitBranch,
+		description: "If statement",
+		color: "bg-red-500",
+		config: {
+			condition: "has_reviewed",
+			operator: "equals",
+			value: "false"
+		},
+		configFields: [
+			{
+				key: "condition",
+				label: "Condition",
+				type: "select",
+				options: [
+					{ value: "has_reviewed", label: "Has Reviewed" },
+					{ value: "is_vip", label: "Is VIP Client" },
+					{ value: "has_appointment", label: "Has Appointment" }
+				]
+			},
+			{
+				key: "operator",
+				label: "Operator",
+				type: "select",
+				options: [
+					{ value: "equals", label: "Equals" },
+					{ value: "not_equals", label: "Not Equals" },
+					{ value: "contains", label: "Contains" }
+				]
+			},
+			{
+				key: "value",
+				label: "Value",
+				type: "input",
+				placeholder: "Enter value..."
+			}
+		]
+	}
+];
+
+// Custom Node Components using React Flow patterns
+const TriggerNode = ({ data, selected }: any) => {
+	const blockType = blockTypes.find(bt => bt.type === data.type);
+	const Icon = blockType?.icon || Zap;
+	
+	return (
+		<div className={`px-4 py-3 rounded-lg border-2 ${blockType?.color} text-white min-w-[200px] shadow-lg ${selected ? 'ring-2 ring-blue-300' : ''} cursor-pointer`}>
+			<Handle 
+				type="target" 
+				position={Position.Top} 
+				className="w-3 h-3 bg-white border-2 border-gray-300" 
+			/>
+			<div className="flex items-center space-x-2">
+				<Icon className="w-4 h-4" />
+				<span className="text-sm font-medium">{blockType?.label}</span>
+			</div>
+			<div className="text-xs mt-1 opacity-90">
+				{blockType?.description}
+			</div>
+			<Handle 
+				type="source" 
+				position={Position.Bottom} 
+				className="w-3 h-3 bg-white border-2 border-gray-300" 
+			/>
+		</div>
+	);
 };
 
-export function VisualWorkflowEditor({ workflow, onSave, onCancel }: FormWorkflowEditorProps) {
-	const [workflowData, setWorkflowData] = useState<Workflow>(workflow || {
-		id: `workflow_${Date.now()}`,
-		name: 'Follow-up for new clients',
-		description: 'Automated follow-up workflow for new clients',
-		steps: [],
-		enabled: true
-	});
+const ActionNode = ({ data, selected }: any) => {
+	const blockType = blockTypes.find(bt => bt.type === data.type);
+	const Icon = blockType?.icon || Settings;
+	
+	return (
+		<div className={`px-4 py-3 rounded-lg border-2 ${blockType?.color} text-white min-w-[200px] shadow-lg ${selected ? 'ring-2 ring-blue-300' : ''} cursor-pointer`}>
+			<Handle 
+				type="target" 
+				position={Position.Top} 
+				className="w-3 h-3 bg-white border-2 border-gray-300" 
+			/>
+			<div className="flex items-center space-x-2">
+				<Icon className="w-4 h-4" />
+				<span className="text-sm font-medium">{blockType?.label}</span>
+			</div>
+			<div className="text-xs mt-1 opacity-90">
+				{blockType?.description}
+			</div>
+			<Handle 
+				type="source" 
+				position={Position.Bottom} 
+				className="w-3 h-3 bg-white border-2 border-gray-300" 
+			/>
+		</div>
+	);
+};
 
-	const addStep = useCallback((type: string, subType: string) => {
-		const newStep: WorkflowStep = {
-			id: `${type}_${Date.now()}`,
-			type: type as any,
-			subType,
-			config: {},
-			order: workflowData.steps.length,
+const ConditionNode = ({ data, selected }: any) => {
+	const blockType = blockTypes.find(bt => bt.type === data.type);
+	const Icon = blockType?.icon || GitBranch;
+	
+	return (
+		<div className={`px-4 py-3 rounded-lg border-2 ${blockType?.color} text-white min-w-[200px] shadow-lg ${selected ? 'ring-2 ring-blue-300' : ''} cursor-pointer`}>
+			<Handle 
+				type="target" 
+				position={Position.Top} 
+				className="w-3 h-3 bg-white border-2 border-gray-300" 
+			/>
+			<div className="flex items-center space-x-2">
+				<Icon className="w-4 h-4" />
+				<span className="text-sm font-medium">{blockType?.label}</span>
+			</div>
+			<div className="text-xs mt-1 opacity-90">
+				{blockType?.description}
+			</div>
+			<Handle 
+				type="source" 
+				position={Position.Bottom} 
+				id="true" 
+				className="w-3 h-3 bg-white border-2 border-gray-300" 
+			/>
+			<Handle 
+				type="source" 
+				position={Position.Right} 
+				id="false" 
+				className="w-3 h-3 bg-white border-2 border-gray-300" 
+			/>
+		</div>
+	);
+};
+
+const nodeTypes = {
+	trigger: TriggerNode,
+	action: ActionNode,
+	condition: ConditionNode,
+};
+
+function WorkflowEditor({ workflow, onSave, onCancel }: VisualWorkflowEditorProps) {
+	const router = useRouter();
+	const [nodes, setNodes, onNodesChange] = useNodesState([]);
+	const [edges, setEdges, onEdgesState] = useEdgesState([]);
+	const [selectedNode, setSelectedNode] = useState<Node | null>(null);
+	const [workflowName, setWorkflowName] = useState(workflow?.name || "New Workflow");
+	const [workflowDescription, setWorkflowDescription] = useState(workflow?.description || "");
+	const [viewMode, setViewMode] = useState<'visual' | 'form'>('visual');
+	const [editingNode, setEditingNode] = useState<Node | null>(null);
+	const [showRightPanel, setShowRightPanel] = useState(false);
+	const { project } = useReactFlow();
+
+	// Initialize nodes and edges from workflow data or create default trigger
+	useMemo(() => {
+		if (workflow?.blocks && workflow.blocks.length > 0) {
+			const initialNodes: Node[] = workflow.blocks.map((block, index) => ({
+				id: block.id,
+				type: block.type === 'trigger' ? 'trigger' : block.type === 'if' ? 'condition' : 'action',
+				position: block.position,
+				data: { 
+					type: block.type,
+					config: block.config,
+					label: blockTypes.find(bt => bt.type === block.type)?.label || block.type
+				},
+			}));
+
+			const initialEdges: Edge[] = workflow.connections.map(conn => ({
+				id: conn.id,
+				source: conn.from,
+				target: conn.to,
+				sourceHandle: conn.fromPort,
+				targetHandle: conn.toPort,
+				type: 'smoothstep',
+				markerEnd: {
+					type: MarkerType.ArrowClosed,
+				},
+				style: { stroke: '#6366f1', strokeWidth: 2 },
+			}));
+
+			setNodes(initialNodes);
+			setEdges(initialEdges);
+		} else {
+			// Create default trigger node
+			const defaultTrigger: Node = {
+				id: "trigger_1",
+				type: "trigger",
+				position: { x: 250, y: 100 },
+				data: { 
+					type: "trigger",
+					config: { event: "appointment_completed" },
+					label: "Trigger"
+				},
+			};
+			setNodes([defaultTrigger]);
+		}
+	}, [workflow, setNodes, setEdges]);
+
+	const onConnect = useCallback(
+		(params: Connection) => {
+			setEdges((eds) => addEdge({
+				...params,
+				type: 'smoothstep',
+				markerEnd: { type: MarkerType.ArrowClosed },
+				style: { stroke: '#6366f1', strokeWidth: 2 },
+			}, eds));
+		},
+		[setEdges],
+	);
+
+	const onNodeClick = useCallback((event: any, node: Node) => {
+		setSelectedNode(node);
+		setEditingNode(node);
+		setShowRightPanel(true);
+	}, []);
+
+	const onPaneClick = useCallback(() => {
+		setSelectedNode(null);
+		setEditingNode(null);
+		setShowRightPanel(false);
+	}, []);
+
+	const addNode = (type: string, position?: XYPosition) => {
+		const blockType = blockTypes.find(bt => bt.type === type);
+		if (!blockType) return;
+
+		// If no position provided, find a good spot
+		let newPosition: XYPosition;
+		if (position) {
+			newPosition = position;
+		} else {
+			// Find the rightmost node to place new node to the right
+			const rightmostNode = nodes.reduce((rightmost, node) => {
+				return node.position.x > rightmost.position.x ? node : rightmost;
+			}, nodes[0] || { position: { x: 0, y: 0 } });
+			
+			newPosition = {
+				x: rightmostNode.position.x + 250,
+				y: rightmostNode.position.y
+			};
+		}
+
+		const newNode: Node = {
+			id: `node_${Date.now()}`,
+			type: type === 'trigger' ? 'trigger' : type === 'if' ? 'condition' : 'action',
+			position: newPosition,
+			data: { 
+				type,
+				config: { ...blockType.config },
+				label: blockType.label
+			},
 		};
-		setWorkflowData(prev => ({
-			...prev,
-			steps: [...prev.steps, newStep]
-		}));
-	}, [workflowData.steps.length]);
 
-	const updateStep = useCallback((stepId: string, updates: Partial<WorkflowStep>) => {
-		setWorkflowData(prev => ({
-			...prev,
-			steps: prev.steps.map(step => 
-				step.id === stepId ? { ...step, ...updates } : step
-			)
-		}));
-	}, []);
+		setNodes((nds) => [...nds, newNode]);
+	};
 
-	const deleteStep = useCallback((stepId: string) => {
-		setWorkflowData(prev => ({
-			...prev,
-			steps: prev.steps.filter(step => step.id !== stepId)
-		}));
-	}, []);
+	const insertNodeBetween = (type: string, sourceNodeId: string, targetNodeId: string) => {
+		const sourceNode = nodes.find(n => n.id === sourceNodeId);
+		const targetNode = nodes.find(n => n.id === targetNodeId);
+		
+		if (!sourceNode || !targetNode) return;
 
-	const renderStepConfig = (step: WorkflowStep) => {
-		const stepType = stepTypes[step.type as keyof typeof stepTypes];
-		const stepConfig = stepType?.find(s => s.id === step.subType);
-		const Icon = stepConfig?.icon || Settings;
+		const blockType = blockTypes.find(bt => bt.type === type);
+		if (!blockType) return;
+
+		// Calculate position between the two nodes
+		const newPosition: XYPosition = {
+			x: (sourceNode.position.x + targetNode.position.x) / 2,
+			y: (sourceNode.position.y + targetNode.position.y) / 2,
+		};
+
+		const newNode: Node = {
+			id: `node_${Date.now()}`,
+			type: type === 'trigger' ? 'trigger' : type === 'if' ? 'condition' : 'action',
+			position: newPosition,
+			data: { 
+				type,
+				config: { ...blockType.config },
+				label: blockType.label
+			},
+		};
+
+		// Add the new node
+		setNodes((nds) => [...nds, newNode]);
+
+		// Remove the old connection
+		setEdges((eds) => eds.filter(edge => 
+			!(edge.source === sourceNodeId && edge.target === targetNodeId)
+		));
+
+		// Add new connections
+		setEdges((eds) => [
+			...eds,
+			{
+				id: `edge_${sourceNodeId}_${newNode.id}`,
+				source: sourceNodeId,
+				target: newNode.id,
+				type: 'smoothstep',
+				markerEnd: { type: MarkerType.ArrowClosed },
+				style: { stroke: '#6366f1', strokeWidth: 2 },
+			},
+			{
+				id: `edge_${newNode.id}_${targetNodeId}`,
+				source: newNode.id,
+				target: targetNodeId,
+				type: 'smoothstep',
+				markerEnd: { type: MarkerType.ArrowClosed },
+				style: { stroke: '#6366f1', strokeWidth: 2 },
+			}
+		]);
+	};
+
+	const deleteNode = (nodeId: string) => {
+		// Find all edges connected to this node
+		const connectedEdges = edges.filter(edge => 
+			edge.source === nodeId || edge.target === nodeId
+		);
+
+		// If this node is in the middle of a chain, reconnect the ends
+		if (connectedEdges.length === 2) {
+			const incomingEdge = connectedEdges.find(edge => edge.target === nodeId);
+			const outgoingEdge = connectedEdges.find(edge => edge.source === nodeId);
+			
+			if (incomingEdge && outgoingEdge) {
+				// Create a new connection between the nodes on either side
+				setEdges((eds) => [
+					...eds.filter(edge => 
+						edge.source !== nodeId && edge.target !== nodeId
+					),
+					{
+						id: `edge_${incomingEdge.source}_${outgoingEdge.target}`,
+						source: incomingEdge.source,
+						target: outgoingEdge.target,
+						type: 'smoothstep',
+						markerEnd: { type: MarkerType.ArrowClosed },
+						style: { stroke: '#6366f1', strokeWidth: 2 },
+					}
+				]);
+			}
+		}
+
+		setNodes((nds) => nds.filter((node) => node.id !== nodeId));
+		setSelectedNode(null);
+		setEditingNode(null);
+		setShowRightPanel(false);
+	};
+
+	const duplicateNode = (nodeId: string) => {
+		const nodeToDuplicate = nodes.find(n => n.id === nodeId);
+		if (!nodeToDuplicate) return;
+
+		const newNode: Node = {
+			...nodeToDuplicate,
+			id: `node_${Date.now()}`,
+			position: {
+				x: nodeToDuplicate.position.x + 50,
+				y: nodeToDuplicate.position.y + 50,
+			},
+		};
+
+		setNodes((nds) => [...nds, newNode]);
+	};
+
+	const updateNodeConfig = (nodeId: string, config: any) => {
+		setNodes((nds) => nds.map(node => 
+			node.id === nodeId 
+				? { ...node, data: { ...node.data, config } }
+				: node
+		));
+	};
+
+	const saveWorkflow = () => {
+		const workflowData = {
+			id: workflow?.id || `workflow_${Date.now()}`,
+			name: workflowName,
+			description: workflowDescription,
+			enabled: workflow?.enabled || true,
+			blocks: nodes.map(node => ({
+				id: node.id,
+				type: node.data.type,
+				position: node.position,
+				width: 200,
+				height: 80,
+				config: node.data.config || {},
+				connections: []
+			})),
+			connections: edges.map(edge => ({
+				id: edge.id,
+				from: edge.source,
+				to: edge.target,
+				fromPort: edge.sourceHandle || "output",
+				toPort: edge.targetHandle || "input"
+			}))
+		};
+		onSave(workflowData);
+	};
+
+	const renderNodeConfig = () => {
+		if (!editingNode) return null;
+
+		const blockType = blockTypes.find(bt => bt.type === editingNode.data.type);
+		if (!blockType) return null;
 
 		return (
-			<Card key={step.id} className="mb-4">
-				<CardHeader className="pb-3">
-					<div className="flex items-center justify-between">
-						<div className="flex items-center space-x-3">
-							<div className={`w-8 h-8 rounded-full ${stepConfig?.color} flex items-center justify-center`}>
-								<Icon className="h-4 w-4 text-white" />
-							</div>
-							<div>
-								<CardTitle className="text-sm">{stepConfig?.label || step.type}</CardTitle>
-								<CardDescription className="text-xs">
-									Step {step.order + 1}
-								</CardDescription>
-							</div>
-						</div>
-						<Button
-							variant="ghost"
-							size="icon"
-							className="h-6 w-6 text-gray-400 hover:text-gray-600 hover:bg-gray-100"
-							onClick={() => deleteStep(step.id)}
-						>
-							<X className="h-3 w-3" />
-						</Button>
-					</div>
-				</CardHeader>
-				<CardContent className="space-y-4">
-					{step.subType === 'send_sms' && (
-						<>
-							<div className="space-y-2">
-								<Label>Message Template</Label>
-								<Textarea
-									value={step.config.message || ''}
-									onChange={(e) => updateStep(step.id, { 
-										config: { ...step.config, message: e.target.value } 
+			<div className="space-y-4">
+				<div className="flex items-center justify-between">
+					<h3 className="text-lg font-semibold">Configure {blockType.label}</h3>
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={() => {
+							setEditingNode(null);
+							setShowRightPanel(false);
+						}}
+					>
+						<X className="w-4 h-4" />
+					</Button>
+				</div>
+				
+				<div className="space-y-3">
+					{blockType.configFields?.map((field) => (
+						<div key={field.key}>
+							<Label htmlFor={field.key}>{field.label}</Label>
+							{field.type === 'input' && (
+								<Input
+									id={field.key}
+									value={editingNode.data.config[field.key] || ''}
+									onChange={(e) => updateNodeConfig(editingNode.id, {
+										...editingNode.data.config,
+										[field.key]: e.target.value
 									})}
-									placeholder="Enter your SMS message template..."
+									placeholder={field.placeholder}
+								/>
+							)}
+							{field.type === 'textarea' && (
+								<Textarea
+									id={field.key}
+									value={editingNode.data.config[field.key] || ''}
+									onChange={(e) => updateNodeConfig(editingNode.id, {
+										...editingNode.data.config,
+										[field.key]: e.target.value
+									})}
+									placeholder={field.placeholder}
 									rows={3}
 								/>
-							</div>
-							<div className="space-y-2">
-								<Label>Send After (minutes)</Label>
+							)}
+							{field.type === 'number' && (
 								<Input
+									id={field.key}
 									type="number"
-									value={step.config.delayMinutes || 15}
-									onChange={(e) => updateStep(step.id, { 
-										config: { ...step.config, delayMinutes: parseInt(e.target.value) } 
+									value={editingNode.data.config[field.key] || ''}
+									onChange={(e) => updateNodeConfig(editingNode.id, {
+										...editingNode.data.config,
+										[field.key]: parseInt(e.target.value) || 0
 									})}
-									min="1"
-									max="1440"
+									placeholder={field.placeholder}
 								/>
-							</div>
-						</>
-					)}
-					
-					{step.subType === 'send_email' && (
-						<>
-							<div className="space-y-2">
-								<Label>Subject</Label>
-								<Input
-									value={step.config.subject || ''}
-									onChange={(e) => updateStep(step.id, { 
-										config: { ...step.config, subject: e.target.value } 
+							)}
+							{field.type === 'select' && (
+								<Select
+									value={editingNode.data.config[field.key] || ''}
+									onValueChange={(value) => updateNodeConfig(editingNode.id, {
+										...editingNode.data.config,
+										[field.key]: value
 									})}
-									placeholder="Email subject"
-								/>
-							</div>
-							<div className="space-y-2">
-								<Label>Message Template</Label>
-								<Textarea
-									value={step.config.message || ''}
-									onChange={(e) => updateStep(step.id, { 
-										config: { ...step.config, message: e.target.value } 
-									})}
-									placeholder="Enter your email message template..."
-									rows={3}
-								/>
-							</div>
-						</>
-					)}
-					
-					{step.subType === 'wait' && (
-						<div className="space-y-2">
-							<Label>Delay (minutes)</Label>
-							<Input
-								type="number"
-								value={step.config.delayMinutes || 15}
-								onChange={(e) => updateStep(step.id, { 
-									config: { ...step.config, delayMinutes: parseInt(e.target.value) } 
-								})}
-								min="1"
-								max="1440"
-							/>
+								>
+									<SelectTrigger>
+										<SelectValue placeholder="Select option..." />
+									</SelectTrigger>
+									<SelectContent>
+										{field.options?.map((option) => (
+											<SelectItem key={option.value} value={option.value}>
+												{option.label}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+							)}
 						</div>
-					)}
-					
-					{step.subType === 'add_tag' && (
-						<div className="space-y-2">
-							<Label>Tag to Add</Label>
-							<Input
-								value={step.config.tag || ''}
-								onChange={(e) => updateStep(step.id, { 
-									config: { ...step.config, tag: e.target.value } 
-								})}
-								placeholder="Enter tag name"
-							/>
-						</div>
-					)}
-					
-					{step.subType === 'if' && (
-						<div className="space-y-2">
-							<Label>Condition</Label>
-							<Select
-								value={step.config.condition || 'has_appointment'}
-								onValueChange={(value) => updateStep(step.id, { 
-									config: { ...step.config, condition: value } 
-								})}
-							>
-								<SelectTrigger>
-									<SelectValue />
-								</SelectTrigger>
-								<SelectContent>
-									<SelectItem value="has_appointment">Has Appointment</SelectItem>
-									<SelectItem value="is_vip">Is VIP Client</SelectItem>
-									<SelectItem value="has_review">Has Left Review</SelectItem>
-								</SelectContent>
-							</Select>
-						</div>
-					)}
-				</CardContent>
-			</Card>
+					))}
+				</div>
+			</div>
 		);
 	};
 
 	return (
-		<div className="flex h-screen bg-gray-50">
-			{/* Left Panel - Step Types */}
-			<div className="w-80 bg-white border-r border-gray-200 p-6 space-y-6">
-				<div>
-					<h3 className="text-lg font-semibold text-gray-900 mb-4">Add Workflow Steps</h3>
-					
-					{/* Triggers */}
-					<div className="space-y-3">
-						<div className="flex items-center space-x-2 text-sm font-medium text-gray-700 mb-2">
-							<Zap className="h-4 w-4" />
-							<span>Triggers</span>
-						</div>
-						<div className="space-y-2">
-							{stepTypes.trigger.map((trigger) => (
-								<div
-									key={trigger.id}
-									className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors"
-									onClick={() => addStep('trigger', trigger.id)}
-								>
-									<div className={`w-3 h-3 rounded-full ${trigger.color}`} />
-									<span className="text-sm font-medium text-gray-700">{trigger.label}</span>
-								</div>
-							))}
-						</div>
-					</div>
-					
-					{/* Conditions */}
-					<div className="space-y-3">
-						<div className="flex items-center space-x-2 text-sm font-medium text-gray-700 mb-2">
-							<AlertCircle className="h-4 w-4" />
-							<span>Conditions</span>
-						</div>
-						<div className="space-y-2">
-							{stepTypes.condition.map((condition) => (
-								<div
-									key={condition.id}
-									className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors"
-									onClick={() => addStep('condition', condition.id)}
-								>
-									<div className={`w-3 h-3 rounded-full ${condition.color}`} />
-									<span className="text-sm font-medium text-gray-700">{condition.label}</span>
-								</div>
-							))}
-						</div>
-					</div>
-					
-					{/* Actions */}
-					<div className="space-y-3">
-						<div className="flex items-center space-x-2 text-sm font-medium text-gray-700 mb-2">
-							<Play className="h-4 w-4" />
-							<span>Actions</span>
-						</div>
-						<div className="space-y-2">
-							{stepTypes.action.map((action) => (
-								<div
-									key={action.id}
-									className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors"
-									onClick={() => addStep('action', action.id)}
-								>
-									<div className={`w-3 h-3 rounded-full ${action.color}`} />
-									<span className="text-sm font-medium text-gray-700">{action.label}</span>
-								</div>
-							))}
-						</div>
-					</div>
-				</div>
-			</div>
-
-			{/* Right Panel - Workflow Configuration */}
-			<div className="flex-1 flex flex-col">
-				{/* Header */}
-				<div className="bg-white border-b border-gray-200 p-6">
-					<div className="flex items-center justify-between">
-						<div>
-							<h2 className="text-xl font-semibold text-gray-900">Workflow Configuration</h2>
-							<p className="text-sm text-gray-600">Configure your workflow steps and settings</p>
-						</div>
-						<Button variant="outline" onClick={onCancel}>
-							Cancel
-						</Button>
-					</div>
-				</div>
-
-				{/* Workflow Details */}
-				<div className="p-6 space-y-4">
-					<Card>
-						<CardHeader>
-							<CardTitle className="text-lg">Workflow Details</CardTitle>
-						</CardHeader>
-						<CardContent className="space-y-4">
-							<div className="space-y-2">
-								<Label>Workflow Name</Label>
-								<Input
-									value={workflowData.name}
-									onChange={(e) => setWorkflowData(prev => ({ ...prev, name: e.target.value }))}
-									placeholder="Enter workflow name"
-								/>
-							</div>
-							<div className="space-y-2">
-								<Label>Description</Label>
-								<Textarea
-									value={workflowData.description}
-									onChange={(e) => setWorkflowData(prev => ({ ...prev, description: e.target.value }))}
-									placeholder="Enter workflow description"
-									rows={2}
-								/>
-							</div>
-						</CardContent>
-					</Card>
-
-					{/* Workflow Steps */}
-					<div className="space-y-4">
-						<div className="flex items-center justify-between">
-							<h3 className="text-lg font-semibold text-gray-900">Workflow Steps</h3>
-							<Button 
-								onClick={() => addStep('action', 'send_sms')}
-								className="bg-gradient-to-r from-pink-500 to-purple-600"
+		<div className="min-h-screen bg-gray-50">
+			{/* Header */}
+			<div className="bg-white border-b">
+				<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+					<div className="flex items-center justify-between h-16">
+						<div className="flex items-center space-x-4">
+							<Button
+								variant="outline"
+								onClick={() => router.back()}
+								className="flex items-center space-x-2"
 							>
-								<Plus className="w-4 h-4 mr-2" />
-								Add Step
+								<ArrowLeft className="w-4 h-4" />
+								Back to Workflows
+							</Button>
+							<div>
+								<h1 className="text-xl font-semibold text-gray-900">{workflowName}</h1>
+								<p className="text-sm text-gray-500">Workflow Builder</p>
+							</div>
+						</div>
+						<div className="flex items-center space-x-2">
+							<Button
+								variant="outline"
+								onClick={() => setViewMode(viewMode === 'visual' ? 'form' : 'visual')}
+							>
+								{viewMode === 'visual' ? <FileText className="w-4 h-4 mr-2" /> : <Eye className="w-4 h-4 mr-2" />}
+								{viewMode === 'visual' ? 'Form View' : 'Visual View'}
+							</Button>
+							<Button variant="outline" onClick={onCancel}>
+								Cancel
+							</Button>
+							<Button onClick={saveWorkflow} className="bg-gradient-to-r from-pink-500 to-purple-600">
+								<Save className="w-4 h-4 mr-2" />
+								Save Workflow
 							</Button>
 						</div>
-
-						{workflowData.steps.length === 0 ? (
-							<Card className="border-dashed border-2 border-gray-300">
-								<CardContent className="text-center py-12">
-									<Zap className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-									<p className="text-gray-500">No steps added yet. Click "Add Step" to get started.</p>
-								</CardContent>
-							</Card>
-						) : (
-							<div className="space-y-4">
-								{workflowData.steps.map(renderStepConfig)}
-							</div>
-						)}
-					</div>
-
-					{/* Save Button */}
-					<div className="flex justify-end space-x-3 pt-6">
-						<Button variant="outline" onClick={onCancel}>
-							Cancel
-						</Button>
-						<Button 
-							onClick={() => onSave(workflowData)}
-							className="bg-gradient-to-r from-pink-500 to-purple-600"
-						>
-							Save Workflow
-						</Button>
 					</div>
 				</div>
 			</div>
+
+			<div className="flex h-[calc(100vh-64px)]">
+				{/* Left Panel */}
+				<div className="w-80 bg-white border-r overflow-y-auto">
+					<div className="p-4 space-y-4">
+						{/* Workflow Info */}
+						<div className="border-b pb-4">
+							<h3 className="font-semibold mb-3">Workflow Info</h3>
+							<div className="space-y-2">
+								<div>
+									<Label>Name</Label>
+									<Input 
+										value={workflowName}
+										onChange={(e) => setWorkflowName(e.target.value)}
+										className="mt-1"
+									/>
+								</div>
+								<div>
+									<Label>Description</Label>
+									<Input 
+										value={workflowDescription}
+										onChange={(e) => setWorkflowDescription(e.target.value)}
+										className="mt-1"
+									/>
+								</div>
+							</div>
+						</div>
+
+						{/* Workflow Blocks */}
+						<div>
+							<h3 className="font-semibold mb-3">Add Steps</h3>
+							<div className="space-y-2">
+								{blockTypes.map((blockType) => (
+									<div
+										key={blockType.type}
+										className="p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors"
+										onClick={() => addNode(blockType.type)}
+									>
+										<div className="flex items-center space-x-2">
+											<div className={`w-8 h-8 rounded-lg flex items-center justify-center ${blockType.color} text-white`}>
+												<blockType.icon className="w-4 h-4" />
+											</div>
+											<div>
+												<div className="font-medium text-sm">{blockType.label}</div>
+												<div className="text-xs text-muted-foreground">{blockType.description}</div>
+											</div>
+										</div>
+									</div>
+								))}
+							</div>
+						</div>
+					</div>
+				</div>
+
+				{/* Canvas */}
+				<div className="flex-1 relative">
+					<ReactFlow
+						nodes={nodes}
+						edges={edges}
+						onNodesChange={onNodesChange}
+						onEdgesChange={onEdgesState}
+						onConnect={onConnect}
+						onNodeClick={onNodeClick}
+						onPaneClick={onPaneClick}
+						nodeTypes={nodeTypes}
+						connectionLineType={ConnectionLineType.SmoothStep}
+						fitView
+						attributionPosition="bottom-left"
+						proOptions={{ hideAttribution: true }}
+					>
+						<Controls />
+						<Background />
+						<MiniMap 
+							nodeColor="#6366f1"
+							maskColor="rgba(0, 0, 0, 0.1)"
+						/>
+					</ReactFlow>
+
+					{/* Empty state */}
+					{nodes.length === 0 && (
+						<div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+							<div className="text-center bg-white/90 p-8 rounded-lg shadow-lg">
+								<Zap className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+								<h3 className="text-lg font-semibold text-gray-900 mb-2">Start Building Your Workflow</h3>
+								<p className="text-gray-600 mb-4">
+									Drag blocks from the left panel to create your workflow
+								</p>
+							</div>
+						</div>
+					)}
+				</div>
+
+				{/* Right Panel - Node Configuration */}
+				{showRightPanel && editingNode && (
+					<div className="w-80 bg-white border-l overflow-y-auto" data-testid="node-config-panel">
+						<div className="p-4">
+							{renderNodeConfig()}
+						</div>
+					</div>
+				)}
+			</div>
 		</div>
+	);
+}
+
+export function VisualWorkflowEditor(props: VisualWorkflowEditorProps) {
+	return (
+		<ReactFlowProvider>
+			<WorkflowEditor {...props} />
+		</ReactFlowProvider>
 	);
 } 

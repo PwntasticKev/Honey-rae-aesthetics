@@ -1,359 +1,353 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
-import { useDropzone } from "react-dropzone";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Input } from "@/components/ui/input";
 import { 
-	Upload, 
-	Image as ImageIcon, 
-	Tag, 
-	Trash2, 
+	Search, 
+	Filter,
+	Upload,
 	Edit,
+	Trash2,
 	Eye,
 	Download,
-	X
+	Tag,
+	Calendar,
+	Image,
+	Grid3X3,
+	List,
+	Plus
 } from "lucide-react";
 
-interface PhotoGalleryProps {
-	orgId: any;
-	clientId?: string;
-	onUpload?: (files: File[]) => void;
-	onDelete?: (fileId: string) => void;
-	onTag?: (fileId: string, tags: string[]) => void;
-}
-
-interface PhotoFile {
-	id: string;
-	name: string;
-	url: string;
+interface Photo {
+	_id: string;
+	fileName: string;
+	clientName: string;
+	uploadDate: number;
 	tags: string[];
-	uploadedAt: Date;
-	clientId?: string;
+	fileSize: string;
+	dimensions: string;
+	url: string;
 }
 
-// Mock data for demonstration
-const mockPhotos: PhotoFile[] = [
-	{
-		id: "1",
-		name: "before_photo_1.jpg",
-		url: "/api/placeholder/400/300",
-		tags: ["before", "face"],
-		uploadedAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
-		clientId: "client-1"
-	},
-	{
-		id: "2",
-		name: "after_photo_1.jpg",
-		url: "/api/placeholder/400/300",
-		tags: ["after", "face"],
-		uploadedAt: new Date(Date.now() - 12 * 60 * 60 * 1000),
-		clientId: "client-1"
-	},
-	{
-		id: "3",
-		name: "inspiration_photo_1.jpg",
-		url: "/api/placeholder/400/300",
-		tags: ["inspiration", "eyes"],
-		uploadedAt: new Date(Date.now() - 6 * 60 * 60 * 1000),
-		clientId: "client-1"
-	}
-];
+interface PhotoGalleryProps {
+	photos: Photo[];
+	onUploadPhoto: () => void;
+	onEditPhoto: (photoId: string) => void;
+	onDeletePhoto: (photoId: string) => void;
+}
 
-const availableTags = [
-	"before", "after", "inspiration", "face", "eyes", "lips", "cheeks", 
-	"forehead", "chin", "nose", "treatment", "progress", "consultation"
-];
+export function PhotoGallery({ photos, onUploadPhoto, onEditPhoto, onDeletePhoto }: PhotoGalleryProps) {
+	const [searchTerm, setSearchTerm] = useState("");
+	const [tagFilter, setTagFilter] = useState("all");
+	const [viewMode, setViewMode] = useState<"table" | "grid">("table");
 
-export function PhotoGallery({ orgId, clientId, onUpload, onDelete, onTag }: PhotoGalleryProps) {
-	const [photos, setPhotos] = useState<PhotoFile[]>(mockPhotos);
-	const [selectedPhoto, setSelectedPhoto] = useState<PhotoFile | null>(null);
-	const [showUploadModal, setShowUploadModal] = useState(false);
-	const [showTagModal, setShowTagModal] = useState(false);
-	const [selectedTags, setSelectedTags] = useState<string[]>([]);
-	const [filterTag, setFilterTag] = useState("all");
-
-	const onDrop = useCallback((acceptedFiles: File[]) => {
-		const newPhotos: PhotoFile[] = acceptedFiles.map((file, index) => ({
-			id: `new-${Date.now()}-${index}`,
-			name: file.name,
-			url: URL.createObjectURL(file),
-			tags: [],
-			uploadedAt: new Date(),
-			clientId: clientId
-		}));
+	const filteredPhotos = photos.filter(photo => {
+		const matchesSearch = photo.fileName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+			photo.clientName.toLowerCase().includes(searchTerm.toLowerCase());
 		
-		setPhotos(prev => [...prev, ...newPhotos]);
-		if (onUpload) {
-			onUpload(acceptedFiles);
-		}
-		setShowUploadModal(false);
-	}, [clientId, onUpload]);
-
-	const { getRootProps, getInputProps, isDragActive } = useDropzone({
-		onDrop,
-		accept: {
-			'image/*': ['.jpeg', '.jpg', '.png', '.gif', '.webp']
-		},
-		multiple: true
+		const matchesTag = tagFilter === "all" || photo.tags.includes(tagFilter);
+		
+		return matchesSearch && matchesTag;
 	});
 
-	const handleDeletePhoto = (photoId: string) => {
-		if (confirm("Are you sure you want to delete this photo?")) {
-			setPhotos(prev => prev.filter(photo => photo.id !== photoId));
-			if (onDelete) {
-				onDelete(photoId);
-			}
-		}
+	const getAllTags = () => {
+		const tags = new Set<string>();
+		photos.forEach(photo => {
+			photo.tags.forEach(tag => tags.add(tag));
+		});
+		return Array.from(tags);
 	};
 
-	const handleTagPhoto = (photoId: string) => {
-		const photo = photos.find(p => p.id === photoId);
-		if (photo) {
-			setSelectedTags(photo.tags);
-			setSelectedPhoto(photo);
-			setShowTagModal(true);
-		}
+	const formatFileSize = (size: string) => {
+		return size;
 	};
 
-	const handleSaveTags = () => {
-		if (selectedPhoto) {
-			setPhotos(prev => prev.map(photo => 
-				photo.id === selectedPhoto.id 
-					? { ...photo, tags: selectedTags }
-					: photo
-			));
-			if (onTag) {
-				onTag(selectedPhoto.id, selectedTags);
-			}
-		}
-		setShowTagModal(false);
-		setSelectedPhoto(null);
+	const formatDimensions = (dimensions: string) => {
+		return dimensions;
 	};
-
-	const toggleTag = (tag: string) => {
-		setSelectedTags(prev => 
-			prev.includes(tag) 
-				? prev.filter(t => t !== tag)
-				: [...prev, tag]
-		);
-	};
-
-	const filteredPhotos = photos.filter(photo => 
-		filterTag === "all" || photo.tags.includes(filterTag)
-	);
-
-	const allTags = Array.from(new Set(photos.flatMap(photo => photo.tags)));
 
 	return (
 		<div className="space-y-6">
 			{/* Header */}
-			<div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
+			<div className="flex items-center justify-between">
 				<div>
-					<h2 className="text-xl font-semibold text-gray-900">Photo Gallery</h2>
-					<p className="text-sm text-gray-500">
-						Manage client photos and treatment progress
+					<h2 className="text-2xl font-bold gradient-text">Photo Gallery</h2>
+					<p className="text-muted-foreground">
+						Manage client photos and treatment progress ({filteredPhotos.length} photos)
 					</p>
 				</div>
-				
-				<div className="flex gap-2">
-					<select
-						value={filterTag}
-						onChange={(e) => setFilterTag(e.target.value)}
-						className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+				<div className="flex items-center space-x-2">
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={() => setViewMode(viewMode === "table" ? "grid" : "table")}
 					>
-						<option value="all">All Photos</option>
-						{allTags.map(tag => (
-							<option key={tag} value={tag}>{tag}</option>
-						))}
-					</select>
-					
-					<Button 
-						onClick={() => setShowUploadModal(true)}
-						className="flex items-center space-x-2"
-					>
-						<Upload className="h-4 w-4" />
-						<span>Upload Photos</span>
+						{viewMode === "table" ? <Grid3X3 className="w-4 h-4 mr-2" /> : <List className="w-4 h-4 mr-2" />}
+						{viewMode === "table" ? "Grid View" : "Table View"}
+					</Button>
+					<Button onClick={onUploadPhoto} className="bg-gradient-to-r from-pink-500 to-purple-600">
+						<Upload className="w-4 h-4 mr-2" />
+						Upload Photo
 					</Button>
 				</div>
 			</div>
 
-			{/* Photo Count */}
-			<div className="text-sm text-gray-600">
-				{filteredPhotos.length} of {photos.length} photos
-			</div>
+			{/* Search and Filters */}
+			<Card>
+				<CardContent className="pt-6">
+					<div className="flex flex-col md:flex-row gap-4">
+						<div className="flex-1 relative">
+							<Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+							<Input
+								placeholder="Search photos by filename or client..."
+								value={searchTerm}
+								onChange={(e) => setSearchTerm(e.target.value)}
+								className="pl-10"
+							/>
+						</div>
+						<div className="flex items-center gap-2">
+							<Filter className="h-4 w-4 text-muted-foreground" />
+							<select
+								value={tagFilter}
+								onChange={(e) => setTagFilter(e.target.value)}
+								className="border border-gray-300 rounded-md px-3 py-2 text-sm"
+							>
+								<option value="all">All Tags</option>
+								{getAllTags().map(tag => (
+									<option key={tag} value={tag}>{tag}</option>
+								))}
+							</select>
+						</div>
+					</div>
+				</CardContent>
+			</Card>
 
-			{/* Photo Grid */}
-			{filteredPhotos.length === 0 ? (
-				<div className="text-center py-12">
-					<ImageIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-					<h3 className="text-lg font-medium text-gray-900 mb-2">
-						No photos found
-					</h3>
-					<p className="text-gray-500 mb-4">
-						{photos.length === 0 
-							? "Upload your first photo to get started."
-							: "Try adjusting your filter to see more photos."
-						}
-					</p>
-					{photos.length === 0 && (
-						<Button onClick={() => setShowUploadModal(true)}>
-							Upload Photos
-						</Button>
-					)}
-				</div>
-			) : (
-				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-					{filteredPhotos.map((photo) => (
-						<div key={photo.id} className="bg-white rounded-lg shadow-md overflow-hidden">
-							{/* Image */}
-							<div className="relative h-48 bg-gray-200">
-								<div className="absolute inset-0 flex items-center justify-center">
-									<ImageIcon className="h-12 w-12 text-gray-400" />
-								</div>
-								
-								{/* Actions */}
-								<div className="absolute top-2 right-2 flex space-x-1">
-									<button
-										onClick={() => handleTagPhoto(photo.id)}
-										className="p-1 bg-white rounded-full shadow-sm hover:bg-gray-50"
-										title="Add tags"
-									>
-										<Tag className="h-3 w-3 text-gray-600" />
-									</button>
-									<button
-										onClick={() => handleDeletePhoto(photo.id)}
-										className="p-1 bg-white rounded-full shadow-sm hover:bg-gray-50"
-										title="Delete photo"
-									>
-										<Trash2 className="h-3 w-3 text-red-600" />
-									</button>
-								</div>
-							</div>
+			{/* Photos Display */}
+			{viewMode === "table" ? (
+				/* Table View */
+				<Card>
+					<CardHeader>
+						<CardTitle>Photo Database</CardTitle>
+						<CardDescription>
+							All photos in your practice management system
+						</CardDescription>
+					</CardHeader>
+					<CardContent>
+						<div className="overflow-x-auto">
+							<table className="w-full">
+								<thead>
+									<tr className="border-b border-gray-200">
+										<th className="text-left py-3 px-4 font-medium text-gray-700">Photo</th>
+										<th className="text-left py-3 px-4 font-medium text-gray-700">Client</th>
+										<th className="text-left py-3 px-4 font-medium text-gray-700">Tags</th>
+										<th className="text-left py-3 px-4 font-medium text-gray-700">Upload Date</th>
+										<th className="text-left py-3 px-4 font-medium text-gray-700">File Info</th>
+										<th className="text-right py-3 px-4 font-medium text-gray-700">Actions</th>
+									</tr>
+								</thead>
+								<tbody>
+									{filteredPhotos.map((photo) => (
+										<tr key={photo._id} className="border-b border-gray-100 hover:bg-gray-50">
+											<td className="py-4 px-4">
+												<div className="flex items-center space-x-3">
+													<div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
+														<Image className="w-6 h-6 text-gray-400" />
+													</div>
+													<div>
+														<div className="font-medium text-gray-900">{photo.fileName}</div>
+														<div className="text-sm text-gray-500">{formatFileSize(photo.fileSize)}</div>
+													</div>
+												</div>
+											</td>
+											<td className="py-4 px-4">
+												<div className="font-medium text-gray-900">{photo.clientName}</div>
+											</td>
+											<td className="py-4 px-4">
+												<div className="flex flex-wrap gap-1">
+													{photo.tags.slice(0, 2).map((tag, index) => (
+														<Badge key={index} variant="secondary" className="text-xs">
+															{tag}
+														</Badge>
+													))}
+													{photo.tags.length > 2 && (
+														<Badge variant="outline" className="text-xs">
+															+{photo.tags.length - 2}
+														</Badge>
+													)}
+												</div>
+											</td>
+											<td className="py-4 px-4 text-sm text-gray-500">
+												{new Date(photo.uploadDate).toLocaleDateString()}
+											</td>
+											<td className="py-4 px-4 text-sm text-gray-500">
+												{formatDimensions(photo.dimensions)}
+											</td>
+											<td className="py-4 px-4">
+												<div className="flex items-center justify-end space-x-2">
+													<Button
+														variant="ghost"
+														size="sm"
+														title="View"
+													>
+														<Eye className="h-4 w-4" />
+													</Button>
+													<Button
+														variant="ghost"
+														size="sm"
+														title="Download"
+													>
+														<Download className="h-4 w-4" />
+													</Button>
+													<Button
+														variant="ghost"
+														size="sm"
+														onClick={() => onEditPhoto(photo._id)}
+														title="Edit"
+													>
+														<Edit className="h-4 w-4" />
+													</Button>
+													<Button
+														variant="ghost"
+														size="sm"
+														onClick={() => onDeletePhoto(photo._id)}
+														title="Delete"
+														className="text-red-600 hover:text-red-700"
+													>
+														<Trash2 className="h-4 w-4" />
+													</Button>
+												</div>
+											</td>
+										</tr>
+									))}
+								</tbody>
+							</table>
+						</div>
 
-							{/* Info */}
-							<div className="p-4">
-								<h4 className="text-sm font-medium text-gray-900 truncate">
-									{photo.name}
-								</h4>
-								<p className="text-xs text-gray-500 mt-1">
-									{photo.uploadedAt.toLocaleDateString()}
+						{/* Empty State */}
+						{filteredPhotos.length === 0 && (
+							<div className="text-center py-12">
+								<Image className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+								<h3 className="text-lg font-semibold text-gray-900 mb-2">No photos found</h3>
+								<p className="text-gray-600 mb-4">
+									{searchTerm || tagFilter !== "all" 
+										? "Try adjusting your search or filters"
+										: "Get started by uploading your first photo"
+									}
 								</p>
-								
+								{!searchTerm && tagFilter === "all" && (
+									<Button onClick={onUploadPhoto} className="bg-gradient-to-r from-pink-500 to-purple-600">
+										<Upload className="w-4 h-4 mr-2" />
+										Upload Your First Photo
+									</Button>
+								)}
+							</div>
+						)}
+					</CardContent>
+				</Card>
+			) : (
+				/* Grid View */
+				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+					{filteredPhotos.map((photo) => (
+						<Card key={photo._id} className="hover:shadow-lg transition-shadow">
+							<CardHeader className="pb-3">
+								<div className="flex items-start justify-between">
+									<div className="flex items-center space-x-3">
+										<div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
+											<Image className="w-6 h-6 text-gray-400" />
+										</div>
+										<div>
+											<CardTitle className="text-lg">{photo.fileName}</CardTitle>
+											<CardDescription>
+												{photo.clientName} • {formatFileSize(photo.fileSize)}
+											</CardDescription>
+										</div>
+									</div>
+									<div className="flex items-center space-x-1">
+										<Button
+											variant="ghost"
+											size="icon"
+											title="View"
+										>
+											<Eye className="h-4 w-4" />
+										</Button>
+										<Button
+											variant="ghost"
+											size="icon"
+											onClick={() => onEditPhoto(photo._id)}
+											title="Edit"
+										>
+											<Edit className="h-4 w-4" />
+										</Button>
+										<Button
+											variant="ghost"
+											size="icon"
+											onClick={() => onDeletePhoto(photo._id)}
+											title="Delete"
+											className="text-red-600 hover:text-red-700"
+										>
+											<Trash2 className="h-4 w-4" />
+										</Button>
+									</div>
+								</div>
+							</CardHeader>
+							<CardContent className="space-y-3">
 								{/* Tags */}
 								{photo.tags.length > 0 && (
-									<div className="flex flex-wrap gap-1 mt-2">
+									<div className="flex flex-wrap gap-1">
 										{photo.tags.slice(0, 3).map((tag) => (
-											<span
-												key={tag}
-												className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
-											>
+											<Badge key={tag} variant="secondary" className="text-xs">
 												{tag}
-											</span>
+											</Badge>
 										))}
 										{photo.tags.length > 3 && (
-											<span className="text-xs text-gray-500">
+											<Badge variant="outline" className="text-xs">
 												+{photo.tags.length - 3} more
-											</span>
+											</Badge>
 										)}
 									</div>
 								)}
-							</div>
-						</div>
+
+								{/* File Info */}
+								<div className="flex items-center justify-between text-xs text-muted-foreground">
+									<div className="flex items-center space-x-2">
+										<Calendar className="h-3 w-3" />
+										<span>{new Date(photo.uploadDate).toLocaleDateString()}</span>
+									</div>
+									<div className="flex items-center space-x-2">
+										<Download className="h-3 w-3" />
+										<span>{formatDimensions(photo.dimensions)}</span>
+									</div>
+								</div>
+							</CardContent>
+						</Card>
 					))}
 				</div>
 			)}
 
-			{/* Upload Modal */}
-			{showUploadModal && (
-				<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-					<div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4">
-						<div className="flex justify-between items-center p-6 border-b">
-							<h2 className="text-xl font-semibold text-gray-900">Upload Photos</h2>
-							<button
-								onClick={() => setShowUploadModal(false)}
-								className="text-gray-400 hover:text-gray-600"
-							>
-								<X className="h-6 w-6" />
-							</button>
-						</div>
-						<div className="p-6">
-							<div
-								{...getRootProps()}
-								className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
-									isDragActive 
-										? "border-blue-500 bg-blue-50" 
-										: "border-gray-300 hover:border-gray-400"
-								}`}
-							>
-								<input {...getInputProps()} />
-								<Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-								{isDragActive ? (
-									<p className="text-lg text-blue-600">Drop the photos here...</p>
-								) : (
-									<div>
-										<p className="text-lg text-gray-900 mb-2">Drag & drop photos here</p>
-										<p className="text-sm text-gray-500">or click to select files</p>
-										<p className="text-xs text-gray-400 mt-2">
-											Supports: JPG, PNG, GIF, WebP
-										</p>
-									</div>
-								)}
-							</div>
-						</div>
-					</div>
-				</div>
-			)}
-
-			{/* Tag Modal */}
-			{showTagModal && selectedPhoto && (
-				<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-					<div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-						<div className="flex justify-between items-center p-6 border-b">
-							<h2 className="text-xl font-semibold text-gray-900">Add Tags</h2>
-							<button
-								onClick={() => setShowTagModal(false)}
-								className="text-gray-400 hover:text-gray-600"
-							>
-								<X className="h-6 w-6" />
-							</button>
-						</div>
-						<div className="p-6">
-							<div className="mb-4">
-								<p className="text-sm text-gray-600 mb-3">
-									Select tags for: <span className="font-medium">{selectedPhoto.name}</span>
-								</p>
-								<div className="flex flex-wrap gap-2">
-									{availableTags.map((tag) => (
-										<button
-											key={tag}
-											type="button"
-											onClick={() => toggleTag(tag)}
-											className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
-												selectedTags.includes(tag)
-													? "bg-blue-600 text-white"
-													: "bg-gray-100 text-gray-700 hover:bg-gray-200"
-											}`}
-										>
-											{tag}
-										</button>
-									))}
-								</div>
-							</div>
-							<div className="flex justify-end space-x-3">
-								<Button 
-									type="button" 
-									variant="outline" 
-									onClick={() => setShowTagModal(false)}
-								>
-									Cancel
-								</Button>
-								<Button onClick={handleSaveTags}>
-									Save Tags
-								</Button>
-							</div>
-						</div>
-					</div>
-				</div>
+			{/* Empty State for Grid View */}
+			{viewMode === "grid" && filteredPhotos.length === 0 && (
+				<Card className="text-center py-12">
+					<CardContent>
+						<Image className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+						<h3 className="text-lg font-semibold text-gray-900 mb-2">No photos found</h3>
+						<p className="text-gray-600 mb-4">
+							{searchTerm || tagFilter !== "all" 
+								? "Try adjusting your search or filters"
+								: "Get started by uploading your first photo"
+							}
+						</p>
+						{!searchTerm && tagFilter === "all" && (
+							<Button onClick={onUploadPhoto} className="bg-gradient-to-r from-pink-500 to-purple-600">
+								<Upload className="w-4 h-4 mr-2" />
+								Upload Your First Photo
+							</Button>
+						)}
+					</CardContent>
+				</Card>
 			)}
 		</div>
 	);
