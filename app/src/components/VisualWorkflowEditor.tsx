@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import ReactFlow, {
 	Node,
@@ -541,6 +541,16 @@ function WorkflowEditor({ workflow, onSave, onCancel }: VisualWorkflowEditorProp
 	const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
 	const [workflowName, setWorkflowName] = useState(workflow?.name || "New Workflow");
 	const [workflowDescription, setWorkflowDescription] = useState(workflow?.description || "");
+	
+	// Update workflow name and description when workflow prop changes
+	useEffect(() => {
+		if (workflow?.name && workflow.name !== "Loading...") {
+			setWorkflowName(workflow.name);
+		}
+		if (workflow?.description !== undefined) {
+			setWorkflowDescription(workflow.description);
+		}
+	}, [workflow?.name, workflow?.description]);
 	const [selectedNode, setSelectedNode] = useState<Node | null>(null);
 	const [editingNode, setEditingNode] = useState<Node | null>(null);
 	const [showRightPanel, setShowRightPanel] = useState(false);
@@ -677,8 +687,11 @@ function WorkflowEditor({ workflow, onSave, onCancel }: VisualWorkflowEditorProp
 				type: 'smoothstep',
 				markerEnd: {
 					type: MarkerType.ArrowClosed,
+					width: 20,
+					height: 20,
+					color: '#6B7280',
 				},
-				style: { stroke: '#6366f1', strokeWidth: 2 },
+				style: { stroke: '#6B7280', strokeWidth: 2 },
 			}));
 
 			setNodes(initialNodes);
@@ -707,7 +720,7 @@ function WorkflowEditor({ workflow, onSave, onCancel }: VisualWorkflowEditorProp
 			enabled: workflow?.enabled || false,
 			blocks: nodes.map(node => ({
 				id: node.id,
-				type: node.type,
+				type: node.data?.type || node.type, // Use data.type for the actual block type
 				position: node.position,
 				width: node.width,
 				height: node.height,
@@ -721,6 +734,7 @@ function WorkflowEditor({ workflow, onSave, onCancel }: VisualWorkflowEditorProp
 				toPort: edge.targetHandle
 			}))
 		};
+		console.log('Saving workflow data:', workflowData);
 		onSave(workflowData);
 	};
 
@@ -818,7 +832,18 @@ function WorkflowEditor({ workflow, onSave, onCancel }: VisualWorkflowEditorProp
 	};
 
 	const onConnect = useCallback((params: Connection) => {
-		setEdges((eds) => addEdge(params, eds));
+		const newEdge = {
+			...params,
+			type: 'smoothstep',
+			markerEnd: {
+				type: MarkerType.ArrowClosed,
+				width: 20,
+				height: 20,
+				color: '#6B7280',
+			},
+			style: { stroke: '#6B7280', strokeWidth: 2 },
+		};
+		setEdges((eds) => addEdge(newEdge, eds));
 	}, [setEdges]);
 
 	const onDragOver = useCallback((event: React.DragEvent) => {
@@ -1222,6 +1247,8 @@ function WorkflowEditor({ workflow, onSave, onCancel }: VisualWorkflowEditorProp
 							zoomOnScroll={false}
 							zoomOnPinch={true}
 							panOnDrag={true}
+							connectionLineType={ConnectionLineType.SmoothStep}
+							connectionLineStyle={{ stroke: '#6B7280', strokeWidth: 2 }}
 						>
 							<MiniMap 
 								nodeColor={(n) => {
@@ -1260,7 +1287,7 @@ function WorkflowEditor({ workflow, onSave, onCancel }: VisualWorkflowEditorProp
 
 					{/* Test Panel - Right Side */}
 					{showTestPanel && (
-						<div className="fixed right-0 top-0 h-full w-80 bg-white border-l border-gray-200 shadow-lg z-40">
+						<div className="fixed right-0 top-0 h-full w-80 bg-white border-l border-gray-200 shadow-lg z-40" data-testid="test-panel">
 							<div className="p-6">
 								<div className="flex justify-between items-center mb-6">
 									<h3 className="text-lg font-semibold">Test Workflow</h3>
@@ -1339,7 +1366,9 @@ function WorkflowEditor({ workflow, onSave, onCancel }: VisualWorkflowEditorProp
 export function VisualWorkflowEditor(props: VisualWorkflowEditorProps) {
 	return (
 		<ReactFlowProvider>
-			<WorkflowEditor {...props} />
+			<div data-testid="workflow-editor">
+				<WorkflowEditor {...props} />
+			</div>
 		</ReactFlowProvider>
 	);
 } 

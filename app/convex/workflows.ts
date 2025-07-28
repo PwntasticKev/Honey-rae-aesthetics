@@ -60,6 +60,16 @@ export const getByOrg = query({
 	},
 });
 
+export const getAllWorkflows = query({
+	args: {},
+	handler: async (ctx) => {
+		return await ctx.db
+			.query("workflows")
+			.order("desc")
+			.collect();
+	},
+});
+
 export const getByTrigger = query({
 	args: { orgId: v.id("orgs"), trigger: v.union(
 		v.literal("new_client"),

@@ -30,13 +30,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 interface Workflow {
 	_id: string;
 	name: string;
-	description: string;
+	description?: string;
 	trigger: string;
-	enabled: boolean;
-	steps: any[];
+	enabled?: boolean;
+	isActive?: boolean;
+	steps?: any[];
+	actions?: any[];
+	conditions?: any[];
 	createdAt: number;
 	lastRun?: number;
-	runCount: number;
+	runCount?: number;
 }
 
 interface WorkflowListProps {
@@ -186,7 +189,7 @@ export function WorkflowList({ workflows, onAddWorkflow, onEditWorkflow, onDelet
 	const handleSearch = (query: string) => {
 		const filtered = workflows.filter(workflow =>
 			workflow.name.toLowerCase().includes(query.toLowerCase()) ||
-			workflow.description.toLowerCase().includes(query.toLowerCase()) ||
+			(workflow.description?.toLowerCase() || '').includes(query.toLowerCase()) ||
 			workflow.trigger.toLowerCase().includes(query.toLowerCase())
 		);
 		setFilteredWorkflows(filtered);
@@ -246,14 +249,15 @@ export function WorkflowList({ workflows, onAddWorkflow, onEditWorkflow, onDelet
 			label: "Name",
 			render: (workflow: Workflow) => {
 				if (!workflow) return <div>No workflow data</div>;
+				const isActive = workflow.enabled || workflow.isActive || false;
 				return (
-					<div className="flex items-center space-x-3">
-						<div className={`w-8 h-8 rounded-lg flex items-center justify-center bg-blue-100`}>
-							{React.createElement(getWorkflowIcon(workflow.trigger || ''), { className: "w-4 h-4 text-blue-600" })}
+					<div className={`flex items-center space-x-3 p-2 rounded-lg ${isActive ? 'bg-green-50 border border-green-200' : 'bg-gray-50 border border-gray-200'}`}>
+						<div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isActive ? 'bg-green-100' : 'bg-gray-100'}`}>
+							{React.createElement(getWorkflowIcon(workflow.trigger || ''), { className: `w-4 h-4 ${isActive ? 'text-green-600' : 'text-gray-600'}` })}
 						</div>
 						<div>
-							<div className="font-medium text-gray-900">{workflow.name || 'Unnamed Workflow'}</div>
-							<div className="text-sm text-gray-500">{workflow.description || 'No description'}</div>
+							<div className={`font-medium ${isActive ? 'text-green-900' : 'text-gray-900'}`}>{workflow.name || 'Unnamed Workflow'}</div>
+							<div className={`text-sm ${isActive ? 'text-green-600' : 'text-gray-500'}`}>{workflow.description || 'No description'}</div>
 						</div>
 					</div>
 				);
@@ -276,9 +280,10 @@ export function WorkflowList({ workflows, onAddWorkflow, onEditWorkflow, onDelet
 			label: "Status",
 			render: (workflow: Workflow) => {
 				if (!workflow) return <Badge className="bg-gray-100 text-gray-800">Unknown</Badge>;
+				const isActive = workflow.enabled || workflow.isActive || false;
 				return (
-					<Badge className={getWorkflowStatusColor(workflow.enabled || false)}>
-						{getWorkflowStatus(workflow.enabled || false)}
+					<Badge className={getWorkflowStatusColor(isActive)}>
+						{getWorkflowStatus(isActive)}
 					</Badge>
 				);
 			},
@@ -302,14 +307,17 @@ export function WorkflowList({ workflows, onAddWorkflow, onEditWorkflow, onDelet
 
 	const renderCustomActions = (workflow: Workflow) => {
 		if (!workflow) return null;
+		const isActive = workflow.enabled || workflow.isActive || false;
 		return (
 			<div className="flex items-center space-x-2">
 				<Button
-					variant="outline"
+					variant={isActive ? "outline" : "default"}
 					size="sm"
-					onClick={() => onToggleWorkflow(workflow._id, !(workflow.enabled || false))}
+					onClick={() => onToggleWorkflow(workflow._id, !isActive)}
+					className={isActive ? "border-green-500 text-green-600 hover:bg-green-50" : "bg-green-600 hover:bg-green-700"}
 				>
-					{workflow.enabled ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+					{isActive ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+					<span className="ml-1">{isActive ? 'Pause' : 'Activate'}</span>
 				</Button>
 				<Button
 					variant="outline"

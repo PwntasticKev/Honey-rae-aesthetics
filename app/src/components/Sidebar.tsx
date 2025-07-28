@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter, usePathname } from "next/navigation";
 import { 
 	Users, 
 	Calendar, 
@@ -35,8 +36,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 interface SidebarProps {
 	isOpen: boolean;
 	onToggle: () => void;
-	activeTab: string;
-	onTabChange: (tab: string) => void;
 }
 
 const menuItems = [
@@ -103,7 +102,7 @@ const menuItems = [
 	{
 		id: "analytics",
 		label: "Analytics",
-		icon: TrendingUp,
+		icon: BarChart3,
 		href: "/analytics",
 		description: "Performance insights"
 	},
@@ -119,18 +118,20 @@ const menuItems = [
 		label: "Billing",
 		icon: CreditCard,
 		href: "/billing",
-		description: "Payments & plans"
+		description: "Subscriptions & usage"
 	},
 	{
 		id: "settings",
 		label: "Settings",
 		icon: Settings,
 		href: "/settings",
-		description: "Practice configuration"
+		description: "Data & preferences"
 	},
 ];
 
-export function Sidebar({ isOpen, onToggle, activeTab, onTabChange }: SidebarProps) {
+export function Sidebar({ isOpen, onToggle }: SidebarProps) {
+	const router = useRouter();
+	const pathname = usePathname();
 	const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
 
 	const toggleExpanded = (itemId: string) => {
@@ -141,6 +142,21 @@ export function Sidebar({ isOpen, onToggle, activeTab, onTabChange }: SidebarPro
 			newExpanded.add(itemId);
 		}
 		setExpandedItems(newExpanded);
+	};
+
+	const handleNavigation = (href: string) => {
+		router.push(href);
+		// Close mobile sidebar after navigation
+		if (isOpen) {
+			onToggle();
+		}
+	};
+
+	const isActive = (href: string) => {
+		if (href === "/") {
+			return pathname === "/";
+		}
+		return pathname.startsWith(href);
 	};
 
 	return (
@@ -194,18 +210,18 @@ export function Sidebar({ isOpen, onToggle, activeTab, onTabChange }: SidebarPro
 										if (item.children) {
 											toggleExpanded(item.id);
 										} else {
-											onTabChange(item.id);
+											handleNavigation(item.href);
 										}
 									}}
 									className={cn(
 										"w-full flex items-center justify-between p-3 rounded-xl text-left transition-all duration-200 group hover:bg-pink-50/50 hover:shadow-sm",
-										activeTab === item.id && "bg-gradient-to-r from-pink-100/50 to-rose-100/50 shadow-sm border border-pink-200/50"
+										isActive(item.href) && "bg-gradient-to-r from-pink-100/50 to-rose-100/50 shadow-sm border border-pink-200/50"
 									)}
 								>
 									<div className="flex items-center space-x-3">
 										<div className={cn(
 											"w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200",
-											activeTab === item.id 
+											isActive(item.href)
 												? "bg-gradient-to-br from-pink-400 to-rose-500 text-white shadow-lg" 
 												: "bg-white/50 text-muted-foreground group-hover:bg-pink-100/50 group-hover:text-pink-600"
 										)}>
@@ -230,19 +246,18 @@ export function Sidebar({ isOpen, onToggle, activeTab, onTabChange }: SidebarPro
 
 								{/* Submenu */}
 								{item.children && expandedItems.has(item.id) && (
-									<div className="ml-12 mt-2 space-y-1">
+									<div className="ml-4 mt-2 space-y-1">
 										{item.children.map((child) => (
 											<button
 												key={child.id}
-												data-testid={`sidebar-item-${child.id}`}
-												onClick={() => onTabChange(child.id)}
+												onClick={() => handleNavigation(child.href)}
 												className={cn(
-													"w-full flex items-center space-x-3 p-2 rounded-lg text-left text-sm transition-all duration-200 hover:bg-pink-50/30",
-													activeTab === child.id && "bg-pink-100/30 text-pink-700"
+													"w-full flex items-center space-x-3 p-2 rounded-lg text-left transition-all duration-200 group hover:bg-pink-50/30",
+													isActive(child.href) && "bg-pink-100/30"
 												)}
 											>
-												{child.icon && <child.icon className="w-4 h-4" />}
-												<span>{child.label}</span>
+												<child.icon className="w-4 h-4 text-muted-foreground group-hover:text-pink-600" />
+												<span className="text-sm text-muted-foreground group-hover:text-foreground">{child.label}</span>
 											</button>
 										))}
 									</div>
@@ -253,20 +268,17 @@ export function Sidebar({ isOpen, onToggle, activeTab, onTabChange }: SidebarPro
 
 					{/* Footer */}
 					<div className="p-4 border-t border-pink-100/50">
-						<div className="flex items-center space-x-3 p-3 rounded-xl bg-gradient-to-r from-pink-50/50 to-rose-50/50">
-							<Avatar className="w-10 h-10">
-								<AvatarImage src="/avatar.jpg" />
-								<AvatarFallback className="bg-gradient-to-br from-pink-400 to-rose-500 text-white">
-									HR
-								</AvatarFallback>
-							</Avatar>
-							<div className="flex-1">
-								<div className="font-medium text-sm">Honey Rae Clinic</div>
-								<div className="text-xs text-muted-foreground">Premium Plan</div>
+						<div className="bg-gradient-to-r from-pink-50 to-rose-50 rounded-xl p-4">
+							<div className="flex items-center space-x-3 mb-3">
+								<div className="w-8 h-8 bg-gradient-to-br from-pink-400 to-rose-500 rounded-lg flex items-center justify-center">
+									<Sparkles className="w-4 h-4 text-white" />
+								</div>
+								<div>
+									<div className="text-sm font-medium">Honey Rae Clinic</div>
+									<div className="text-xs text-muted-foreground">Premium Plan</div>
+								</div>
 							</div>
-							<Badge variant="secondary" className="bg-pink-100 text-pink-700">
-								Active
-							</Badge>
+							<Badge className="bg-green-100 text-green-700 hover:bg-green-200">Active</Badge>
 						</div>
 					</div>
 				</div>

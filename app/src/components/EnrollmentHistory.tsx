@@ -126,76 +126,66 @@ export function EnrollmentHistory({ enrollments, onRefresh }: EnrollmentHistoryP
 	}, [enrollments]);
 
 	return (
-		<div className="space-y-6">
+		<div className="space-y-4">
 			<div className="flex items-center justify-between">
 				<div>
-					<h2 className="text-2xl font-bold tracking-tight">Enrollment History</h2>
-					<p className="text-muted-foreground">
+					<h2 className="text-xl font-bold tracking-tight">Enrollment History</h2>
+					<p className="text-sm text-muted-foreground">
 						Track clients enrolled in workflows and their progress
 					</p>
 				</div>
 				<Button onClick={onRefresh} variant="outline" size="sm">
-					<RefreshCw className="w-4 h-4 mr-2" />
+					<RefreshCw className="w-3 h-3 mr-1" />
 					Refresh
 				</Button>
 			</div>
 
-			{/* Filters */}
-			<Card>
-				<CardHeader>
-					<CardTitle className="flex items-center gap-2">
-						<Filter className="w-4 h-4" />
-						Filters
-					</CardTitle>
-				</CardHeader>
-				<CardContent>
-					<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-						<div className="relative">
-							<Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-							<Input
-								placeholder="Search clients, workflows..."
-								value={searchQuery}
-								onChange={(e) => setSearchQuery(e.target.value)}
-								className="pl-10"
-							/>
-						</div>
-						<Select value={statusFilter} onValueChange={setStatusFilter}>
-							<SelectTrigger>
-								<SelectValue placeholder="Filter by status" />
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="all">All Statuses</SelectItem>
-								<SelectItem value="active">Active</SelectItem>
-								<SelectItem value="paused">Paused</SelectItem>
-								<SelectItem value="completed">Completed</SelectItem>
-								<SelectItem value="cancelled">Cancelled</SelectItem>
-							</SelectContent>
-						</Select>
-						<Select value={workflowFilter} onValueChange={setWorkflowFilter}>
-							<SelectTrigger>
-								<SelectValue placeholder="Filter by workflow" />
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="all">All Workflows</SelectItem>
-								{uniqueWorkflows.map((workflow) => (
-									<SelectItem key={workflow} value={workflow}>
-										{workflow}
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
-					</div>
-				</CardContent>
-			</Card>
+			{/* Compact Filters */}
+			<div className="flex items-center space-x-2">
+				<div className="relative flex-1 max-w-xs">
+					<Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400 w-3 h-3" />
+					<Input
+						placeholder="Search clients, workflows..."
+						value={searchQuery}
+						onChange={(e) => setSearchQuery(e.target.value)}
+						className="pl-7 h-8 text-sm"
+					/>
+				</div>
+				<Select value={statusFilter} onValueChange={setStatusFilter}>
+					<SelectTrigger className="w-32 h-8 text-sm">
+						<SelectValue placeholder="Status" />
+					</SelectTrigger>
+					<SelectContent>
+						<SelectItem value="all">All Statuses</SelectItem>
+						<SelectItem value="active">Active</SelectItem>
+						<SelectItem value="paused">Paused</SelectItem>
+						<SelectItem value="completed">Completed</SelectItem>
+						<SelectItem value="cancelled">Cancelled</SelectItem>
+					</SelectContent>
+				</Select>
+				<Select value={workflowFilter} onValueChange={setWorkflowFilter}>
+					<SelectTrigger className="w-40 h-8 text-sm">
+						<SelectValue placeholder="Workflow" />
+					</SelectTrigger>
+					<SelectContent>
+						<SelectItem value="all">All Workflows</SelectItem>
+						{uniqueWorkflows.map((workflow) => (
+							<SelectItem key={workflow} value={workflow}>
+								{workflow}
+							</SelectItem>
+						))}
+					</SelectContent>
+				</Select>
+			</div>
 
 			{/* Enrollments */}
-			<div className="space-y-4">
+			<div className="space-y-2">
 				{filteredEnrollments.length === 0 ? (
 					<Card>
-						<CardContent className="flex flex-col items-center justify-center py-12">
-							<Users className="w-12 h-12 text-gray-400 mb-4" />
-							<h3 className="text-lg font-semibold text-gray-900 mb-2">No enrollments found</h3>
-							<p className="text-gray-600 text-center">
+						<CardContent className="flex flex-col items-center justify-center py-8">
+							<Users className="w-8 h-8 text-gray-400 mb-2" />
+							<h3 className="text-sm font-semibold text-gray-900 mb-1">No enrollments found</h3>
+							<p className="text-xs text-gray-600 text-center">
 								{searchQuery || statusFilter !== "all" || workflowFilter !== "all"
 									? "Try adjusting your filters or search terms"
 									: "Enrollment history will appear here when clients are enrolled in workflows"}
@@ -207,83 +197,77 @@ export function EnrollmentHistory({ enrollments, onRefresh }: EnrollmentHistoryP
 						const StatusIcon = statusIcons[enrollment.currentStatus];
 						
 						return (
-							<Card key={enrollment._id} className="hover:shadow-md transition-shadow">
-								<CardContent className="p-6">
-									<div className="flex items-start justify-between">
-										<div className="flex items-start space-x-4 flex-1">
-											<Avatar className="w-12 h-12">
+							<Card key={enrollment._id} className="hover:shadow-sm transition-shadow">
+								<CardContent className="p-3">
+									<div className="flex items-center justify-between">
+										<div className="flex items-center space-x-3 flex-1">
+											<Avatar className="w-8 h-8">
 												<AvatarImage src={`/api/avatar/${enrollment.client.fullName.length}`} />
-												<AvatarFallback>
+												<AvatarFallback className="text-xs">
 													{enrollment.client.fullName.split(' ').map(n => n[0]).join('').toUpperCase()}
 												</AvatarFallback>
 											</Avatar>
 											
 											<div className="flex-1 min-w-0">
-												<div className="flex items-center space-x-2 mb-2">
-													<h4 className="font-semibold text-sm">{enrollment.client.fullName}</h4>
-													<Badge variant="outline" className="text-xs">
+												<div className="flex items-center space-x-2 mb-1">
+													<h4 className="font-medium text-sm">{enrollment.client.fullName}</h4>
+													<Badge variant="outline" className="text-xs px-1 py-0">
 														{enrollment.client.email}
 													</Badge>
 												</div>
 												
-												<div className="flex items-center space-x-2 mb-3">
-													<Zap className="w-4 h-4 text-blue-500" />
-													<span className="text-sm font-medium">
+												<div className="flex items-center space-x-2 mb-2">
+													<Zap className="w-3 h-3 text-blue-500" />
+													<span className="text-xs font-medium">
 														{enrollment.workflow.name}
 													</span>
-													<Badge className={`text-xs ${statusColors[enrollment.currentStatus]}`}>
-														<StatusIcon className="w-3 h-3 mr-1" />
+													<Badge className={`text-xs px-1 py-0 ${statusColors[enrollment.currentStatus]}`}>
+														<StatusIcon className="w-2 h-2 mr-1" />
 														{enrollment.currentStatus}
 													</Badge>
 												</div>
 												
-												{/* Progress Bar */}
-												<div className="mb-3">
+												{/* Compact Progress Bar */}
+												<div className="mb-2">
 													<div className="flex items-center justify-between text-xs text-gray-500 mb-1">
-														<span>Progress</span>
-														<span>{enrollment.stepsCompleted}/{enrollment.totalSteps} steps</span>
+														<span className="text-xs">Progress</span>
+														<span className="text-xs">{enrollment.stepsCompleted}/{enrollment.totalSteps}</span>
 													</div>
-													<div className="w-full bg-gray-200 rounded-full h-2">
+													<div className="w-full bg-gray-200 rounded-full h-1.5">
 														<div 
-															className={`h-2 rounded-full transition-all duration-300 ${getProgressColor(enrollment.progress)}`}
+															className={`h-1.5 rounded-full transition-all duration-300 ${getProgressColor(enrollment.progress)}`}
 															style={{ width: `${enrollment.progress}%` }}
 														/>
 													</div>
 												</div>
 												
-												<div className="flex items-center space-x-4 text-xs text-gray-500">
+												<div className="flex items-center space-x-3 text-xs text-gray-500">
 													<div className="flex items-center space-x-1">
-														<Calendar className="w-3 h-3" />
-														<span>Enrolled {getTimeAgo(enrollment.enrolledAt)}</span>
+														<Calendar className="w-2 h-2" />
+														<span>{getTimeAgo(enrollment.enrolledAt)}</span>
 													</div>
 													<span>•</span>
 													<div className="flex items-center space-x-1">
-														<MapPin className="w-3 h-3" />
+														<MapPin className="w-2 h-2" />
 														<span>{reasonLabels[enrollment.enrollmentReason] || enrollment.enrollmentReason}</span>
 													</div>
 													{enrollment.currentStep && (
 														<>
 															<span>•</span>
-															<span>Step: {enrollment.currentStep}</span>
-														</>
-													)}
-													{enrollment.nextExecutionAt && enrollment.currentStatus === "active" && (
-														<>
-															<span>•</span>
-															<span>Next: {getTimeAgo(enrollment.nextExecutionAt)}</span>
+															<span className="text-xs">Step: {enrollment.currentStep}</span>
 														</>
 													)}
 												</div>
 											</div>
 										</div>
 										
-										<div className="flex flex-col items-end space-y-2">
-											<Badge variant="outline" className="text-xs">
-												{enrollment.progress}% Complete
+										<div className="flex flex-col items-end space-y-1">
+											<Badge variant="outline" className="text-xs px-1 py-0">
+												{enrollment.progress}%
 											</Badge>
 											{enrollment.completedAt && (
 												<div className="text-xs text-gray-500">
-													Completed {formatDate(enrollment.completedAt)}
+													{formatDate(enrollment.completedAt)}
 												</div>
 											)}
 										</div>

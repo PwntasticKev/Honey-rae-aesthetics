@@ -29,22 +29,14 @@ import {
 } from "lucide-react";
 import { Sidebar } from "@/components/Sidebar";
 import { useAuth } from "@/hooks/useAuth";
-import { ClientList } from "@/components/ClientList";
-import { WorkflowList } from "@/components/WorkflowList";
-import { AppointmentList } from "@/components/AppointmentList";
-import { PhotoGallery } from "@/components/PhotoGallery";
-import { TemplateList } from "@/components/TemplateList";
-import { SocialMediaManager } from "@/components/SocialMediaManager";
-import { MessagingCenter } from "@/components/MessagingCenter";
-import { AnalyticsDashboard } from "@/components/AnalyticsDashboard";
-import { TeamManager } from "@/components/TeamManager";
-import { BillingManager } from "@/components/BillingManager";
-import { DataManager } from "@/components/DataManager";
 
 export default function Dashboard() {
-	const { user, isAuthenticated, isLoading, logout } = useAuth();
+	const { user, logout } = useAuth();
 	const [sidebarOpen, setSidebarOpen] = useState(false);
-	const [activeTab, setActiveTab] = useState("dashboard");
+	
+	// Temporarily bypass authentication for development
+	const isAuthenticated = true;
+	const isLoading = false;
 
 	// Mock data for testing
 	const [clients, setClients] = useState([
@@ -157,65 +149,12 @@ export default function Dashboard() {
 		return aptDate > today;
 	});
 
-	// Client handlers
-	const handleAddClient = () => {
-		console.log("Add client");
-	};
-
-	const handleEditClient = (clientId: string) => {
-		console.log("Edit client:", clientId);
-	};
-
-	const handleDeleteClient = (clientId: string) => {
-		console.log("Delete client:", clientId);
-	};
-
-	// Workflow handlers
-	const handleAddWorkflow = () => {
-		console.log("Add workflow");
-	};
-
-	const handleEditWorkflow = (workflowId: string) => {
-		console.log("Edit workflow:", workflowId);
-	};
-
-	const handleDeleteWorkflow = (workflowId: string) => {
-		console.log("Delete workflow:", workflowId);
-	};
-
-	const handleToggleWorkflow = (workflowId: string) => {
-		console.log("Toggle workflow:", workflowId);
-	};
-
-	if (isLoading) {
-		return (
-			<div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-rose-50 flex items-center justify-center">
-				<div className="text-center">
-					<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500 mx-auto mb-4"></div>
-					<p className="text-muted-foreground">Loading...</p>
-				</div>
-			</div>
-		);
-	}
-
-	if (!isAuthenticated) {
-		return (
-			<div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-rose-50 flex items-center justify-center">
-				<div className="text-center">
-					<p className="text-muted-foreground">Please log in to continue.</p>
-				</div>
-			</div>
-		);
-	}
-
 	return (
 		<div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-rose-50">
 			{/* Sidebar */}
 			<Sidebar
 				isOpen={sidebarOpen}
 				onToggle={() => setSidebarOpen(!sidebarOpen)}
-				activeTab={activeTab}
-				onTabChange={setActiveTab}
 			/>
 
 			{/* Main Content */}
@@ -281,244 +220,161 @@ export default function Dashboard() {
 				{/* Page Content */}
 				<main className="flex-1 p-6 space-y-6">
 					{/* Dashboard */}
-					{activeTab === "dashboard" && (
-						<div className="space-y-6">
-							{/* Welcome Section */}
-							<div className="glass rounded-2xl p-6">
-								<div className="flex items-center justify-between">
-									<div>
-										<h2 className="text-2xl font-bold gradient-text mb-2">Welcome back, Dr. Rae! ✨</h2>
-										<p className="text-muted-foreground">Here's what's happening with your practice today.</p>
-									</div>
-									<div className="text-right">
-										<p className="text-sm text-muted-foreground">Today</p>
-										<p className="text-2xl font-bold text-foreground">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
-									</div>
+					<div className="space-y-6">
+						{/* Welcome Section */}
+						<div className="glass rounded-2xl p-6">
+							<div className="flex items-center justify-between">
+								<div>
+									<h2 className="text-2xl font-bold gradient-text mb-2">Welcome back, Dr. Rae! ✨</h2>
+									<p className="text-muted-foreground">Here's what's happening with your practice today.</p>
+								</div>
+								<div className="text-right">
+									<p className="text-sm text-muted-foreground">Today</p>
+									<p className="text-2xl font-bold text-foreground">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
 								</div>
 							</div>
+						</div>
 
-							{/* Quick Stats */}
-							<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-								<Card className="glass border-pink-200/50 hover:shadow-lg transition-all duration-300">
-									<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-										<CardTitle className="text-sm font-medium">Total Clients</CardTitle>
-										<Heart className="h-4 w-4 text-pink-500" />
-									</CardHeader>
-									<CardContent>
-										<div className="text-2xl font-bold gradient-text">{clients.length}</div>
-										<p className="text-xs text-muted-foreground">
-											+12% from last month
-										</p>
-									</CardContent>
-								</Card>
-								
-								<Card className="glass border-pink-200/50 hover:shadow-lg transition-all duration-300">
-									<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-										<CardTitle className="text-sm font-medium">Today's Appointments</CardTitle>
-										<Calendar className="h-4 w-4 text-rose-500" />
-									</CardHeader>
-									<CardContent>
-										<div className="text-2xl font-bold gradient-text">{todayAppointments.length}</div>
-										<p className="text-xs text-muted-foreground">
-											{upcomingAppointments.length} upcoming
-										</p>
-									</CardContent>
-								</Card>
-								
-								<Card className="glass border-pink-200/50 hover:shadow-lg transition-all duration-300">
-									<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-										<CardTitle className="text-sm font-medium">Messages Sent</CardTitle>
-										<MessageSquare className="h-4 w-4 text-purple-500" />
-									</CardHeader>
-									<CardContent>
-										<div className="text-2xl font-bold gradient-text">{messages.length}</div>
-										<p className="text-xs text-muted-foreground">
-											+8% from last week
-										</p>
-									</CardContent>
-								</Card>
-								
-								<Card className="glass border-pink-200/50 hover:shadow-lg transition-all duration-300">
-									<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-										<CardTitle className="text-sm font-medium">Active Workflows</CardTitle>
-										<Zap className="h-4 w-4 text-yellow-500" />
-									</CardHeader>
-									<CardContent>
-										<div className="text-2xl font-bold gradient-text">{workflows.filter(w => w.enabled).length}</div>
-										<p className="text-xs text-muted-foreground">
-											{workflows.reduce((total, w) => total + w.runCount, 0)} total runs
-										</p>
-									</CardContent>
-								</Card>
-								
-								<Card className="glass border-pink-200/50 hover:shadow-lg transition-all duration-300">
-									<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-										<CardTitle className="text-sm font-medium">Photos Uploaded</CardTitle>
-										<Camera className="h-4 w-4 text-orange-500" />
-									</CardHeader>
-									<CardContent>
-										<div className="text-2xl font-bold gradient-text">{files.length}</div>
-										<p className="text-xs text-muted-foreground">
-											+5 new this week
-										</p>
-									</CardContent>
-								</Card>
-							</div>
+						{/* Quick Stats */}
+						<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+							<Card className="glass border-pink-200/50 hover:shadow-lg transition-all duration-300">
+								<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+									<CardTitle className="text-sm font-medium">Total Clients</CardTitle>
+									<Heart className="h-4 w-4 text-pink-500" />
+								</CardHeader>
+								<CardContent>
+									<div className="text-2xl font-bold gradient-text">{clients.length}</div>
+									<p className="text-xs text-muted-foreground">
+										+12% from last month
+									</p>
+								</CardContent>
+							</Card>
+							
+							<Card className="glass border-pink-200/50 hover:shadow-lg transition-all duration-300">
+								<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+									<CardTitle className="text-sm font-medium">Today's Appointments</CardTitle>
+									<Calendar className="h-4 w-4 text-rose-500" />
+								</CardHeader>
+								<CardContent>
+									<div className="text-2xl font-bold gradient-text">{todayAppointments.length}</div>
+									<p className="text-xs text-muted-foreground">
+										{upcomingAppointments.length} upcoming
+									</p>
+								</CardContent>
+							</Card>
+							
+							<Card className="glass border-pink-200/50 hover:shadow-lg transition-all duration-300">
+								<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+									<CardTitle className="text-sm font-medium">Messages Sent</CardTitle>
+									<MessageSquare className="h-4 w-4 text-purple-500" />
+								</CardHeader>
+								<CardContent>
+									<div className="text-2xl font-bold gradient-text">{messages.length}</div>
+									<p className="text-xs text-muted-foreground">
+										+8% from last week
+									</p>
+								</CardContent>
+							</Card>
+							
+							<Card className="glass border-pink-200/50 hover:shadow-lg transition-all duration-300">
+								<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+									<CardTitle className="text-sm font-medium">Active Workflows</CardTitle>
+									<Zap className="h-4 w-4 text-yellow-500" />
+								</CardHeader>
+								<CardContent>
+									<div className="text-2xl font-bold gradient-text">{workflows.filter(w => w.enabled).length}</div>
+									<p className="text-xs text-muted-foreground">
+										{workflows.reduce((total, w) => total + w.runCount, 0)} total runs
+									</p>
+								</CardContent>
+							</Card>
+							
+							<Card className="glass border-pink-200/50 hover:shadow-lg transition-all duration-300">
+								<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+									<CardTitle className="text-sm font-medium">Photos Uploaded</CardTitle>
+									<Camera className="h-4 w-4 text-orange-500" />
+								</CardHeader>
+								<CardContent>
+									<div className="text-2xl font-bold gradient-text">{files.length}</div>
+									<p className="text-xs text-muted-foreground">
+										+5 new this week
+									</p>
+								</CardContent>
+							</Card>
+						</div>
 
-							{/* Quick Actions & Recent Activity */}
-							<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-								{/* Quick Actions */}
-								<Card className="glass border-pink-200/50">
-									<CardHeader>
-										<CardTitle className="flex items-center gap-2">
-											<Zap className="h-5 w-5 text-pink-500" />
-											Quick Actions
-										</CardTitle>
-									</CardHeader>
-									<CardContent className="space-y-3">
-										<Button 
-											className="w-full justify-start bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600"
-										>
-											<UserPlus className="w-4 h-4 mr-2" />
-											Add New Client
-										</Button>
-										<Button 
-											variant="outline"
-											className="w-full justify-start border-pink-200 text-pink-700 hover:bg-pink-50"
-										>
-											<Calendar className="w-4 h-4 mr-2" />
-											Schedule Appointment
-										</Button>
-										<Button 
-											variant="outline"
-											className="w-full justify-start border-pink-200 text-pink-700 hover:bg-pink-50"
-										>
-											<Workflow className="w-4 h-4 mr-2" />
-											Create Workflow
-										</Button>
-									</CardContent>
-								</Card>
+						{/* Quick Actions & Recent Activity */}
+						<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+							{/* Quick Actions */}
+							<Card className="glass border-pink-200/50">
+								<CardHeader>
+									<CardTitle className="flex items-center gap-2">
+										<Zap className="h-5 w-5 text-pink-500" />
+										Quick Actions
+									</CardTitle>
+								</CardHeader>
+								<CardContent className="space-y-3">
+									<Button 
+										className="w-full justify-start bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600"
+									>
+										<UserPlus className="w-4 h-4 mr-2" />
+										Add New Client
+									</Button>
+									<Button 
+										variant="outline"
+										className="w-full justify-start border-pink-200 text-pink-700 hover:bg-pink-50"
+									>
+										<Calendar className="w-4 h-4 mr-2" />
+										Schedule Appointment
+									</Button>
+									<Button 
+										variant="outline"
+										className="w-full justify-start border-pink-200 text-pink-700 hover:bg-pink-50"
+									>
+										<Workflow className="w-4 h-4 mr-2" />
+										Create Workflow
+									</Button>
+								</CardContent>
+							</Card>
 
-								{/* Recent Activity */}
-								<Card className="glass border-pink-200/50">
-									<CardHeader>
-										<CardTitle className="flex items-center gap-2">
-											<Activity className="h-5 w-5 text-pink-500" />
-											Recent Activity
-										</CardTitle>
-									</CardHeader>
-									<CardContent>
-										<div className="space-y-4">
-											<div className="flex items-center space-x-3">
-												<div className="w-2 h-2 bg-pink-500 rounded-full"></div>
-												<div className="flex-1">
-													<p className="text-sm font-medium">New client added</p>
-													<p className="text-xs text-muted-foreground">Sarah Johnson • 2 hours ago</p>
-												</div>
-											</div>
-											<div className="flex items-center space-x-3">
-												<div className="w-2 h-2 bg-rose-500 rounded-full"></div>
-												<div className="flex-1">
-													<p className="text-sm font-medium">Appointment scheduled</p>
-													<p className="text-xs text-muted-foreground">Michael Chen • 4 hours ago</p>
-												</div>
-											</div>
-											<div className="flex items-center space-x-3">
-												<div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-												<div className="flex-1">
-													<p className="text-sm font-medium">Message sent</p>
-													<p className="text-xs text-muted-foreground">Welcome message • 6 hours ago</p>
-												</div>
+							{/* Recent Activity */}
+							<Card className="glass border-pink-200/50">
+								<CardHeader>
+									<CardTitle className="flex items-center gap-2">
+										<Activity className="h-5 w-5 text-pink-500" />
+										Recent Activity
+									</CardTitle>
+								</CardHeader>
+								<CardContent>
+									<div className="space-y-4">
+										<div className="flex items-center space-x-3">
+											<div className="w-2 h-2 bg-pink-500 rounded-full"></div>
+											<div className="flex-1">
+												<p className="text-sm font-medium">New client added</p>
+												<p className="text-xs text-muted-foreground">Sarah Johnson • 2 hours ago</p>
 											</div>
 										</div>
-									</CardContent>
-								</Card>
-							</div>
+										<div className="flex items-center space-x-3">
+											<div className="w-2 h-2 bg-rose-500 rounded-full"></div>
+											<div className="flex-1">
+												<p className="text-sm font-medium">Appointment scheduled</p>
+												<p className="text-xs text-muted-foreground">Michael Chen • 4 hours ago</p>
+											</div>
+										</div>
+										<div className="flex items-center space-x-3">
+											<div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+											<div className="flex-1">
+												<p className="text-sm font-medium">Message sent</p>
+												<p className="text-xs text-muted-foreground">Welcome message • 6 hours ago</p>
+											</div>
+										</div>
+									</div>
+								</CardContent>
+							</Card>
 						</div>
-					)}
-
-					{/* Clients */}
-					{activeTab === "clients" && (
-						<ClientList
-							clients={clients}
-							onAddClient={handleAddClient}
-							onEditClient={handleEditClient}
-							onDeleteClient={handleDeleteClient}
-						/>
-					)}
-
-					{/* Appointments */}
-					{activeTab === "appointments" && (
-						<AppointmentList 
-							orgId="org1"
-							onAddAppointment={() => console.log("Add appointment")}
-							onEditAppointment={(id) => console.log("Edit appointment:", id)}
-							onDeleteAppointment={(id) => console.log("Delete appointment:", id)}
-						/>
-					)}
-
-					{/* Photo Gallery */}
-					{activeTab === "gallery" && (
-						<PhotoGallery orgId="org1" />
-					)}
-
-					{/* Templates */}
-					{activeTab === "templates" && (
-						<TemplateList 
-							orgId="org1"
-							type="sms"
-							onAddTemplate={() => console.log("Add template")}
-							onEditTemplate={(id) => console.log("Edit template:", id)}
-							onDeleteTemplate={(id) => console.log("Delete template:", id)}
-						/>
-					)}
-
-					{/* Workflows */}
-					{activeTab === "workflows" && (
-						<WorkflowList
-							workflows={workflows}
-							onAddWorkflow={handleAddWorkflow}
-							onEditWorkflow={handleEditWorkflow}
-							onDeleteWorkflow={handleDeleteWorkflow}
-							onToggleWorkflow={handleToggleWorkflow}
-						/>
-					)}
-
-					{/* Social Media */}
-					{activeTab === "social" && (
-						<SocialMediaManager 
-							onCreatePost={() => console.log("Create post")}
-							onEditPost={(id) => console.log("Edit post:", id)}
-							onDeletePost={(id) => console.log("Delete post:", id)}
-						/>
-					)}
-
-					{/* Messaging */}
-					{activeTab === "messaging" && (
-						<MessagingCenter orgId="org1" />
-					)}
-
-					{/* Analytics */}
-					{activeTab === "analytics" && (
-						<AnalyticsDashboard orgId="org1" />
-					)}
-
-					{/* Team */}
-					{activeTab === "team" && (
-						<TeamManager orgId="org1" />
-					)}
-
-					{/* Billing */}
-					{activeTab === "billing" && (
-						<BillingManager orgId="org1" />
-					)}
-
-					{/* Settings */}
-					{activeTab === "settings" && (
-						<DataManager orgId="org1" />
-					)}
+					</div>
 				</main>
 			</div>
 		</div>
 	);
-}
+} 

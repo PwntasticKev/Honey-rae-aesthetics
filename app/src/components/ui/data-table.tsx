@@ -157,8 +157,15 @@ export function DataTable({
 									</tr>
 								</thead>
 								<tbody>
-									{data.map((row, index) => (
-										<tr key={row._id || index} className="border-b border-gray-100 hover:bg-gray-50">
+									{data.map((row, index) => {
+										const isActive = row.enabled || false;
+										return (
+											<tr 
+												key={row._id || index} 
+												className={`border-b border-gray-100 hover:bg-gray-50 ${
+													isActive ? 'bg-green-50 border-green-200' : ''
+												}`}
+											>
 											{columns.map((column) => (
 												<td key={column.key} className="py-4 px-4">
 													{column.render ? 
@@ -211,7 +218,8 @@ export function DataTable({
 												</td>
 											)}
 										</tr>
-									))}
+									);
+								})}
 								</tbody>
 							</table>
 						</div>
@@ -219,8 +227,15 @@ export function DataTable({
 				</Card>
 			) : (
 				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-					{data.map((row, index) => (
-						<Card key={row._id || index} className="hover:shadow-lg transition-shadow">
+					{data.map((row, index) => {
+						const isActive = row.enabled || false;
+						return (
+							<Card 
+								key={row._id || index} 
+								className={`hover:shadow-lg transition-shadow ${
+									isActive ? 'bg-green-50 border-green-200' : ''
+								}`}
+							>
 							<CardHeader className="pb-3">
 								<div className="flex items-start justify-between">
 									<div className="flex-1">
@@ -283,7 +298,8 @@ export function DataTable({
 								</div>
 							</CardContent>
 						</Card>
-					))}
+					);
+				})}
 				</div>
 			)}
 
