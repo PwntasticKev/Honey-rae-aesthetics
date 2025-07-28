@@ -30,6 +30,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ExecutionLogs } from "@/components/ExecutionLogs";
 import { EnrollmentHistory } from "@/components/EnrollmentHistory";
+import { EmailService } from "@/lib/emailService";
 import {
 	Zap,
 	Clock,
@@ -155,36 +156,7 @@ const blockTypes: BlockType[] = [
 			}
 		]
 	},
-	{
-		type: "wait",
-		label: "Wait",
-		icon: Clock,
-		description: "Wait for time",
-		color: "bg-yellow-500",
-		config: {
-			value: 1,
-			unit: "days"
-		},
-		configFields: [
-			{
-				key: "value",
-				label: "Duration",
-				type: "number",
-				placeholder: "1"
-			},
-			{
-				key: "unit",
-				label: "Unit",
-				type: "select",
-				options: [
-					{ value: "minutes", label: "Minutes" },
-					{ value: "hours", label: "Hours" },
-					{ value: "days", label: "Days" },
-					{ value: "weeks", label: "Weeks" }
-				]
-			}
-		]
-	},
+
 	{
 		type: "send_sms",
 		label: "Send SMS",
@@ -560,36 +532,7 @@ const WorkflowDelayNode = ({ data, selected }: any) => {
 	);
 };
 
-const WorkflowWaitNode = ({ data, selected }: any) => {
-	const blockType = blockTypes.find(bt => bt.type === data.type);
-	const Icon = blockType?.icon || Clock;
-	
-	// Format the wait display
-	const formatWait = () => {
-		const config = data.config || {};
-		const value = config.value || 1;
-		const unit = config.unit || 'days';
-		const unitLabel = unit === 'days' ? 'day' : unit === 'hours' ? 'hour' : unit === 'minutes' ? 'minute' : unit === 'weeks' ? 'week' : unit;
-		const plural = value === 1 ? unitLabel : unitLabel + 's';
-		return `${value} ${plural}`;
-	};
-	
-	return (
-		<div className={`p-3 rounded-lg border-2 ${selected ? 'border-blue-500' : 'border-gray-200'} bg-white cursor-pointer`}>
-			<Handle type="target" position={Position.Left} className="w-3 h-3" />
-			<div className="flex items-center space-x-2">
-				<div className="w-8 h-8 rounded-lg flex items-center justify-center bg-yellow-100">
-					<Icon className="w-4 h-4 text-yellow-600" />
-				</div>
-				<div>
-					<div className="font-medium text-sm">Wait</div>
-					<div className="text-xs text-gray-500">{formatWait()}</div>
-				</div>
-			</div>
-			<Handle type="source" position={Position.Right} className="w-3 h-3" />
-		</div>
-	);
-};
+
 
 function WorkflowEditor({ workflow, onSave, onCancel }: VisualWorkflowEditorProps) {
 	const router = useRouter();
@@ -601,6 +544,8 @@ function WorkflowEditor({ workflow, onSave, onCancel }: VisualWorkflowEditorProp
 	const [selectedNode, setSelectedNode] = useState<Node | null>(null);
 	const [editingNode, setEditingNode] = useState<Node | null>(null);
 	const [showRightPanel, setShowRightPanel] = useState(false);
+	const [showTestPanel, setShowTestPanel] = useState(false);
+	const [selectedTestContact, setSelectedTestContact] = useState<string>('');
 	const [activeTab, setActiveTab] = useState<'builder' | 'execution-logs' | 'enrollment-history'>('builder');
 
 	// Mock data for execution logs and enrollment history
@@ -779,6 +724,99 @@ function WorkflowEditor({ workflow, onSave, onCancel }: VisualWorkflowEditorProp
 		onSave(workflowData);
 	};
 
+	const testWorkflow = async () => {
+		if (!selectedTestContact) {
+			alert('Please select a contact to test with');
+			return;
+		}
+
+		// Extract email from contact string
+		const emailMatch = selectedTestContact.match(/\(([^)]+)\)/);
+		const email = emailMatch ? emailMatch[1] : selectedTestContact;
+		const name = selectedTestContact.split(' (')[0];
+
+		console.log('Testing workflow with contact:', selectedTestContact);
+		console.log('Extracted email:', email);
+		console.log('Extracted name:', name);
+		
+		// Find trigger node
+		const triggerNode = nodes.find(node => node.type === 'trigger');
+		if (!triggerNode) {
+			alert('No trigger node found in workflow');
+			return;
+		}
+
+		// Execute each node sequentially
+		for (let i = 0; i < nodes.length; i++) {
+			const node = nodes[i];
+			console.log(`Executing node ${i + 1}:`, node.data);
+			
+			switch (node.data.type) {
+				case 'send_sms':
+					const smsMessage = node.data.config.message?.replace('{{first_name}}', name) || 'Test SMS message';
+					await EmailService.sendSMS({ to: email, message: smsMessage });
+					break;
+				case 'send_email':
+					const emailSubject = node.data.config.subject || 'Test Email';
+					const emailMessage = node.data.config.message?.replace('{{first_name}}', name) || 'Test email message';
+					await EmailService.sendEmail({ 
+						to: email, 
+						subject: emailSubject, 
+						message: emailMessage 
+					});
+					break;
+				case 'add_tag':
+					const tag = node.data.config.tag || 'test_tag';
+					await EmailService.addTag(selectedTestContact, tag);
+					break;
+				case 'delay':
+					const value = node.data.config.value || 1;
+					const unit = node.data.config.unit || 'days';
+					console.log(`⏰ Delay for ${value} ${unit} for ${selectedTestContact}`);
+					
+					// Convert to milliseconds for actual delay
+					let delayMs = 0;
+					switch (unit) {
+						case 'minutes':
+							delayMs = value * 60 * 1000;
+							break;
+						case 'hours':
+							delayMs = value * 60 * 60 * 1000;
+							break;
+						case 'days':
+							delayMs = value * 24 * 60 * 60 * 1000;
+							break;
+						case 'weeks':
+							delayMs = value * 7 * 24 * 60 * 60 * 1000;
+							break;
+						default:
+							delayMs = value * 60 * 1000; // default to minutes
+					}
+					
+					// Show delay message with countdown
+					const delayMessage = `⏰ Delaying for ${value} ${unit} for ${selectedTestContact}\n\nThis will take ${delayMs / 1000} seconds...`;
+					alert(delayMessage);
+					
+					// Show progress every second
+					const totalSeconds = Math.floor(delayMs / 1000);
+					for (let second = 1; second <= totalSeconds; second++) {
+						await new Promise(resolve => setTimeout(resolve, 1000));
+						console.log(`⏰ Delay progress: ${second}/${totalSeconds} seconds`);
+					}
+					
+					console.log(`✅ Delay completed after ${value} ${unit}`);
+					break;
+				case 'if':
+					console.log(`🔍 Condition checked for ${selectedTestContact}:`, node.data.config);
+					alert(`🔍 Condition checked: ${node.data.config.condition} ${node.data.config.operator} ${node.data.config.value}`);
+					break;
+			}
+		}
+
+		alert(`✅ Workflow test completed for ${selectedTestContact}!`);
+		setShowTestPanel(false);
+	};
+
 	const onConnect = useCallback((params: Connection) => {
 		setEdges((eds) => addEdge(params, eds));
 	}, [setEdges]);
@@ -832,8 +870,8 @@ function WorkflowEditor({ workflow, onSave, onCancel }: VisualWorkflowEditorProp
 			nodeType = 'trigger';
 		} else if (type === 'if') {
 			nodeType = 'condition';
-		} else if (type === 'delay' || type === 'wait') {
-			nodeType = type; // Use the specific type for delay/wait
+		} else if (type === 'delay') {
+			nodeType = 'delay'; // Use the specific type for delay
 		} else if (type === 'send_sms' || type === 'send_email' || type === 'add_tag') {
 			nodeType = type; // Use the specific type for these actions
 		}
@@ -866,6 +904,8 @@ function WorkflowEditor({ workflow, onSave, onCancel }: VisualWorkflowEditorProp
 	const onNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
 		console.log('Node clicked:', node);
 		console.log('Node data:', node.data);
+		console.log('Node type:', node.type);
+		console.log('Node config:', node.data?.config);
 		setSelectedNode(node);
 		setEditingNode(node);
 		setShowRightPanel(true);
@@ -886,19 +926,28 @@ function WorkflowEditor({ workflow, onSave, onCancel }: VisualWorkflowEditorProp
 	}, [setNodes, setEdges]);
 
 	const updateNodeConfig = useCallback((nodeId: string, config: any) => {
+		console.log('Updating node config:', nodeId, config);
 		setNodes((nds) =>
-			nds.map((node) =>
-				node.id === nodeId
-					? { ...node, data: { ...node.data, config } }
-					: node
-			)
+			nds.map((node) => {
+				if (node.id === nodeId) {
+					const updatedNode = { ...node, data: { ...node.data, config } };
+					console.log('Updated node:', updatedNode);
+					return updatedNode;
+				}
+				return node;
+			})
 		);
 	}, [setNodes]);
 
 	const renderNodeConfig = () => {
 		if (!editingNode) return null;
 
-		const blockType = blockTypes.find(bt => bt.type === editingNode.type);
+		console.log('Rendering config for node:', editingNode);
+		console.log('Node data type:', editingNode.data?.type);
+
+		// Find block type by the actual type in data, not the React Flow node type
+		const blockType = blockTypes.find(bt => bt.type === editingNode.data?.type);
+		console.log('Found block type:', blockType);
 		if (!blockType) return null;
 
 		return (
@@ -956,10 +1005,12 @@ function WorkflowEditor({ workflow, onSave, onCancel }: VisualWorkflowEditorProp
 								type="number"
 								value={editingNode.data?.config?.[field.key] || ''}
 								onChange={(e) => {
+									console.log('Number value changed:', field.key, e.target.value);
 									const newConfig = {
 										...editingNode.data?.config,
 										[field.key]: parseInt(e.target.value) || 0
 									};
+									console.log('New config:', newConfig);
 									updateNodeConfig(editingNode.id, newConfig);
 								}}
 								placeholder={field.placeholder}
@@ -969,10 +1020,12 @@ function WorkflowEditor({ workflow, onSave, onCancel }: VisualWorkflowEditorProp
 							<Select
 								value={editingNode.data?.config?.[field.key] || ''}
 								onValueChange={(value) => {
+									console.log('Select value changed:', field.key, value);
 									const newConfig = {
 										...editingNode.data?.config,
 										[field.key]: value
 									};
+									console.log('New config:', newConfig);
 									updateNodeConfig(editingNode.id, newConfig);
 								}}
 							>
@@ -1011,7 +1064,6 @@ function WorkflowEditor({ workflow, onSave, onCancel }: VisualWorkflowEditorProp
 		action: ActionNode,
 		condition: ConditionNode,
 		delay: WorkflowDelayNode,
-		wait: WorkflowWaitNode,
 		send_sms: SendSMSNode,
 		send_email: SendEmailNode,
 		add_tag: AddTagNode,
@@ -1039,6 +1091,14 @@ function WorkflowEditor({ workflow, onSave, onCancel }: VisualWorkflowEditorProp
 							</div>
 						</div>
 						<div className="flex items-center space-x-2">
+							<Button 
+								variant="outline" 
+								onClick={() => setShowTestPanel(true)}
+								className="bg-blue-50 text-blue-600 hover:bg-blue-100"
+							>
+								<Play className="w-4 h-4 mr-2" />
+								Test Workflow
+							</Button>
 							<Button variant="outline" onClick={onCancel}>
 								Cancel
 							</Button>
@@ -1151,18 +1211,28 @@ function WorkflowEditor({ workflow, onSave, onCancel }: VisualWorkflowEditorProp
 							onDrop={onDrop}
 							onDragOver={onDragOver}
 							nodeTypes={nodeTypes}
-							fitView
+							fitView={false}
+							defaultViewport={{ x: 0, y: 0, zoom: 0.7 }}
 							className="bg-gray-100 dark:bg-gray-800"
 							onNodeClick={onNodeClick}
 							onPaneClick={onPaneClick}
 							proOptions={{ hideAttribution: true }}
 							data-testid="react-flow-canvas"
+							panOnScroll={true}
+							zoomOnScroll={false}
+							zoomOnPinch={true}
+							panOnDrag={true}
 						>
-							<MiniMap nodeColor={(n) => {
-								if (n.type === 'trigger') return '#6EE7B7';
-								if (n.type === 'condition') return '#FCD34D';
-								return '#93C5FD';
-							}} />
+							<MiniMap 
+								nodeColor={(n) => {
+									if (n.type === 'trigger') return '#6EE7B7';
+									if (n.type === 'condition') return '#FCD34D';
+									return '#93C5FD';
+								}}
+								style={{ width: 150, height: 100 }}
+								zoomable={true}
+								pannable={true}
+							/>
 							<Controls />
 							<Background variant={BackgroundVariant.Dots} gap={12} size={1} />
 						</ReactFlow>
@@ -1184,6 +1254,61 @@ function WorkflowEditor({ workflow, onSave, onCancel }: VisualWorkflowEditorProp
 						<div className="w-80 bg-white border-l overflow-y-auto" data-testid="node-config-panel">
 							<div className="p-4">
 								{renderNodeConfig()}
+							</div>
+						</div>
+					)}
+
+					{/* Test Panel Overlay */}
+					{showTestPanel && (
+						<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+							<div className="bg-white rounded-lg p-6 w-96 max-w-md">
+								<div className="flex items-center justify-between mb-4">
+									<h3 className="text-lg font-semibold">Run A Test For Contact</h3>
+									<Button
+										variant="ghost"
+										size="sm"
+										onClick={() => setShowTestPanel(false)}
+										className="h-8 w-8 p-0"
+									>
+										<X className="h-4 w-4" />
+									</Button>
+								</div>
+								
+								<p className="text-sm text-gray-600 mb-4">
+									Select Contact to test this workflow
+								</p>
+
+								<div className="space-y-4">
+									<div>
+										<Label htmlFor="test-contact" className="text-sm font-medium">
+											SELECT CONTACTS
+										</Label>
+										<Select value={selectedTestContact} onValueChange={setSelectedTestContact}>
+											<SelectTrigger className="w-full">
+												<SelectValue placeholder="Select a contact..." />
+											</SelectTrigger>
+											<SelectContent>
+												<SelectItem value="kevin lee (pwntastickevin@gmail.com)">
+													kevin lee (pwntastickevin@gmail.com)
+												</SelectItem>
+												<SelectItem value="sarah johnson (sarah.johnson@email.com)">
+													sarah johnson (sarah.johnson@email.com)
+												</SelectItem>
+												<SelectItem value="michael chen (michael.chen@email.com)">
+													michael chen (michael.chen@email.com)
+												</SelectItem>
+											</SelectContent>
+										</Select>
+									</div>
+
+									<Button 
+										onClick={testWorkflow}
+										className="w-full bg-blue-600 hover:bg-blue-700"
+										disabled={!selectedTestContact}
+									>
+										Run Test
+									</Button>
+								</div>
 							</div>
 						</div>
 					)}
