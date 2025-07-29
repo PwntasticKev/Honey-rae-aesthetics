@@ -1,430 +1,388 @@
+// Google Calendar API integration service
+// This service handles OAuth authentication and calendar operations
+
 interface GoogleCalendarEvent {
-	id: string;
-	summary: string;
-	description?: string;
-	start: {
-		dateTime: string;
-		timeZone: string;
-	};
-	end: {
-		dateTime: string;
-		timeZone: string;
-	};
-	attendees?: Array<{
-		email: string;
-		displayName?: string;
-		responseStatus?: string;
-	}>;
-	organizer?: {
-		email: string;
-		displayName?: string;
-	};
+  id: string;
+  title: string;
+  start: Date;
+  end: Date;
+  description?: string;
+  location?: string;
+  attendees?: string[];
+  calendarId: string;
+  calendarName: string;
+  calendarColor: string;
 }
 
-interface CalendarProvider {
-	id: string;
-	name: string;
-	email: string;
-	color: string;
-	isConnected: boolean;
-	googleCalendarId?: string;
-	lastSync?: Date;
-	accessToken?: string;
-	refreshToken?: string;
-}
-
-interface SyncResult {
-	success: boolean;
-	eventsAdded: number;
-	eventsUpdated: number;
-	eventsDeleted: number;
-	error?: string;
+interface GoogleCalendar {
+  id: string;
+  name: string;
+  color: string;
+  isSelected: boolean;
+  email?: string;
 }
 
 class GoogleCalendarService {
-	private static instance: GoogleCalendarService;
-	private providers: Map<string, CalendarProvider> = new Map();
-	private isInitialized = false;
-	private syncCallbacks: Array<() => void> = [];
+  private clientId: string;
+  private apiKey: string;
+  private discoveryDocs: string[];
+  private scopes: string;
+  private tokenClient: any;
+  private gapiInited: boolean = false;
+  private gisInited: boolean = false;
 
-	private constructor() {}
+  constructor() {
+    this.clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
+    this.apiKey = process.env.NEXT_PUBLIC_GOOGLE_API_KEY || "";
+    this.discoveryDocs = [
+      "https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest",
+    ];
+    this.scopes =
+      "https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events";
+  }
 
-	static getInstance(): GoogleCalendarService {
-		if (!GoogleCalendarService.instance) {
-			GoogleCalendarService.instance = new GoogleCalendarService();
-		}
-		return GoogleCalendarService.instance;
-	}
+  async initialize(): Promise<void> {
+    try {
+      // Load Google API client
+      await this.loadGoogleAPI();
+      await this.loadGoogleIdentityServices();
 
-	async initialize(): Promise<void> {
-		if (this.isInitialized) return;
+      this.gapiInited = true;
+      this.gisInited = true;
+    } catch (error) {
+      console.error("Failed to initialize Google Calendar service:", error);
+    }
+  }
 
-		// Load saved providers from localStorage
-		if (typeof window !== 'undefined') {
-			const savedProviders = localStorage.getItem('googleCalendarProviders');
-			if (savedProviders) {
-				const providers = JSON.parse(savedProviders);
-				providers.forEach((provider: CalendarProvider) => {
-					this.providers.set(provider.id, provider);
-				});
-			}
-		}
+  private async loadGoogleAPI(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      try {
+        const script = document.createElement("script");
+        script.src = "https://apis.google.com/js/api.js";
+        script.onload = () => {
+          try {
+            (window as any).gapi.load("client", async () => {
+              try {
+                await (window as any).gapi.client.init({
+                  apiKey: this.apiKey,
+                  discoveryDocs: this.discoveryDocs,
+                });
+                resolve();
+              } catch (error) {
+                console.warn("Google API initialization failed:", error);
+                resolve(); // Resolve anyway to prevent blocking
+              }
+            });
+          } catch (error) {
+            console.warn("Google API load failed:", error);
+            resolve(); // Resolve anyway to prevent blocking
+          }
+        };
+        script.onerror = () => {
+          console.warn("Google API script failed to load");
+          resolve(); // Resolve anyway to prevent blocking
+        };
+        document.head.appendChild(script);
+      } catch (error) {
+        console.warn("Failed to create Google API script:", error);
+        resolve(); // Resolve anyway to prevent blocking
+      }
+    });
+  }
 
-		this.isInitialized = true;
-	}
+  private async loadGoogleIdentityServices(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      try {
+        const script = document.createElement("script");
+        script.src = "https://accounts.google.com/gsi/client";
+        script.onload = () => {
+          try {
+            this.tokenClient = (
+              window as any
+            ).google.accounts.oauth2.initTokenClient({
+              client_id: this.clientId,
+              scope: this.scopes,
+              callback: (tokenResponse: any) => {
+                if (tokenResponse && tokenResponse.access_token) {
+                  localStorage.setItem(
+                    "google_calendar_token",
+                    tokenResponse.access_token,
+                  );
+                  this.onTokenReceived(tokenResponse.access_token);
+                }
+              },
+            });
+            resolve();
+          } catch (error) {
+            console.warn(
+              "Google Identity Services initialization failed:",
+              error,
+            );
+            resolve(); // Resolve anyway to prevent blocking
+          }
+        };
+        script.onerror = () => {
+          console.warn("Google Identity Services script failed to load");
+          resolve(); // Resolve anyway to prevent blocking
+        };
+        document.head.appendChild(script);
+      } catch (error) {
+        console.warn(
+          "Failed to create Google Identity Services script:",
+          error,
+        );
+        resolve(); // Resolve anyway to prevent blocking
+      }
+    });
+  }
 
-	// Subscribe to sync events
-	onSync(callback: () => void): () => void {
-		this.syncCallbacks.push(callback);
-		return () => {
-			const index = this.syncCallbacks.indexOf(callback);
-			if (index > -1) {
-				this.syncCallbacks.splice(index, 1);
-			}
-		};
-	}
+  private onTokenReceived(accessToken: string): void {
+    // Set the access token for API calls
+    (window as any).gapi.client.setToken({ access_token: accessToken });
+  }
 
-	// Notify subscribers of sync events
-	private notifySync(): void {
-		this.syncCallbacks.forEach(callback => callback());
-	}
+  async authenticate(): Promise<boolean> {
+    if (!this.gapiInited || !this.gisInited) {
+      await this.initialize();
+    }
 
-	async connectProvider(providerId: string, email: string, name: string): Promise<boolean> {
-		try {
-			// Simulate Google OAuth flow
-			console.log(`Connecting provider ${name} (${email}) to Google Calendar...`);
-			
-			// In a real implementation, this would:
-			// 1. Redirect to Google OAuth
-			// 2. Get authorization code
-			// 3. Exchange for access/refresh tokens
-			// 4. Store tokens securely
-			
-			const mockAccessToken = `mock_access_token_${providerId}`;
-			const mockRefreshToken = `mock_refresh_token_${providerId}`;
-			
-			const provider: CalendarProvider = {
-				id: providerId,
-				name,
-				email,
-				color: this.getNextAvailableColor(),
-				isConnected: true,
-				googleCalendarId: email,
-				lastSync: new Date(),
-				accessToken: mockAccessToken,
-				refreshToken: mockRefreshToken
-			};
+    return new Promise((resolve) => {
+      if (this.tokenClient) {
+        this.tokenClient.requestAccessToken({ prompt: "consent" });
+        resolve(true);
+      } else {
+        resolve(false);
+      }
+    });
+  }
 
-			this.providers.set(providerId, provider);
-			this.saveProviders();
-			
-			// Initial sync
-			await this.syncProvider(providerId);
-			
-			// Notify subscribers
-			this.notifySync();
-			
-			return true;
-		} catch (error) {
-			console.error('Failed to connect provider:', error);
-			return false;
-		}
-	}
+  async isAuthenticated(): Promise<boolean> {
+    const token = localStorage.getItem("google_calendar_token");
+    if (!token) return false;
 
-	async disconnectProvider(providerId: string): Promise<boolean> {
-		try {
-			const provider = this.providers.get(providerId);
-			if (!provider) return false;
+    try {
+      // Verify token is still valid
+      const response = await (
+        window as any
+      ).gapi.client.calendar.calendarList.list();
+      return true;
+    } catch (error) {
+      // Token is invalid, remove it
+      localStorage.removeItem("google_calendar_token");
+      return false;
+    }
+  }
 
-			provider.isConnected = false;
-			provider.accessToken = undefined;
-			provider.refreshToken = undefined;
-			provider.lastSync = undefined;
+  async getCalendars(): Promise<GoogleCalendar[]> {
+    try {
+      const response = await (
+        window as any
+      ).gapi.client.calendar.calendarList.list();
+      const calendars = response.result.items || [];
 
-			this.providers.set(providerId, provider);
-			this.saveProviders();
-			
-			// Notify subscribers
-			this.notifySync();
-			
-			return true;
-		} catch (error) {
-			console.error('Failed to disconnect provider:', error);
-			return false;
-		}
-	}
+      return calendars.map((calendar: any) => ({
+        id: calendar.id,
+        name: calendar.summary,
+        color: calendar.backgroundColor || "#4285f4",
+        isSelected: true,
+        email: calendar.id,
+      }));
+    } catch (error) {
+      console.error("Failed to fetch calendars:", error);
+      return [];
+    }
+  }
 
-	async syncProvider(providerId: string): Promise<SyncResult> {
-		try {
-			const provider = this.providers.get(providerId);
-			if (!provider || !provider.isConnected) {
-				throw new Error('Provider not connected');
-			}
+  async getEvents(
+    calendarId: string,
+    timeMin: Date,
+    timeMax: Date,
+  ): Promise<GoogleCalendarEvent[]> {
+    try {
+      const response = await (window as any).gapi.client.calendar.events.list({
+        calendarId: calendarId,
+        timeMin: timeMin.toISOString(),
+        timeMax: timeMax.toISOString(),
+        singleEvents: true,
+        orderBy: "startTime",
+      });
 
-			console.log(`Syncing calendar for ${provider.name}...`);
+      const events = response.result.items || [];
 
-			// Simulate API call to Google Calendar
-			// In a real implementation, this would fetch events from Google Calendar API
-			const mockEvents: GoogleCalendarEvent[] = [
-				{
-					id: 'event_1',
-					summary: 'Sarah Johnson - Consultation',
-					description: 'First time visit',
-					start: {
-						dateTime: new Date(Date.now() + 86400000).toISOString(),
-						timeZone: 'America/New_York'
-					},
-					end: {
-						dateTime: new Date(Date.now() + 86400000 + 3600000).toISOString(),
-						timeZone: 'America/New_York'
-					},
-					attendees: [
-						{ email: 'sarah@email.com', displayName: 'Sarah Johnson' }
-					],
-					organizer: {
-						email: provider.email,
-						displayName: provider.name
-					}
-				},
-				{
-					id: 'event_2',
-					summary: 'Michael Chen - Treatment',
-					description: 'Follow-up appointment',
-					start: {
-						dateTime: new Date(Date.now() + 172800000).toISOString(),
-						timeZone: 'America/New_York'
-					},
-					end: {
-						dateTime: new Date(Date.now() + 172800000 + 5400000).toISOString(),
-						timeZone: 'America/New_York'
-					},
-					attendees: [
-						{ email: 'michael@email.com', displayName: 'Michael Chen' }
-					],
-					organizer: {
-						email: provider.email,
-						displayName: provider.name
-					}
-				}
-			];
+      return events.map((event: any) => ({
+        id: event.id,
+        title: event.summary || "No Title",
+        start: new Date(event.start.dateTime || event.start.date),
+        end: new Date(event.end.dateTime || event.end.date),
+        description: event.description,
+        location: event.location,
+        attendees:
+          event.attendees?.map((attendee: any) => attendee.email) || [],
+        calendarId: calendarId,
+        calendarName: event.organizer?.displayName || calendarId,
+        calendarColor: event.colorId
+          ? this.getColorFromId(event.colorId)
+          : "#4285f4",
+      }));
+    } catch (error) {
+      console.error("Failed to fetch events:", error);
+      return [];
+    }
+  }
 
-			// Simulate detecting new events (like from mobile app)
-			const shouldAddNewEvent = Math.random() > 0.7; // 30% chance of new event
-			if (shouldAddNewEvent) {
-				const newEvent: GoogleCalendarEvent = {
-					id: `mobile_event_${Date.now()}`,
-					summary: 'New Mobile Appointment',
-					description: 'Added via mobile app',
-					start: {
-						dateTime: new Date(Date.now() + 3600000).toISOString(), // 1 hour from now
-						timeZone: 'America/New_York'
-					},
-					end: {
-						dateTime: new Date(Date.now() + 7200000).toISOString(), // 2 hours from now
-						timeZone: 'America/New_York'
-					},
-					attendees: [
-						{ email: 'newclient@email.com', displayName: 'New Client' }
-					],
-					organizer: {
-						email: provider.email,
-						displayName: provider.name
-					}
-				};
-				mockEvents.push(newEvent);
-			}
+  private getColorFromId(colorId: string): string {
+    const colors: { [key: string]: string } = {
+      "1": "#a4bdfc",
+      "2": "#7ae7bf",
+      "3": "#dbadff",
+      "4": "#ff887c",
+      "5": "#fbd75b",
+      "6": "#ffb878",
+      "7": "#46d6db",
+      "8": "#e1e1e1",
+      "9": "#5484ed",
+      "10": "#51b749",
+      "11": "#dc2127",
+    };
+    return colors[colorId] || "#4285f4";
+  }
 
-			// Update last sync time
-			provider.lastSync = new Date();
-			this.providers.set(providerId, provider);
-			this.saveProviders();
+  async createEvent(
+    calendarId: string,
+    event: {
+      title: string;
+      start: Date;
+      end: Date;
+      description?: string;
+      location?: string;
+      attendees?: string[];
+    },
+  ): Promise<GoogleCalendarEvent | null> {
+    try {
+      const response = await (window as any).gapi.client.calendar.events.insert(
+        {
+          calendarId: calendarId,
+          resource: {
+            summary: event.title,
+            description: event.description,
+            location: event.location,
+            start: {
+              dateTime: event.start.toISOString(),
+              timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            },
+            end: {
+              dateTime: event.end.toISOString(),
+              timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            },
+            attendees: event.attendees?.map((email) => ({ email })),
+          },
+        },
+      );
 
-			// Notify subscribers of sync completion
-			this.notifySync();
+      const createdEvent = response.result;
+      return {
+        id: createdEvent.id,
+        title: createdEvent.summary || "No Title",
+        start: new Date(createdEvent.start.dateTime || createdEvent.start.date),
+        end: new Date(createdEvent.end.dateTime || createdEvent.end.date),
+        description: createdEvent.description,
+        location: createdEvent.location,
+        attendees:
+          createdEvent.attendees?.map((attendee: any) => attendee.email) || [],
+        calendarId: calendarId,
+        calendarName: createdEvent.organizer?.displayName || calendarId,
+        calendarColor: createdEvent.colorId
+          ? this.getColorFromId(createdEvent.colorId)
+          : "#4285f4",
+      };
+    } catch (error) {
+      console.error("Failed to create event:", error);
+      return null;
+    }
+  }
 
-			return {
-				success: true,
-				eventsAdded: mockEvents.length,
-				eventsUpdated: 0,
-				eventsDeleted: 0
-			};
-		} catch (error) {
-			console.error('Failed to sync provider:', error);
-			return {
-				success: false,
-				eventsAdded: 0,
-				eventsUpdated: 0,
-				eventsDeleted: 0,
-				error: error instanceof Error ? error.message : 'Unknown error'
-			};
-		}
-	}
+  async updateEvent(
+    calendarId: string,
+    eventId: string,
+    updates: {
+      title?: string;
+      start?: Date;
+      end?: Date;
+      description?: string;
+      location?: string;
+      attendees?: string[];
+    },
+  ): Promise<GoogleCalendarEvent | null> {
+    try {
+      const response = await (window as any).gapi.client.calendar.events.patch({
+        calendarId: calendarId,
+        eventId: eventId,
+        resource: {
+          summary: updates.title,
+          description: updates.description,
+          location: updates.location,
+          start: updates.start
+            ? {
+                dateTime: updates.start.toISOString(),
+                timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+              }
+            : undefined,
+          end: updates.end
+            ? {
+                dateTime: updates.end.toISOString(),
+                timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+              }
+            : undefined,
+          attendees: updates.attendees?.map((email) => ({ email })),
+        },
+      });
 
-	async syncAllProviders(): Promise<SyncResult[]> {
-		const results: SyncResult[] = [];
-		
-		for (const [providerId, provider] of this.providers) {
-			if (provider.isConnected) {
-				const result = await this.syncProvider(providerId);
-				results.push(result);
-			}
-		}
-		
-		return results;
-	}
+      const updatedEvent = response.result;
+      return {
+        id: updatedEvent.id,
+        title: updatedEvent.summary || "No Title",
+        start: new Date(updatedEvent.start.dateTime || updatedEvent.start.date),
+        end: new Date(updatedEvent.end.dateTime || updatedEvent.end.date),
+        description: updatedEvent.description,
+        location: updatedEvent.location,
+        attendees:
+          updatedEvent.attendees?.map((attendee: any) => attendee.email) || [],
+        calendarId: calendarId,
+        calendarName: updatedEvent.organizer?.displayName || calendarId,
+        calendarColor: updatedEvent.colorId
+          ? this.getColorFromId(updatedEvent.colorId)
+          : "#4285f4",
+      };
+    } catch (error) {
+      console.error("Failed to update event:", error);
+      return null;
+    }
+  }
 
-	// Force sync all providers (useful for manual sync)
-	async forceSyncAll(): Promise<SyncResult[]> {
-		console.log('Force syncing all providers...');
-		return this.syncAllProviders();
-	}
+  async deleteEvent(calendarId: string, eventId: string): Promise<boolean> {
+    try {
+      await (window as any).gapi.client.calendar.events.delete({
+        calendarId: calendarId,
+        eventId: eventId,
+      });
+      return true;
+    } catch (error) {
+      console.error("Failed to delete event:", error);
+      return false;
+    }
+  }
 
-	getProviders(): CalendarProvider[] {
-		return Array.from(this.providers.values());
-	}
-
-	getProvider(providerId: string): CalendarProvider | undefined {
-		return this.providers.get(providerId);
-	}
-
-	addProvider(provider: CalendarProvider): void {
-		this.providers.set(provider.id, provider);
-		this.saveProviders();
-	}
-
-	async createEvent(providerId: string, event: {
-		summary: string;
-		description?: string;
-		start: Date;
-		end: Date;
-		attendees?: string[];
-	}): Promise<string | null> {
-		try {
-			const provider = this.providers.get(providerId);
-			if (!provider || !provider.isConnected) {
-				throw new Error('Provider not connected');
-			}
-
-			console.log(`Creating event for ${provider.name}:`, event);
-
-			// Simulate creating event in Google Calendar
-			const eventId = `event_${Date.now()}`;
-			
-			// In a real implementation, this would:
-			// 1. Use Google Calendar API to create event
-			// 2. Return the created event ID
-			// 3. Handle attendees, reminders, etc.
-
-			// Notify subscribers of new event
-			this.notifySync();
-
-			return eventId;
-		} catch (error) {
-			console.error('Failed to create event:', error);
-			return null;
-		}
-	}
-
-	async updateEvent(providerId: string, eventId: string, updates: {
-		summary?: string;
-		description?: string;
-		start?: Date;
-		end?: Date;
-		attendees?: string[];
-	}): Promise<boolean> {
-		try {
-			const provider = this.providers.get(providerId);
-			if (!provider || !provider.isConnected) {
-				throw new Error('Provider not connected');
-			}
-
-			console.log(`Updating event ${eventId} for ${provider.name}:`, updates);
-
-			// Simulate updating event in Google Calendar
-			// In a real implementation, this would use Google Calendar API
-
-			// Notify subscribers of event update
-			this.notifySync();
-
-			return true;
-		} catch (error) {
-			console.error('Failed to update event:', error);
-			return false;
-		}
-	}
-
-	async deleteEvent(providerId: string, eventId: string): Promise<boolean> {
-		try {
-			const provider = this.providers.get(providerId);
-			if (!provider || !provider.isConnected) {
-				throw new Error('Provider not connected');
-			}
-
-			console.log(`Deleting event ${eventId} for ${provider.name}`);
-
-			// Simulate deleting event in Google Calendar
-			// In a real implementation, this would use Google Calendar API
-
-			// Notify subscribers of event deletion
-			this.notifySync();
-
-			return true;
-		} catch (error) {
-			console.error('Failed to delete event:', error);
-			return false;
-		}
-	}
-
-	private getNextAvailableColor(): string {
-		const colors = [
-			"bg-blue-500",
-			"bg-green-500", 
-			"bg-purple-500",
-			"bg-orange-500",
-			"bg-pink-500",
-			"bg-indigo-500",
-			"bg-teal-500",
-			"bg-red-500"
-		];
-		
-		const usedColors = new Set(Array.from(this.providers.values()).map(p => p.color));
-		const availableColor = colors.find(color => !usedColors.has(color));
-		
-		return availableColor || colors[0];
-	}
-
-	private saveProviders(): void {
-		if (typeof window === 'undefined') return;
-		const providers = Array.from(this.providers.values());
-		localStorage.setItem('googleCalendarProviders', JSON.stringify(providers));
-	}
-
-	// Helper method to convert Google Calendar event to our format
-	convertGoogleEventToAppointment(googleEvent: GoogleCalendarEvent, provider: CalendarProvider) {
-		return {
-			id: googleEvent.id,
-			title: googleEvent.summary,
-			start: new Date(googleEvent.start.dateTime),
-			end: new Date(googleEvent.end.dateTime),
-			provider: provider.name,
-			clientName: googleEvent.attendees?.[0]?.displayName || 'Unknown',
-			clientEmail: googleEvent.attendees?.[0]?.email,
-			type: this.extractAppointmentType(googleEvent.summary),
-			status: 'scheduled' as const,
-			googleEventId: googleEvent.id,
-			notes: googleEvent.description
-		};
-	}
-
-	private extractAppointmentType(summary: string): string {
-		const lowerSummary = summary.toLowerCase();
-		if (lowerSummary.includes('consultation')) return 'Consultation';
-		if (lowerSummary.includes('treatment')) return 'Treatment';
-		if (lowerSummary.includes('follow-up')) return 'Follow-up';
-		if (lowerSummary.includes('check-in')) return 'Check-in';
-		return 'Appointment';
-	}
+  logout(): void {
+    localStorage.removeItem("google_calendar_token");
+    (window as any).google.accounts.oauth2.revoke(
+      localStorage.getItem("google_calendar_token"),
+      () => {
+        console.log("Logged out successfully");
+      },
+    );
+  }
 }
 
-export const googleCalendarService = GoogleCalendarService.getInstance();
-export type { CalendarProvider, SyncResult, GoogleCalendarEvent }; 
+// Export singleton instance
+export const googleCalendarService = new GoogleCalendarService();
+export type { GoogleCalendarEvent, GoogleCalendar };

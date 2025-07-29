@@ -12,5 +12,14 @@ export default defineConfig({
     defaultCommandTimeout: 10000,
     requestTimeout: 10000,
     responseTimeout: 10000,
+    setupNodeEvents(on, config) {
+      // Handle uncaught exceptions from cross-origin scripts
+      on("task", {
+        log(message) {
+          console.log(message);
+          return null;
+        },
+      });
+    },
   },
 });
