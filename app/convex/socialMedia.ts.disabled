@@ -1,0 +1,311 @@
+import { v } from "convex/values";
+import { mutation, query } from "./_generated/server";
+
+// ===== PLATFORM MANAGEMENT =====
+
+export const connectPlatform = mutation({
+	args: {
+		orgId: v.id("orgs"),
+		platform: v.string(),
+		accountName: v.string(),
+		accountId: v.string(),
+		accessToken: v.string(),
+		refreshToken: v.optional(v.string()),
+		expiresAt: v.optional(v.number()),
+		metadata: v.optional(v.any()),
+	},
+	handler: async (ctx, args) => {
+		const { orgId, platform, accountName, accountId, accessToken, refreshToken, expiresAt, metadata } = args;
+
+		// Check if platform already exists for this org
+		const existing = await ctx.db
+			.query("socialPlatforms")
+			.withIndex("by_org", (q) => q.eq("orgId", orgId))
+			.filter((q) => q.eq(q.field("platform"), platform))
+			.first();
+
+		if (existing) {
+			// Update existing platform
+			return await ctx.db.patch(existing._id, {
+				accountName,
+				accountId,
+				accessToken,
+				refreshToken,
+				expiresAt,
+				metadata,
+				updatedAt: Date.now(),
+			});
+		} else {
+			// Create new platform
+			return await ctx.db.insert("socialPlatforms", {
+				orgId,
+				platform,
+				accountName,
+				accountId,
+				accessToken,
+				refreshToken,
+				expiresAt,
+				isActive: true,
+				metadata,
+				createdAt: Date.now(),
+				updatedAt: Date.now(),
+			});
+		}
+	},
+});
+
+export const disconnectPlatform = mutation({
+	args: {
+		platformId: v.id("socialPlatforms"),
+	},
+	handler: async (ctx, args) => {
+		return await ctx.db.patch(args.platformId, {
+			isActive: false,
+			updatedAt: Date.now(),
+		});
+	},
+});
+
+export const getPlatforms = query({
+	args: {
+		orgId: v.id("orgs"),
+	},
+	handler: async (ctx, args) => {
+		return await ctx.db
+			.query("socialPlatforms")
+			.withIndex("by_org", (q) => q.eq("orgId", args.orgId))
+			.collect();
+	},
+});
+
+// ===== POST MANAGEMENT =====
+
+export const createPost = mutation({
+	args: {
+		orgId: v.id("orgs"),
+		title: v.string(),
+		content: v.string(),
+		mediaUrls: v.array(v.string()),
+		scheduledAt: v.number(),
+		platforms: v.array(v.string()),
+		createdBy: v.id("users"),
+	},
+	handler: async (ctx, args) => {
+		const { orgId, title, content, mediaUrls, scheduledAt, platforms, createdBy } = args;
+
+		return await ctx.db.insert("socialPosts", {
+			orgId,
+			title,
+			content,
+			mediaUrls,
+			scheduledAt,
+			platforms,
+			status: "draft",
+			createdBy,
+			createdAt: Date.now(),
+			updatedAt: Date.now(),
+		});
+	},
+});
+
+export const updatePost = mutation({
+	args: {
+		postId: v.id("socialPosts"),
+		title: v.optional(v.string()),
+		content: v.optional(v.string()),
+		mediaUrls: v.optional(v.array(v.string())),
+		scheduledAt: v.optional(v.number()),
+		platforms: v.optional(v.array(v.string())),
+		status: v.optional(v.string()),
+	},
+	handler: async (ctx, args) => {
+		const { postId, ...updates } = args;
+		return await ctx.db.patch(postId, {
+			...updates,
+			updatedAt: Date.now(),
+		});
+	},
+});
+
+export const deletePost = mutation({
+	args: {
+		postId: v.id("socialPosts"),
+	},
+	handler: async (ctx, args) => {
+		return await ctx.db.delete(args.postId);
+	},
+});
+
+export const getPosts = query({
+	args: {
+		orgId: v.id("orgs"),
+		status: v.optional(v.string()),
+		platform: v.optional(v.string()),
+	},
+	handler: async (ctx, args) => {
+		const { orgId, status, platform } = args;
+		let query = ctx.db.query("socialPosts").withIndex("by_org", (q) => q.eq("orgId", orgId));
+
+		if (status) {
+			query = query.filter((q) => q.eq(q.field("status"), status));
+		}
+
+		if (platform) {
+			query = query.filter((q) => q.eq(q.field("platforms"), platform));
+		}
+
+		return await query.order("desc").collect();
+	},
+});
+
+export const getPost = query({
+	args: {
+		postId: v.id("socialPosts"),
+	},
+	handler: async (ctx, args) => {
+		return await ctx.db.get(args.postId);
+	},
+});
+
+// ===== SCHEDULING =====
+
+export const schedulePost = mutation({
+	args: {
+		postId: v.id("socialPosts"),
+		scheduledAt: v.number(),
+	},
+	handler: async (ctx, args) => {
+		return await ctx.db.patch(args.postId, {
+			scheduledAt: args.scheduledAt,
+			status: "scheduled",
+			updatedAt: Date.now(),
+		});
+	},
+});
+
+export const publishPost = mutation({
+	args: {
+		postId: v.id("socialPosts"),
+		platformPostIds: v.any(),
+	},
+	handler: async (ctx, args) => {
+		return await ctx.db.patch(args.postId, {
+			status: "published",
+			platformPostIds: args.platformPostIds,
+			publishedAt: Date.now(),
+			updatedAt: Date.now(),
+		});
+	},
+});
+
+export const cancelPost = mutation({
+	args: {
+		postId: v.id("socialPosts"),
+	},
+	handler: async (ctx, args) => {
+		return await ctx.db.patch(args.postId, {
+			status: "cancelled",
+			updatedAt: Date.now(),
+		});
+	},
+});
+
+// ===== ANALYTICS =====
+
+export const updateAnalytics = mutation({
+	args: {
+		orgId: v.id("orgs"),
+		postId: v.id("socialPosts"),
+		platform: v.string(),
+		platformPostId: v.string(),
+		likes: v.number(),
+		comments: v.number(),
+		shares: v.number(),
+		views: v.number(),
+	},
+	handler: async (ctx, args) => {
+		const { orgId, postId, platform, platformPostId, likes, comments, shares, views } = args;
+		const engagement = ((likes + comments + shares) / views) * 100;
+
+		return await ctx.db.insert("socialAnalytics", {
+			orgId,
+			postId,
+			platform,
+			platformPostId,
+			likes,
+			comments,
+			shares,
+			views,
+			engagement,
+			collectedAt: Date.now(),
+		});
+	},
+});
+
+export const getAnalytics = query({
+	args: {
+		orgId: v.id("orgs"),
+		postId: v.optional(v.id("socialPosts")),
+		platform: v.optional(v.string()),
+	},
+	handler: async (ctx, args) => {
+		const { orgId, postId, platform } = args;
+		let query = ctx.db.query("socialAnalytics").withIndex("by_org", (q) => q.eq("orgId", orgId));
+
+		if (postId) {
+			query = query.filter((q) => q.eq(q.field("postId"), postId));
+		}
+
+		if (platform) {
+			query = query.filter((q) => q.eq(q.field("platform"), platform));
+		}
+
+		return await query.order("desc").collect();
+	},
+});
+
+// ===== DASHBOARD STATS =====
+
+export const getSocialStats = query({
+	args: {
+		orgId: v.id("orgs"),
+	},
+	handler: async (ctx, args) => {
+		const posts = await ctx.db
+			.query("socialPosts")
+			.withIndex("by_org", (q) => q.eq("orgId", args.orgId))
+			.collect();
+
+		const platforms = await ctx.db
+			.query("socialPlatforms")
+			.withIndex("by_org", (q) => q.eq("orgId", args.orgId))
+			.filter((q) => q.eq(q.field("isActive"), true))
+			.collect();
+
+		const analytics = await ctx.db
+			.query("socialAnalytics")
+			.withIndex("by_org", (q) => q.eq("orgId", args.orgId))
+			.collect();
+
+		const totalPosts = posts.length;
+		const publishedPosts = posts.filter(p => p.status === "published").length;
+		const scheduledPosts = posts.filter(p => p.status === "scheduled").length;
+		const connectedPlatforms = platforms.length;
+
+		const totalLikes = analytics.reduce((sum, a) => sum + a.likes, 0);
+		const totalComments = analytics.reduce((sum, a) => sum + a.comments, 0);
+		const totalShares = analytics.reduce((sum, a) => sum + a.shares, 0);
+		const totalViews = analytics.reduce((sum, a) => sum + a.views, 0);
+
+		return {
+			totalPosts,
+			publishedPosts,
+			scheduledPosts,
+			connectedPlatforms,
+			totalLikes,
+			totalComments,
+			totalShares,
+			totalViews,
+		};
+	},
+}); 

@@ -2,15 +2,19 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 
 export function useWorkflows(orgId: string | null) {
-	// Always call getAllWorkflows
+	// For debugging, always return all workflows
 	const allWorkflows = useQuery(api.workflows.getAllWorkflows);
 	
-	// Only call getByOrg if we have a valid orgId
-	const orgWorkflows = useQuery(
-		api.workflows.getByOrg, 
-		orgId && orgId !== "orgs:placeholder" ? { orgId: orgId as any } : "skip"
-	);
+	console.log('=== USE WORKFLOWS DEBUG ===');
+	console.log('orgId:', orgId);
+	console.log('allWorkflows:', allWorkflows);
+	console.log('allWorkflows type:', typeof allWorkflows);
+	console.log('allWorkflows length:', allWorkflows?.length);
+	if (allWorkflows) {
+		console.log('First workflow:', allWorkflows[0]);
+	}
+	console.log('==========================');
 	
-	// Return org-specific workflows if orgId exists and is valid, otherwise return all workflows
-	return orgId && orgId !== "orgs:placeholder" ? orgWorkflows : allWorkflows;
+	// Return all workflows for now
+	return allWorkflows;
 } 

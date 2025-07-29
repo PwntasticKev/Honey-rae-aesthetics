@@ -154,4 +154,91 @@ export default defineSchema({
 		.index("by_client", ["clientId"])
 		.index("by_type", ["type"])
 		.index("by_created", ["createdAt"]),
+
+	// Social Media Platforms (connected accounts)
+	socialPlatforms: defineTable({
+		orgId: v.id("orgs"),
+		platform: v.string(), // "instagram", "facebook", "tiktok", "youtube"
+		accountName: v.string(),
+		accountId: v.string(),
+		accessToken: v.string(),
+		refreshToken: v.optional(v.string()),
+		expiresAt: v.optional(v.number()),
+		isActive: v.boolean(),
+		metadata: v.optional(v.any()), // Platform-specific data
+		createdAt: v.number(),
+		updatedAt: v.number(),
+	})
+		.index("by_org", ["orgId"])
+		.index("by_platform", ["platform"])
+		.index("by_active", ["isActive"]),
+
+	// Social Media Posts
+	socialPosts: defineTable({
+		orgId: v.id("orgs"),
+		title: v.string(),
+		content: v.string(),
+		mediaUrls: v.array(v.string()), // Array of image/video URLs
+		scheduledAt: v.number(), // Unix timestamp
+		platforms: v.array(v.string()), // ["instagram", "facebook", "tiktok", "youtube"]
+		status: v.string(), // "draft", "scheduled", "published", "failed", "cancelled"
+		platformPostIds: v.optional(v.any()), // Store platform-specific post IDs after publishing
+		errorMessage: v.optional(v.string()),
+		createdBy: v.id("users"),
+		createdAt: v.number(),
+		updatedAt: v.number(),
+		publishedAt: v.optional(v.number()),
+	})
+		.index("by_org", ["orgId"])
+		.index("by_status", ["status"])
+		.index("by_scheduled", ["scheduledAt"])
+		.index("by_platforms", ["platforms"])
+		.index("by_created", ["createdAt"]),
+
+	// Social Media Analytics
+	socialAnalytics: defineTable({
+		orgId: v.id("orgs"),
+		postId: v.id("socialPosts"),
+		platform: v.string(),
+		platformPostId: v.string(),
+		likes: v.number(),
+		comments: v.number(),
+		shares: v.number(),
+		views: v.number(),
+		engagement: v.number(), // Calculated engagement rate
+		collectedAt: v.number(),
+	})
+		.index("by_org", ["orgId"])
+		.index("by_post", ["postId"])
+		.index("by_platform", ["platform"])
+		.index("by_collected", ["collectedAt"]),
+
+	// Notifications
+	notifications: defineTable({
+		orgId: v.id("orgs"),
+		userId: v.optional(v.id("users")),
+		title: v.string(),
+		message: v.string(),
+		type: v.union(
+			v.literal("info"),
+			v.literal("success"),
+			v.literal("warning"),
+			v.literal("error"),
+			v.literal("update"),
+			v.literal("message"),
+			v.literal("appointment"),
+			v.literal("workflow"),
+			v.literal("client")
+		),
+		read: v.boolean(),
+		actionUrl: v.optional(v.string()),
+		actionText: v.optional(v.string()),
+		metadata: v.optional(v.any()),
+		createdAt: v.number(),
+		updatedAt: v.number(),
+	})
+		.index("by_org", ["orgId"])
+		.index("by_user", ["userId"])
+		.index("by_read", ["read"])
+		.index("by_created", ["createdAt"]),
 }); 

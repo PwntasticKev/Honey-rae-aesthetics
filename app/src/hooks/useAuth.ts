@@ -13,6 +13,11 @@ export function useAuth() {
 
 	useEffect(() => {
 		// Check for existing auth token on mount
+		if (typeof window === 'undefined') {
+			setIsLoading(false);
+			return;
+		}
+		
 		const token = localStorage.getItem("authToken");
 		const userEmail = localStorage.getItem("userEmail");
 		const userRole = localStorage.getItem("userRole");
@@ -34,9 +39,11 @@ export function useAuth() {
 
 			if (email === masterEmail && password === masterPassword) {
 				const user = { email, role: "admin" };
-				localStorage.setItem("authToken", "master-token");
-				localStorage.setItem("userEmail", email);
-				localStorage.setItem("userRole", "admin");
+				if (typeof window !== 'undefined') {
+					localStorage.setItem("authToken", "master-token");
+					localStorage.setItem("userEmail", email);
+					localStorage.setItem("userRole", "admin");
+				}
 				setUser(user);
 				resolve(true);
 			} else {
@@ -46,9 +53,11 @@ export function useAuth() {
 	};
 
 	const logout = () => {
-		localStorage.removeItem("authToken");
-		localStorage.removeItem("userEmail");
-		localStorage.removeItem("userRole");
+		if (typeof window !== 'undefined') {
+			localStorage.removeItem("authToken");
+			localStorage.removeItem("userEmail");
+			localStorage.removeItem("userRole");
+		}
 		setUser(null);
 		window.location.href = "/login";
 	};

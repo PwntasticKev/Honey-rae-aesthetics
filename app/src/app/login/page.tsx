@@ -29,9 +29,11 @@ export default function LoginPage() {
 
 			if (email === masterEmail && password === masterPassword) {
 				// Store auth token in localStorage
-				localStorage.setItem("authToken", "master-token");
-				localStorage.setItem("userEmail", email);
-				localStorage.setItem("userRole", "admin");
+				if (typeof window !== 'undefined') {
+					localStorage.setItem("authToken", "master-token");
+					localStorage.setItem("userEmail", email);
+					localStorage.setItem("userRole", "admin");
+				}
 				
 				// Redirect to dashboard
 				window.location.href = "/";

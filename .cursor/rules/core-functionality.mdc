@@ -1,3 +1,7 @@
+---
+alwaysApply: true
+---
+
 HONEY RAE MASTER CONTEXT SPEC – ULTRA DETAILED EDITION
 
 ────────────────────────────────────────────────────────────
@@ -5,14 +9,15 @@ HONEY RAE MASTER CONTEXT SPEC – ULTRA DETAILED EDITION
 
 • Initial idea: track local competitor aesthetics businesses
 • Features requested:
-  - Track pricing of services
-  - Monitor keyword usage and SEO strategies
-  - Detect site changes (before/after photos, promos)
-  - Compare promotion timelines
-• Potential integration:
-  - Feed scraped data into a dashboard
-  - Trigger internal campaign actions
-  - Use AI to generate counter-marketing strategies
+
+- Track pricing of services
+- Monitor keyword usage and SEO strategies
+- Detect site changes (before/after photos, promos)
+- Compare promotion timelines
+  • Potential integration:
+- Feed scraped data into a dashboard
+- Trigger internal campaign actions
+- Use AI to generate counter-marketing strategies
 
 ────────────────────────────────────────────────────────────
 🏗 PLATFORM FOUNDATION
@@ -31,29 +36,31 @@ Validation: Zod
 
 • Org → Admins, Injectors, Staff
 • Each Org has:
-  - Clients
-  - Files
-  - Workflows
-  - Messages
-  - Social queue
-  - Billing plan
-  - Team user permissions
+
+- Clients
+- Files
+- Workflows
+- Messages
+- Social queue
+- Billing plan
+- Team user permissions
 
 ────────────────────────────────────────────────────────────
 🧠 CLIENT + DATA IMPORT SPEC
 
 Source: Aesthetic Record CSV export
 Columns expected:
-  ID, First/Last Name, Email, Phone 1, Phone 2, Gender,
-  DOB, Address 1/2, City, State, Country, Zip, Visited,
-  Membership Type, Referral Source, Client Created Date,
-  Portal Status, Upcoming Appointment, Nickname, Fired
+ID, First/Last Name, Email, Phone 1, Phone 2, Gender,
+DOB, Address 1/2, City, State, Country, Zip, Visited,
+Membership Type, Referral Source, Client Created Date,
+Portal Status, Upcoming Appointment, Nickname, Fired
 
 • Import UI supports:
-  - Column mapping
-  - Deduplication
-  - Membership plan mapping
-  - Upload validation
+
+- Column mapping
+- Deduplication
+- Membership plan mapping
+- Upload validation
 
 ────────────────────────────────────────────────────────────
 🗂 FILE MANAGEMENT + IMAGE SPEC
@@ -61,17 +68,19 @@ Columns expected:
 • Each client stores 20–50 images avg.
 • Images stored in AWS S3
 • Stored with:
-  - File name
-  - Upload date
-  - Tags (before/after, Morpheus8, filler, etc.)
-  - Session ID or treatment group
-  - Alt text / description
+
+- File name
+- Upload date
+- Tags (before/after, Morpheus8, filler, etc.)
+- Session ID or treatment group
+- Alt text / description
 
 • Upload features:
-  - Crop before upload
-  - Preview thumbnail
-  - Group tagging
-  - Compression + privacy setting (future HIPAA toggle)
+
+- Crop before upload
+- Preview thumbnail
+- Group tagging
+- Compression + privacy setting (future HIPAA toggle)
 
 ────────────────────────────────────────────────────────────
 ⚙️ WORKFLOW AUTOMATION ENGINE
@@ -94,6 +103,7 @@ Actions:
 • Trigger Webhook (planned)
 
 Examples:
+
 - “Send Botox aftercare email 1 day after photo upload w/ ‘botox’ tag”
 - “If client hasn’t booked in 90 days, send re-engagement SMS”
 - “Trigger birthday discount email 7 days before DOB”
@@ -120,10 +130,11 @@ Planned:
 • Google Calendar sync per user/org
 • Appointment metadata attached to client
 • Journey View includes:
-  - Appt history
-  - Uploaded files
-  - Sent messages
-  - Workflow log triggers
+
+- Appt history
+- Uploaded files
+- Sent messages
+- Workflow log triggers
 
 ────────────────────────────────────────────────────────────
 📲 SOCIAL QUEUE + CONTENT SCHEDULING
@@ -138,42 +149,48 @@ Planned:
 🧑‍⚕️ PATIENT PORTAL + QR LOGIN
 
 • QR-based login for client
-  - Dynamic QR tokens (expires after 15 mins)
-  - Magic link fallback
-• Portal Features:
-  - View uploaded images
-  - View treatment history
-  - View appts, cancel/reschedule
-  - Leave reviews (future)
-  - Consent form upload/download
+
+- Dynamic QR tokens (expires after 15 mins)
+- Magic link fallback
+  • Portal Features:
+- View uploaded images
+- View treatment history
+- View appts, cancel/reschedule
+- Leave reviews (future)
+- Consent form upload/download
 
 ────────────────────────────────────────────────────────────
 📈 ANALYTICS
 
 • Per-org and global analytics
 • Metrics:
-  - # Clients
-  - Churn rate
-  - Workflow actions triggered
-  - SMS/Email sent
-  - File storage used
-  - Top used campaigns
+
+- # Clients
+- Churn rate
+- Workflow actions triggered
+- SMS/Email sent
+- File storage used
+- Top used campaigns
 
 ────────────────────────────────────────────────────────────
 💸 BILLING + COST TRACKING
 
 Storage:
+
 - Convex (too costly at scale)
 - S3 (chosen, ~$3/month/100GB)
 - Example: 5k clients × 50 images × 500KB ≈ 120GB
 
 SMS:
+
 - AWS SNS: ~$0.0075/message
 
 Email:
+
 - AWS SES: ~$0.10 per 1000 emails
 
 Stripe Billing:
+
 - Tiered pricing: Starter / Pro / Agency
 - Metered usage on:
   - Storage
@@ -185,24 +202,29 @@ Stripe Billing:
 📌 ADDITIONAL FEATURES DISCUSSED
 
 • Smart Recapture Engine
-  - Alert staff if client hasn’t visited in X days
-  - Trigger campaigns or tag for followup
+
+- Alert staff if client hasn’t visited in X days
+- Trigger campaigns or tag for followup
 
 • Referral engine
-  - Link-based tracking
-  - Reward structure
+
+- Link-based tracking
+- Reward structure
 
 • Intake forms
-  - Dynamic drag & drop builder
-  - Attach to client record
+
+- Dynamic drag & drop builder
+- Attach to client record
 
 • Consent PDF uploader
-  - Store under client > documents
+
+- Store under client > documents
 
 • HIPAA Toggle
-  - Optional org-level flag
-  - Enforces stricter access
-  - Auto-redact image tags (future)
+
+- Optional org-level flag
+- Enforces stricter access
+- Auto-redact image tags (future)
 
 • Countdown timers in promos
 • Image annotations
@@ -216,6 +238,7 @@ This document represents the **absolute full master scope** across every feature
 📥 SCRAPER MODULE: Aesthetic Record + Competitor Sites
 
 ─────────────────────────────────────────────
+
 1. AESTHETIC RECORD DATA SCRAPER
 
 Goal:
@@ -224,20 +247,22 @@ Extract full user/client data (beyond CSV export), images, visit history, and ot
 Data Sources:
 • CSV Export from AR (used for bulk import)
 • Web Portal scraping (optional advanced)
-  - Navigate via Puppeteer/Playwright
-  - Scrape:
-    - Client treatment history
-    - Session notes
-    - Images (before/after)
-    - Appointment metadata
-    - Invoice totals and payment type
-    - Tags and forms
+
+- Navigate via Puppeteer/Playwright
+- Scrape:
+  - Client treatment history
+  - Session notes
+  - Images (before/after)
+  - Appointment metadata
+  - Invoice totals and payment type
+  - Tags and forms
 
 Integration:
 • If authenticated scraper is enabled:
-  - Sync every X days
-  - Push deltas only (new appts, new photos)
-  - Flag “scraped_at” date per record
+
+- Sync every X days
+- Push deltas only (new appts, new photos)
+- Flag “scraped_at” date per record
 
 Challenges:
 • CAPTCHA (if present)
@@ -249,8 +274,321 @@ Tech:
 • Cron-based server script
 • Store scrape jobs in Convex (or job queue)
 
+───────────────────────────────────────────── 2. COMPETITOR SCRAPER
+
+Sources:
+• Local injector websites (e.g., 10-mi radius)
+• Instagram/Facebook promo pages
+
+Fields:
+• Pricing (Botox, filler, laser, etc.)
+• SEO keywords (meta tags, content)
+• Before/after galleries
+• Google Reviews
+• Promotions / deals / events
+• Team bios / staff turnover
+
+Use Case:
+• Trigger internal counter-campaigns
+• Detect trends (e.g., Morpheus8 push)
+• Alert team to seasonal promotions
+• Feed into competitor dashboard
+
+Storage:
+• Timestamped snapshots
+• Markdown/HTML diff summaries
+• “Alert if new” logic via workflow
+
+Tech:
+• Cheerio or Puppeteer
+• Cron jobs or scheduled lambda
+• Parse and diff HTML changes
+• Potential Notion/Airtable sync
+
 ─────────────────────────────────────────────
-2. COMPETITOR SCRAPER
+
+📌 IMPORTANCE IN CONTEXT
+
+This scraping module enables:
+✅ Data mirroring from AR (no vendor lock-in)
+✅ Smarter workflows using live external data
+✅ Real-time market awareness
+✅ AI training set for messaging/timing optimizations
+✅ Automation of team responses to competitors
+
+─────────────────────────────────────────────HONEY RAE MASTER CONTEXT SPEC – ULTRA DETAILED EDITION
+
+────────────────────────────────────────────────────────────
+🚀 ORIGIN – SCRAPER & COMPETITOR TRACKING VISION
+
+• Initial idea: track local competitor aesthetics businesses
+• Features requested:
+
+- Track pricing of services
+- Monitor keyword usage and SEO strategies
+- Detect site changes (before/after photos, promos)
+- Compare promotion timelines
+  • Potential integration:
+- Feed scraped data into a dashboard
+- Trigger internal campaign actions
+- Use AI to generate counter-marketing strategies
+
+────────────────────────────────────────────────────────────
+🏗 PLATFORM FOUNDATION
+
+Frontend: React (TypeScript)
+Backend: Convex (schema/state logic)
+State: TanStack Query
+Storage: AWS S3 (chosen for scalability/cost)
+Messaging: AWS SES (Email), AWS SNS (SMS)
+Payments: Stripe (metered billing)
+Auth: Secure QR token login, org-based access
+Validation: Zod
+
+────────────────────────────────────────────────────────────
+🏢 MULTI-TENANT ORG HIERARCHY
+
+• Org → Admins, Injectors, Staff
+• Each Org has:
+
+- Clients
+- Files
+- Workflows
+- Messages
+- Social queue
+- Billing plan
+- Team user permissions
+
+────────────────────────────────────────────────────────────
+🧠 CLIENT + DATA IMPORT SPEC
+
+Source: Aesthetic Record CSV export
+Columns expected:
+ID, First/Last Name, Email, Phone 1, Phone 2, Gender,
+DOB, Address 1/2, City, State, Country, Zip, Visited,
+Membership Type, Referral Source, Client Created Date,
+Portal Status, Upcoming Appointment, Nickname, Fired
+
+• Import UI supports:
+
+- Column mapping
+- Deduplication
+- Membership plan mapping
+- Upload validation
+
+────────────────────────────────────────────────────────────
+🗂 FILE MANAGEMENT + IMAGE SPEC
+
+• Each client stores 20–50 images avg.
+• Images stored in AWS S3
+• Stored with:
+
+- File name
+- Upload date
+- Tags (before/after, Morpheus8, filler, etc.)
+- Session ID or treatment group
+- Alt text / description
+
+• Upload features:
+
+- Crop before upload
+- Preview thumbnail
+- Group tagging
+- Compression + privacy setting (future HIPAA toggle)
+
+────────────────────────────────────────────────────────────
+⚙️ WORKFLOW AUTOMATION ENGINE
+
+Triggers:
+• Client created
+• No visit in X days
+• Birthday
+• Photo uploaded
+• Tag applied
+• Specific form submitted
+• Appt missed
+
+Actions:
+• Send Email
+• Send SMS
+• Tag Client
+• Add note to timeline
+• Notify Admin
+• Trigger Webhook (planned)
+
+Examples:
+
+- “Send Botox aftercare email 1 day after photo upload w/ ‘botox’ tag”
+- “If client hasn’t booked in 90 days, send re-engagement SMS”
+- “Trigger birthday discount email 7 days before DOB”
+
+Planned:
+• Drag & drop Zapier-style builder
+• Workflow templates
+• AI suggestions based on pattern usage
+
+────────────────────────────────────────────────────────────
+🧪 AI FEATURE REQUESTS
+
+• Smart caption generation for social media
+• Image comparison: before/after detection
+• Workflow generation suggestions
+• Churn prediction (based on visit gaps)
+• Re-engagement AI messages (dynamic prompts)
+• Competitor analysis summarizer
+• Auto-tag images with AI model
+
+────────────────────────────────────────────────────────────
+📅 CALENDAR SYNC + JOURNEY VIEW
+
+• Google Calendar sync per user/org
+• Appointment metadata attached to client
+• Journey View includes:
+
+- Appt history
+- Uploaded files
+- Sent messages
+- Workflow log triggers
+
+────────────────────────────────────────────────────────────
+📲 SOCIAL QUEUE + CONTENT SCHEDULING
+
+• Image upload → preview → crop → tag
+• Schedule IG/Facebook posts (future TikTok support)
+• Captions with emoji, hashtags
+• Template caption insert
+• Campaigns (e.g., “Back to School”, “Glow Up Summer”)
+
+────────────────────────────────────────────────────────────
+🧑‍⚕️ PATIENT PORTAL + QR LOGIN
+
+• QR-based login for client
+
+- Dynamic QR tokens (expires after 15 mins)
+- Magic link fallback
+  • Portal Features:
+- View uploaded images
+- View treatment history
+- View appts, cancel/reschedule
+- Leave reviews (future)
+- Consent form upload/download
+
+────────────────────────────────────────────────────────────
+📈 ANALYTICS
+
+• Per-org and global analytics
+• Metrics:
+
+- # Clients
+- Churn rate
+- Workflow actions triggered
+- SMS/Email sent
+- File storage used
+- Top used campaigns
+
+────────────────────────────────────────────────────────────
+💸 BILLING + COST TRACKING
+
+Storage:
+
+- Convex (too costly at scale)
+- S3 (chosen, ~$3/month/100GB)
+- Example: 5k clients × 50 images × 500KB ≈ 120GB
+
+SMS:
+
+- AWS SNS: ~$0.0075/message
+
+Email:
+
+- AWS SES: ~$0.10 per 1000 emails
+
+Stripe Billing:
+
+- Tiered pricing: Starter / Pro / Agency
+- Metered usage on:
+  - Storage
+  - SMS
+  - Workflow execution
+- Admin dashboard view
+
+────────────────────────────────────────────────────────────
+📌 ADDITIONAL FEATURES DISCUSSED
+
+• Smart Recapture Engine
+
+- Alert staff if client hasn’t visited in X days
+- Trigger campaigns or tag for followup
+
+• Referral engine
+
+- Link-based tracking
+- Reward structure
+
+• Intake forms
+
+- Dynamic drag & drop builder
+- Attach to client record
+
+• Consent PDF uploader
+
+- Store under client > documents
+
+• HIPAA Toggle
+
+- Optional org-level flag
+- Enforces stricter access
+- Auto-redact image tags (future)
+
+• Countdown timers in promos
+• Image annotations
+• AI agent to summarize weekly performance
+• Multilingual email templates
+
+────────────────────────────────────────────────────────────
+
+This document represents the **absolute full master scope** across every feature we’ve discussed to date — including backend architecture, frontend logic, AI features, and nuanced project plans.
+
+📥 SCRAPER MODULE: Aesthetic Record + Competitor Sites
+
+─────────────────────────────────────────────
+
+1. AESTHETIC RECORD DATA SCRAPER
+
+Goal:
+Extract full user/client data (beyond CSV export), images, visit history, and other metadata for import/mirroring inside Honey Rae.
+
+Data Sources:
+• CSV Export from AR (used for bulk import)
+• Web Portal scraping (optional advanced)
+
+- Navigate via Puppeteer/Playwright
+- Scrape:
+  - Client treatment history
+  - Session notes
+  - Images (before/after)
+  - Appointment metadata
+  - Invoice totals and payment type
+  - Tags and forms
+
+Integration:
+• If authenticated scraper is enabled:
+
+- Sync every X days
+- Push deltas only (new appts, new photos)
+- Flag “scraped_at” date per record
+
+Challenges:
+• CAPTCHA (if present)
+• Session timeout
+• Anti-bot detection
+
+Tech:
+• Puppeteer or Playwright (headless browser)
+• Cron-based server script
+• Store scrape jobs in Convex (or job queue)
+
+───────────────────────────────────────────── 2. COMPETITOR SCRAPER
 
 Sources:
 • Local injector websites (e.g., 10-mi radius)

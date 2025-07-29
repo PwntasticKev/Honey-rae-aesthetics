@@ -185,6 +185,13 @@ export function WorkflowList({ workflows, onAddWorkflow, onEditWorkflow, onDelet
 
 	// Debug logging
 	console.log('WorkflowList received workflows:', workflows);
+	console.log('WorkflowList filteredWorkflows:', filteredWorkflows);
+
+	// Update filtered workflows when workflows prop changes
+	React.useEffect(() => {
+		setFilteredWorkflows(workflows);
+		console.log('Updated filteredWorkflows:', workflows);
+	}, [workflows]);
 
 	const handleSearch = (query: string) => {
 		const filtered = workflows.filter(workflow =>
@@ -193,6 +200,7 @@ export function WorkflowList({ workflows, onAddWorkflow, onEditWorkflow, onDelet
 			workflow.trigger.toLowerCase().includes(query.toLowerCase())
 		);
 		setFilteredWorkflows(filtered);
+		console.log('Search filtered workflows:', filtered);
 	};
 
 	const handleAddWorkflow = () => {
@@ -247,7 +255,7 @@ export function WorkflowList({ workflows, onAddWorkflow, onEditWorkflow, onDelet
 		{
 			key: "name",
 			label: "Name",
-			render: (workflow: Workflow) => {
+			render: (value: any, workflow: Workflow) => {
 				if (!workflow) return <div>No workflow data</div>;
 				const isActive = workflow.enabled || workflow.isActive || false;
 				return (
@@ -266,7 +274,7 @@ export function WorkflowList({ workflows, onAddWorkflow, onEditWorkflow, onDelet
 		{
 			key: "trigger",
 			label: "Trigger",
-			render: (workflow: Workflow) => {
+			render: (value: any, workflow: Workflow) => {
 				if (!workflow) return <div>No trigger</div>;
 				return (
 					<div className="text-sm text-gray-900 capitalize">
@@ -278,7 +286,7 @@ export function WorkflowList({ workflows, onAddWorkflow, onEditWorkflow, onDelet
 		{
 			key: "status",
 			label: "Status",
-			render: (workflow: Workflow) => {
+			render: (value: any, workflow: Workflow) => {
 				if (!workflow) return <Badge className="bg-gray-100 text-gray-800">Unknown</Badge>;
 				const isActive = workflow.enabled || workflow.isActive || false;
 				return (
@@ -291,7 +299,7 @@ export function WorkflowList({ workflows, onAddWorkflow, onEditWorkflow, onDelet
 		{
 			key: "stats",
 			label: "Stats",
-			render: (workflow: Workflow) => {
+			render: (value: any, workflow: Workflow) => {
 				if (!workflow) return <div className="text-sm text-gray-500">No stats</div>;
 				return (
 					<div className="text-sm text-gray-500">
@@ -341,6 +349,16 @@ export function WorkflowList({ workflows, onAddWorkflow, onEditWorkflow, onDelet
 
 	return (
 		<>
+			{/* Debug Section */}
+			<div className="mb-4 p-4 bg-yellow-100 border border-yellow-300 rounded">
+				<h3 className="font-bold mb-2">Debug - Workflow Data:</h3>
+				<p>Total workflows: {workflows.length}</p>
+				<p>Filtered workflows: {filteredWorkflows.length}</p>
+				<pre className="text-xs overflow-auto">
+					{JSON.stringify(workflows, null, 2)}
+				</pre>
+			</div>
+
 			<DataTable
 				data={filteredWorkflows}
 				columns={columns}

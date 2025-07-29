@@ -18,6 +18,8 @@ import {
 	Bell, 
 	LogOut
 } from "lucide-react";
+import { NotificationDropdown } from "@/components/NotificationDropdown";
+import { GlobalSearch } from "@/components/GlobalSearch";
 
 export default function WorkflowsPage() {
 	const router = useRouter();
@@ -26,6 +28,7 @@ export default function WorkflowsPage() {
 	const [orgId, setOrgId] = useState<string | null>(null);
 	const createWorkflow = useMutation(api.workflows.create);
 	const updateWorkflow = useMutation(api.workflows.update);
+	const toggleActive = useMutation(api.workflows.toggleActive);
 	const createDemoOrg = useMutation(api.orgs.createDemoOrg);
 	const firstOrg = useQuery(api.orgs.list);
 	const realWorkflows = useWorkflows(orgId);
@@ -46,7 +49,7 @@ export default function WorkflowsPage() {
 
 	const handleAddWorkflow = () => {
 		console.log("Add workflow");
-		// TODO: Implement add workflow functionality
+		router.push('/workflow-editor');
 	};
 
 	const handleEditWorkflow = (id: string) => {
@@ -61,6 +64,7 @@ export default function WorkflowsPage() {
 
 	const createTestWorkflow = async () => {
 		try {
+			console.log('Creating test workflow with orgId:', orgId);
 			const newWorkflowId = await createWorkflow({
 				orgId: orgId as any,
 				name: "Test Workflow",
@@ -79,20 +83,21 @@ export default function WorkflowsPage() {
 				isActive: true,
 			});
 			console.log("Created test workflow:", newWorkflowId);
+			alert('Test workflow created successfully!');
 		} catch (error) {
 			console.error("Error creating test workflow:", error);
+			alert(`Error creating test workflow: ${error}`);
 		}
 	};
 
 	const handleToggleWorkflow = async (id: string, enabled: boolean) => {
 		try {
-			await updateWorkflow({
-				id: id as any,
-				isActive: !enabled,
-			});
-			console.log("Toggled workflow:", id, "to", !enabled);
+			console.log('Toggling workflow:', id, 'to enabled:', enabled);
+			await toggleActive({ id: id as any });
+			console.log("Workflow toggled successfully");
 		} catch (error) {
 			console.error("Error toggling workflow:", error);
+			alert(`Error toggling workflow: ${error}`);
 		}
 	};
 
@@ -108,6 +113,14 @@ export default function WorkflowsPage() {
 		runCount: 0, // TODO: Add run count tracking
 	})) || [];
 
+	// Debug logging
+	console.log('=== WORKFLOWS PAGE DEBUG ===');
+	console.log('realWorkflows from Convex:', realWorkflows);
+	console.log('transformedWorkflows:', transformedWorkflows);
+	console.log('orgId:', orgId);
+	console.log('firstOrg:', firstOrg);
+	console.log('================================');
+
 	return (
 		<div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-rose-50">
 			{/* Sidebar */}
@@ -117,11 +130,11 @@ export default function WorkflowsPage() {
 			/>
 
 			{/* Main Content */}
-			<div className="flex-1 flex flex-col lg:ml-80 relative">
+			<div className="flex-1 flex flex-col lg:ml-64 relative">
 				{/* Header */}
-				<header className="glass border-b border-pink-100/50 backdrop-blur-xl">
+				<header className="bg-white border-b border-gray-200 shadow-sm">
 					<div className="flex items-center justify-between px-6 h-16">
-						<div className="flex items-center">
+						<div className="flex items-center space-x-6">
 							<Button
 								variant="ghost"
 								size="icon"
@@ -131,43 +144,41 @@ export default function WorkflowsPage() {
 							>
 								<Menu className="h-5 w-5" />
 							</Button>
-							<h1 className="text-xl font-bold gradient-text ml-2 lg:ml-0">
-								Honey Rae Aesthetics
-							</h1>
+							
+							{/* Page Title and Greeting */}
+							<div>
+								<h1 className="text-xl font-bold text-gray-900">Workflows</h1>
+								<p className="text-sm text-gray-600">Manage your automation workflows</p>
+							</div>
 						</div>
 						
 						<div className="flex items-center space-x-4">
 							{/* Search */}
-							<div className="relative hidden md:block">
-								<Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-								<Input
-									type="text"
-									placeholder="Search clients, appointments..."
-									className="pl-10 pr-4 w-64 bg-white/50 border-pink-200/50 focus:border-pink-300"
-								/>
+							<div className="hidden md:block">
+								<GlobalSearch />
 							</div>
 							
 							{/* Notifications */}
-							<Button variant="ghost" size="icon" className="relative">
-								<Bell className="h-5 w-5" />
-								<Badge className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 text-xs bg-pink-500">
-									3
-								</Badge>
-							</Button>
+							<NotificationDropdown />
 							
 							{/* User Menu */}
-							<div className="flex items-center space-x-2">
-								<Avatar className="w-10 h-10">
+							<div className="flex items-center space-x-3">
+								<Avatar className="w-8 h-8">
 									<AvatarImage src="/avatar.jpg" />
-									<AvatarFallback className="bg-gradient-to-br from-pink-400 to-rose-500 text-white">
+									<AvatarFallback className="bg-orange-500 text-white">
 										{user?.email?.charAt(0).toUpperCase() || "A"}
 									</AvatarFallback>
 								</Avatar>
+								<div className="hidden md:block">
+									<p className="text-sm font-medium text-gray-900">Dr. Rae</p>
+									<p className="text-xs text-gray-500">Admin</p>
+								</div>
 								<Button
 									variant="ghost"
 									size="icon"
 									onClick={logout}
 									title="Logout"
+									className="text-gray-600 hover:text-gray-900"
 								>
 									<LogOut className="h-4 w-4" />
 								</Button>
@@ -183,6 +194,47 @@ export default function WorkflowsPage() {
 						<div className="mb-4">
 							<Button onClick={createTestWorkflow} className="mb-4">
 								Create Test Workflow
+							</Button>
+							<Button 
+								onClick={async () => {
+									try {
+										console.log('Creating simple test workflow...');
+										const newWorkflowId = await createWorkflow({
+											orgId: orgId as any,
+											name: "Simple Test Workflow",
+											description: "A simple test workflow",
+											trigger: "manual",
+											conditions: [],
+											actions: [
+												{
+													type: "send_sms",
+													config: { message: "Hello from simple test!" },
+													order: 0,
+												},
+											],
+											isActive: true,
+										});
+										console.log('Created simple test workflow:', newWorkflowId);
+										alert('Simple test workflow created!');
+									} catch (error) {
+										console.error('Error creating simple test workflow:', error);
+										alert(`Error: ${error}`);
+									}
+								}}
+								variant="outline"
+								className="ml-2"
+							>
+								Create Simple Test
+							</Button>
+							<Button 
+								onClick={() => {
+									console.log('Refreshing workflows...');
+									window.location.reload();
+								}}
+								variant="outline"
+								className="ml-2"
+							>
+								Refresh Data
 							</Button>
 						</div>
 						<div className="mb-4 p-4 bg-gray-100 rounded">

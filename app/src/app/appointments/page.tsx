@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AppointmentList } from "@/components/AppointmentList";
+import { MultiCalendar } from "@/components/MultiCalendar";
 import { Sidebar } from "@/components/Sidebar";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -14,37 +14,8 @@ import {
 	Bell, 
 	LogOut
 } from "lucide-react";
-
-// Mock data
-const mockAppointments = [
-	{
-		_id: "1",
-		clientName: "Sarah Johnson",
-		dateTime: new Date(Date.now() + 86400000), // Tomorrow
-		type: "Consultation",
-		provider: "Dr. Rae",
-		status: "confirmed",
-		notes: "First time visit"
-	},
-	{
-		_id: "2",
-		clientName: "Michael Chen",
-		dateTime: new Date(Date.now() + 172800000), // Day after tomorrow
-		type: "Treatment",
-		provider: "Dr. Rae",
-		status: "confirmed",
-		notes: "Follow-up appointment"
-	},
-	{
-		_id: "3",
-		clientName: "Emily Rodriguez",
-		dateTime: new Date(Date.now() - 86400000), // Yesterday
-		type: "Consultation",
-		provider: "Dr. Rae",
-		status: "completed",
-		notes: "Initial consultation completed"
-	}
-];
+import { NotificationDropdown } from "@/components/NotificationDropdown";
+import { GlobalSearch } from "@/components/GlobalSearch";
 
 export default function AppointmentsPage() {
 	const { user, logout } = useAuth();
@@ -74,11 +45,11 @@ export default function AppointmentsPage() {
 			/>
 
 			{/* Main Content */}
-			<div className="flex-1 flex flex-col lg:ml-80 relative">
+			<div className="flex-1 flex flex-col lg:ml-64 relative">
 				{/* Header */}
-				<header className="glass border-b border-pink-100/50 backdrop-blur-xl">
+				<header className="bg-white border-b border-gray-200 shadow-sm">
 					<div className="flex items-center justify-between px-6 h-16">
-						<div className="flex items-center">
+						<div className="flex items-center space-x-6">
 							<Button
 								variant="ghost"
 								size="icon"
@@ -88,43 +59,41 @@ export default function AppointmentsPage() {
 							>
 								<Menu className="h-5 w-5" />
 							</Button>
-							<h1 className="text-xl font-bold gradient-text ml-2 lg:ml-0">
-								Honey Rae Aesthetics
-							</h1>
+							
+							{/* Page Title and Greeting */}
+							<div>
+								<h1 className="text-xl font-bold text-gray-900">Appointments</h1>
+								<p className="text-sm text-gray-600">Multi-calendar scheduling with Google sync</p>
+							</div>
 						</div>
 						
 						<div className="flex items-center space-x-4">
 							{/* Search */}
-							<div className="relative hidden md:block">
-								<Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-								<Input
-									type="text"
-									placeholder="Search clients, appointments..."
-									className="pl-10 pr-4 w-64 bg-white/50 border-pink-200/50 focus:border-pink-300"
-								/>
+							<div className="hidden md:block">
+								<GlobalSearch />
 							</div>
 							
 							{/* Notifications */}
-							<Button variant="ghost" size="icon" className="relative">
-								<Bell className="h-5 w-5" />
-								<Badge className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 text-xs bg-pink-500">
-									3
-								</Badge>
-							</Button>
+							<NotificationDropdown />
 							
 							{/* User Menu */}
-							<div className="flex items-center space-x-2">
-								<Avatar className="w-10 h-10">
+							<div className="flex items-center space-x-3">
+								<Avatar className="w-8 h-8">
 									<AvatarImage src="/avatar.jpg" />
-									<AvatarFallback className="bg-gradient-to-br from-pink-400 to-rose-500 text-white">
+									<AvatarFallback className="bg-orange-500 text-white">
 										{user?.email?.charAt(0).toUpperCase() || "A"}
 									</AvatarFallback>
 								</Avatar>
+								<div className="hidden md:block">
+									<p className="text-sm font-medium text-gray-900">Dr. Rae</p>
+									<p className="text-xs text-gray-500">Admin</p>
+								</div>
 								<Button
 									variant="ghost"
 									size="icon"
 									onClick={logout}
 									title="Logout"
+									className="text-gray-600 hover:text-gray-900"
 								>
 									<LogOut className="h-4 w-4" />
 								</Button>
@@ -136,8 +105,7 @@ export default function AppointmentsPage() {
 				{/* Page Content */}
 				<main className="flex-1 p-6">
 					<div className="max-w-7xl mx-auto">
-						<h1 className="text-3xl font-bold text-gray-900 mb-6">Appointment Management</h1>
-						<AppointmentList 
+						<MultiCalendar 
 							orgId="demo-org"
 							onAddAppointment={handleAddAppointment}
 							onEditAppointment={handleEditAppointment}
