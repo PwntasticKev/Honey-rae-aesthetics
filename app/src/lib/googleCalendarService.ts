@@ -57,6 +57,12 @@ class GoogleCalendarService {
   private async loadGoogleAPI(): Promise<void> {
     return new Promise((resolve, reject) => {
       try {
+        // Check if gapi is already loaded
+        if ((window as any).gapi) {
+          resolve();
+          return;
+        }
+
         const script = document.createElement("script");
         script.src = "https://apis.google.com/js/api.js";
         script.onload = () => {
@@ -93,6 +99,37 @@ class GoogleCalendarService {
   private async loadGoogleIdentityServices(): Promise<void> {
     return new Promise((resolve, reject) => {
       try {
+        // Check if google.accounts is already loaded
+        if ((window as any).google?.accounts) {
+          try {
+            this.tokenClient = (
+              window as any
+            ).google.accounts.oauth2.initTokenClient({
+              client_id: this.clientId,
+              scope: this.scopes,
+              callback: (tokenResponse: any) => {
+                if (tokenResponse && tokenResponse.access_token) {
+                  localStorage.setItem(
+                    "google_calendar_token",
+                    tokenResponse.access_token,
+                  );
+                  this.onTokenReceived(tokenResponse.access_token);
+                }
+              },
+            });
+            console.log(
+              "Token client initialized from existing google.accounts",
+            );
+            resolve();
+            return;
+          } catch (error) {
+            console.warn(
+              "Failed to initialize token client from existing google.accounts:",
+              error,
+            );
+          }
+        }
+
         const script = document.createElement("script");
         script.src = "https://accounts.google.com/gsi/client";
         script.onload = () => {
@@ -112,10 +149,11 @@ class GoogleCalendarService {
                 }
               },
             });
+            console.log("Token client initialized from loaded script");
             resolve();
           } catch (error) {
             console.warn(
-              "Google Identity Services initialization failed:",
+              "Failed to initialize token client from loaded script:",
               error,
             );
             resolve(); // Resolve anyway to prevent blocking
@@ -138,7 +176,9 @@ class GoogleCalendarService {
 
   private onTokenReceived(accessToken: string): void {
     // Set the access token for API calls
-    (window as any).gapi.client.setToken({ access_token: accessToken });
+    if ((window as any).gapi?.client) {
+      (window as any).gapi.client.setToken({ access_token: accessToken });
+    }
   }
 
   async authenticate(): Promise<boolean> {
@@ -146,12 +186,43 @@ class GoogleCalendarService {
       await this.initialize();
     }
 
+    // Wait a bit for initialization to complete
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
     return new Promise((resolve) => {
       if (this.tokenClient) {
         this.tokenClient.requestAccessToken({ prompt: "consent" });
         resolve(true);
       } else {
-        resolve(false);
+        console.error("Token client not initialized");
+        // Try to initialize the token client again
+        try {
+          if ((window as any).google?.accounts) {
+            this.tokenClient = (
+              window as any
+            ).google.accounts.oauth2.initTokenClient({
+              client_id: this.clientId,
+              scope: this.scopes,
+              callback: (tokenResponse: any) => {
+                if (tokenResponse && tokenResponse.access_token) {
+                  localStorage.setItem(
+                    "google_calendar_token",
+                    tokenResponse.access_token,
+                  );
+                  this.onTokenReceived(tokenResponse.access_token);
+                }
+              },
+            });
+            this.tokenClient.requestAccessToken({ prompt: "consent" });
+            resolve(true);
+          } else {
+            console.error("Google accounts not available");
+            resolve(false);
+          }
+        } catch (error) {
+          console.error("Failed to initialize token client:", error);
+          resolve(false);
+        }
       }
     });
   }
@@ -161,11 +232,14 @@ class GoogleCalendarService {
     if (!token) return false;
 
     try {
-      // Verify token is still valid
-      const response = await (
-        window as any
-      ).gapi.client.calendar.calendarList.list();
-      return true;
+      // Verify token is still valid by making a test API call
+      if ((window as any).gapi?.client) {
+        const response = await (
+          window as any
+        ).gapi.client.calendar.calendarList.list();
+        return true;
+      }
+      return false;
     } catch (error) {
       // Token is invalid, remove it
       localStorage.removeItem("google_calendar_token");
@@ -175,6 +249,10 @@ class GoogleCalendarService {
 
   async getCalendars(): Promise<GoogleCalendar[]> {
     try {
+      if (!(window as any).gapi?.client) {
+        throw new Error("Google API not initialized");
+      }
+
       const response = await (
         window as any
       ).gapi.client.calendar.calendarList.list();
@@ -199,6 +277,10 @@ class GoogleCalendarService {
     timeMax: Date,
   ): Promise<GoogleCalendarEvent[]> {
     try {
+      if (!(window as any).gapi?.client) {
+        throw new Error("Google API not initialized");
+      }
+
       const response = await (window as any).gapi.client.calendar.events.list({
         calendarId: calendarId,
         timeMin: timeMin.toISOString(),
@@ -259,6 +341,10 @@ class GoogleCalendarService {
     },
   ): Promise<GoogleCalendarEvent | null> {
     try {
+      if (!(window as any).gapi?.client) {
+        throw new Error("Google API not initialized");
+      }
+
       const response = await (window as any).gapi.client.calendar.events.insert(
         {
           calendarId: calendarId,
@@ -314,6 +400,10 @@ class GoogleCalendarService {
     },
   ): Promise<GoogleCalendarEvent | null> {
     try {
+      if (!(window as any).gapi?.client) {
+        throw new Error("Google API not initialized");
+      }
+
       const response = await (window as any).gapi.client.calendar.events.patch({
         calendarId: calendarId,
         eventId: eventId,
@@ -361,6 +451,10 @@ class GoogleCalendarService {
 
   async deleteEvent(calendarId: string, eventId: string): Promise<boolean> {
     try {
+      if (!(window as any).gapi?.client) {
+        throw new Error("Google API not initialized");
+      }
+
       await (window as any).gapi.client.calendar.events.delete({
         calendarId: calendarId,
         eventId: eventId,
@@ -374,12 +468,14 @@ class GoogleCalendarService {
 
   logout(): void {
     localStorage.removeItem("google_calendar_token");
-    (window as any).google.accounts.oauth2.revoke(
-      localStorage.getItem("google_calendar_token"),
-      () => {
-        console.log("Logged out successfully");
-      },
-    );
+    if ((window as any).google?.accounts?.oauth2) {
+      (window as any).google.accounts.oauth2.revoke(
+        localStorage.getItem("google_calendar_token"),
+        () => {
+          console.log("Logged out successfully");
+        },
+      );
+    }
   }
 }
 

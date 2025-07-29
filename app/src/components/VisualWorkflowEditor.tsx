@@ -800,32 +800,38 @@ function WorkflowEditor({
     }
   }, [workflow, setNodes, setEdges, nodesInitialized, isSaving, nodes.length]);
 
-  const saveWorkflow = () => {
+  const saveWorkflow = async () => {
     setIsSaving(true);
 
-    const workflowData = {
-      id: workflow?.id || Date.now().toString(),
-      name: workflowName,
-      description: workflowDescription,
-      enabled: workflow?.enabled || false,
-      blocks: nodes.map((node) => ({
-        id: node.id,
-        type: node.data?.type || node.type, // Use data.type for the actual block type
-        position: node.position,
-        width: node.width,
-        height: node.height,
-        config: node.data?.config || {},
-      })),
-      connections: edges.map((edge) => ({
-        id: edge.id,
-        from: edge.source,
-        to: edge.target,
-        fromPort: edge.sourceHandle,
-        toPort: edge.targetHandle,
-      })),
-    };
+    try {
+      const workflowData = {
+        id: workflow?.id || `new_${Date.now()}`, // Preserve existing ID or create new one
+        name: workflowName,
+        description: workflowDescription,
+        enabled: workflow?.enabled || false,
+        blocks: nodes.map((node) => ({
+          id: node.id,
+          type: node.data?.type || node.type, // Use data.type for the actual block type
+          position: node.position,
+          width: node.width,
+          height: node.height,
+          config: node.data?.config || {},
+        })),
+        connections: edges.map((edge) => ({
+          id: edge.id,
+          from: edge.source,
+          to: edge.target,
+          fromPort: edge.sourceHandle,
+          toPort: edge.targetHandle,
+        })),
+      };
 
-    onSave(workflowData);
+      await onSave(workflowData);
+    } catch (error) {
+      console.error("Error saving workflow:", error);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const testWorkflow = async () => {

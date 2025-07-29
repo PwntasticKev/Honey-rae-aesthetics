@@ -19,7 +19,7 @@ export default function WorkflowEditorPage() {
   const { environment } = useEnvironment();
 
   // Fetch real workflow data if we have a valid Convex ID
-  const isValidConvexId = workflowId && workflowId.startsWith("workflows:");
+  const isValidConvexId = workflowId && workflowId.length > 10;
   const realWorkflow = isValidConvexId
     ? useQuery(api.workflows.get, { id: workflowId as any })
     : undefined;
@@ -77,7 +77,7 @@ export default function WorkflowEditorPage() {
       if (isEditingRealWorkflow) {
         // Update existing real Convex workflow
         await updateWorkflow({
-          id: workflowId as any,
+          id: workflowId as any, // Use the original workflowId for update
           name: workflowData.name,
           description: workflowData.description,
           trigger: workflowData.trigger,
@@ -91,6 +91,7 @@ export default function WorkflowEditorPage() {
           description: "Workflow updated successfully!",
           variant: "success",
         });
+        // Don't redirect - stay on the same page
         return;
       } else {
         // Create new Convex workflow
@@ -110,6 +111,7 @@ export default function WorkflowEditorPage() {
         description: `Failed to save workflow: ${error instanceof Error ? error.message : String(error)}`,
         variant: "destructive",
       });
+      throw error; // Re-throw so the VisualWorkflowEditor can handle it
     }
   };
 
@@ -120,7 +122,7 @@ export default function WorkflowEditorPage() {
   // Transform real workflow data to match the editor format
   const transformedRealWorkflow = realWorkflow
     ? {
-        id: realWorkflow._id,
+        id: realWorkflow._id, // Use the actual Convex ID
         name: realWorkflow.name,
         description: realWorkflow.description || "",
         enabled: realWorkflow.isActive,
@@ -154,7 +156,7 @@ export default function WorkflowEditorPage() {
   } else if (isValidConvexId) {
     // For valid Convex IDs but no data yet, show loading state
     workflowToEdit = {
-      id: workflowId,
+      id: workflowId, // Preserve the original ID for the URL
       name: "Loading...",
       description: "Loading workflow data...",
       enabled: false,
