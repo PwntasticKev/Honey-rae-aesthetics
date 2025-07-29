@@ -37,6 +37,7 @@ import { Sidebar } from "@/components/Sidebar";
 import { useAuth } from "@/hooks/useAuth";
 import { NotificationDropdown } from "@/components/NotificationDropdown";
 import { GlobalSearch } from "@/components/GlobalSearch";
+import { EnvironmentToggle } from "@/components/EnvironmentToggle";
 import { notificationService } from "@/lib/notificationService";
 import { AuthWrapper } from "@/components/AuthWrapper";
 
@@ -219,6 +220,9 @@ export default function Dashboard() {
 
                 {/* Notifications */}
                 <NotificationDropdown />
+
+                {/* Environment Toggle */}
+                <EnvironmentToggle />
 
                 {/* User Menu */}
                 <div className="flex items-center space-x-3">

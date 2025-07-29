@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { ConvexProviderWrapper } from "@/components/ConvexProvider";
+import { EnvironmentProvider } from "@/contexts/EnvironmentContext";
 import { Toaster } from "@/components/ui/toaster";
 
 export const metadata: Metadata = {
@@ -17,8 +18,10 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <ConvexProviderWrapper>
-          {children}
-          <Toaster />
+          <EnvironmentProvider>
+            {children}
+            <Toaster />
+          </EnvironmentProvider>
         </ConvexProviderWrapper>
       </body>
     </html>

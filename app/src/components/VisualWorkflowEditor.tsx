@@ -53,6 +53,7 @@ import {
   FileText,
   Users,
   Activity,
+  Tag,
 } from "lucide-react";
 
 interface ConfigField {
@@ -102,6 +103,7 @@ interface VisualWorkflowEditorProps {
   };
   onSave: (workflow: any) => void;
   onCancel: () => void;
+  environment?: "development" | "production";
 }
 
 const blockTypes: BlockType[] = [
@@ -210,7 +212,7 @@ const blockTypes: BlockType[] = [
   {
     type: "add_tag",
     label: "Add Tag",
-    icon: Trash2, // Changed from Tag to Trash2 as Tag is no longer imported
+    icon: Tag,
     description: "Add client tag",
     color: "bg-orange-500",
     config: {
@@ -582,6 +584,7 @@ function WorkflowEditor({
     workflow?.description || "",
   );
   const [nodesInitialized, setNodesInitialized] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Update workflow name and description when workflow prop changes
   useEffect(() => {
@@ -599,7 +602,7 @@ function WorkflowEditor({
     ) {
       setWorkflowDescription(workflow.description);
     }
-  }, [workflow, workflowName, workflowDescription]);
+  }, [workflow]); // Remove workflowName and workflowDescription from dependencies
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const [editingNode, setEditingNode] = useState<Node | null>(null);
   const [showRightPanel, setShowRightPanel] = useState(false);
@@ -717,6 +720,17 @@ function WorkflowEditor({
 
   // Initialize nodes and edges from workflow data or create default trigger
   useEffect(() => {
+    // Don't initialize nodes if we're in the middle of saving
+    if (isSaving) {
+      return;
+    }
+
+    // Don't reset nodes if we already have nodes and they haven't been initialized yet
+    if (nodes.length > 0 && !nodesInitialized) {
+      setNodesInitialized(true);
+      return;
+    }
+
     // Only initialize nodes if they haven't been initialized yet
     if (nodesInitialized) {
       return;
@@ -784,14 +798,11 @@ function WorkflowEditor({
       setEdges([]);
       setNodesInitialized(true);
     }
-  }, [workflow, setNodes, setEdges, nodesInitialized]);
-
-  // Reset nodes initialization when workflow ID changes
-  useEffect(() => {
-    setNodesInitialized(false);
-  }, [workflow?.id]);
+  }, [workflow, setNodes, setEdges, nodesInitialized, isSaving, nodes.length]);
 
   const saveWorkflow = () => {
+    setIsSaving(true);
+
     const workflowData = {
       id: workflow?.id || Date.now().toString(),
       name: workflowName,
@@ -813,7 +824,7 @@ function WorkflowEditor({
         toPort: edge.targetHandle,
       })),
     };
-    console.log("Saving workflow data:", workflowData);
+
     onSave(workflowData);
   };
 
@@ -832,10 +843,6 @@ function WorkflowEditor({
     const email = emailMatch ? emailMatch[1] : selectedTestContact;
     const name = selectedTestContact.split(" (")[0];
 
-    console.log("Testing workflow with contact:", selectedTestContact);
-    console.log("Extracted email:", email);
-    console.log("Extracted name:", name);
-
     // Find trigger node
     const triggerNode = nodes.find((node) => node.type === "trigger");
     if (!triggerNode) {
@@ -850,7 +857,6 @@ function WorkflowEditor({
     // Execute each node sequentially
     for (let i = 0; i < nodes.length; i++) {
       const node = nodes[i];
-      console.log(`Executing node ${i + 1}:`, node.data);
 
       switch (node.data.type) {
         case "send_sms":
@@ -877,9 +883,6 @@ function WorkflowEditor({
         case "delay":
           const value = node.data.config.value || 1;
           const unit = node.data.config.unit || "days";
-          console.log(
-            `⏰ Delay for ${value} ${unit} for ${selectedTestContact}`,
-          );
 
           // Convert to milliseconds for actual delay
           let delayMs = 0;
@@ -908,16 +911,10 @@ function WorkflowEditor({
           const totalSeconds = Math.floor(delayMs / 1000);
           for (let second = 1; second <= totalSeconds; second++) {
             await new Promise((resolve) => setTimeout(resolve, 1000));
-            console.log(`⏰ Delay progress: ${second}/${totalSeconds} seconds`);
           }
 
-          console.log(`✅ Delay completed after ${value} ${unit}`);
           break;
         case "if":
-          console.log(
-            `🔍 Condition checked for ${selectedTestContact}:`,
-            node.data.config,
-          );
           toast({
             title: "Condition Checked",
             description: `${node.data.config.condition} ${node.data.config.operator} ${node.data.config.value}`,
@@ -1237,7 +1234,7 @@ function WorkflowEditor({
             <div className="flex items-center space-x-4">
               <Button
                 variant="outline"
-                onClick={() => router.back()}
+                onClick={onCancel}
                 className="flex items-center space-x-2"
               >
                 <ArrowLeft className="w-4 h-4" />
@@ -1265,9 +1262,33 @@ function WorkflowEditor({
               <Button
                 onClick={saveWorkflow}
                 className="bg-gradient-to-r from-pink-500 to-purple-600"
+                disabled={isSaving}
               >
-                <Save className="w-4 h-4 mr-2" />
-                Save Workflow
+                {isSaving ? (
+                  <svg
+                    className="animate-spin h-4 w-4 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
+                  </svg>
+                ) : (
+                  <Save className="w-4 h-4 mr-2" />
+                )}
+                {isSaving ? "Saving..." : "Save Workflow"}
               </Button>
             </div>
           </div>
@@ -1352,15 +1373,15 @@ function WorkflowEditor({
                   {blockTypes.map((blockType) => (
                     <div
                       key={blockType.type}
-                      className="p-3 border rounded-lg flex flex-col items-center cursor-grab hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                      className="p-2 border rounded-lg flex flex-col items-center cursor-grab hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                       onDragStart={(event) =>
                         onDragStart(event, blockType.type, blockType.label)
                       }
                       draggable
                       data-testid={`draggable-block-${blockType.type}`}
                     >
-                      <blockType.icon className="h-6 w-6 mb-1 text-blue-500" />
-                      <span className="text-sm font-medium text-center">
+                      <blockType.icon className="h-4 w-4 mb-1 text-blue-500" />
+                      <span className="text-xs font-medium text-center">
                         {blockType.label}
                       </span>
                     </div>
