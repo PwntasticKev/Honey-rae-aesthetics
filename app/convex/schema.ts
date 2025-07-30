@@ -150,6 +150,33 @@ export default defineSchema({
         order: v.number(),
       }),
     ),
+    // Visual workflow data for the editor
+    blocks: v.optional(
+      v.array(
+        v.object({
+          id: v.string(),
+          type: v.string(),
+          position: v.object({
+            x: v.number(),
+            y: v.number(),
+          }),
+          width: v.number(),
+          height: v.number(),
+          config: v.any(),
+        }),
+      ),
+    ),
+    connections: v.optional(
+      v.array(
+        v.object({
+          id: v.string(),
+          from: v.string(),
+          to: v.string(),
+          fromPort: v.string(),
+          toPort: v.string(),
+        }),
+      ),
+    ),
     isActive: v.boolean(),
     createdAt: v.number(),
     updatedAt: v.number(),
