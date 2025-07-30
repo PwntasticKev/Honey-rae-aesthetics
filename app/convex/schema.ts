@@ -226,7 +226,7 @@ export default defineSchema({
   // Messages - sent messages history
   messages: defineTable({
     orgId: v.id("orgs"),
-    clientId: v.id("clients"),
+    clientId: v.optional(v.id("clients")), // Optional for test messages
     type: v.union(v.literal("sms"), v.literal("email")),
     content: v.string(),
     status: v.union(

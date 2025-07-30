@@ -568,23 +568,6 @@ function WorkflowEditor({
     connections: workflow?.connections?.length,
   });
 
-  // Add detailed logging for blocks and connections
-  if (workflow?.blocks) {
-    console.log("🔍 Workflow blocks:", workflow.blocks);
-    console.log(
-      "🔍 Block details:",
-      workflow.blocks.map((block, index) => ({
-        index,
-        id: block.id,
-        type: block.type,
-        position: block.position,
-        config: block.config,
-      })),
-    );
-  }
-  if (workflow?.connections) {
-    console.log("🔍 Workflow connections:", workflow.connections);
-  }
   const router = useRouter();
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesState] = useEdgesState([]);
@@ -597,16 +580,9 @@ function WorkflowEditor({
   const [nodesInitialized, setNodesInitialized] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Add debugging to track node state changes
-  useEffect(() => {
-    console.log("🔍 Nodes state changed:", nodes.length, "nodes");
-    console.log("🔍 Edges state changed:", edges.length, "edges");
-  }, [nodes, edges]);
-
   // Reset nodes and edges when workflow ID changes
   useEffect(() => {
     if (workflow?.id) {
-      console.log("🔍 Workflow ID changed, resetting nodes and edges");
       setNodes([]);
       setEdges([]);
       setNodesInitialized(false);
@@ -635,12 +611,6 @@ function WorkflowEditor({
 
     // Always load nodes when workflow blocks are available
     if (workflow?.blocks && workflow.blocks.length > 0) {
-      console.log(
-        "🔍 Loading workflow blocks:",
-        workflow.blocks.length,
-        "blocks",
-      );
-
       const initialNodes: Node[] = workflow.blocks.map((block, index) => {
         const nodeType =
           block.type === "trigger"
@@ -656,14 +626,6 @@ function WorkflowEditor({
                     : block.type === "add_tag"
                       ? "add_tag"
                       : "action";
-
-        console.log(`🔍 Creating node ${index}:`, {
-          id: block.id,
-          type: block.type,
-          nodeType,
-          position: block.position,
-          config: block.config,
-        });
 
         return {
           id: block.id,
@@ -697,16 +659,6 @@ function WorkflowEditor({
           style: { stroke: "#6B7280", strokeWidth: 2 },
         }));
 
-      console.log(
-        "🔍 Setting nodes:",
-        initialNodes.length,
-        "and edges:",
-        initialEdges.length,
-      );
-      console.log("🔍 Initial nodes:", initialNodes);
-      console.log("🔍 Initial edges:", initialEdges);
-      console.log("🔍 Current nodes state:", nodes);
-      console.log("🔍 Current edges state:", edges);
       setNodes(initialNodes);
       setEdges(initialEdges);
       setNodesInitialized(true);
@@ -715,7 +667,6 @@ function WorkflowEditor({
       (!workflow.blocks || workflow.blocks.length === 0) &&
       !nodesInitialized
     ) {
-      console.log("🔍 Creating default trigger node");
       // Create default trigger node for new workflows
       const defaultTrigger: Node = {
         id: "trigger_1",
@@ -764,30 +715,6 @@ function WorkflowEditor({
         })),
         connections: validConnections,
       };
-
-      console.log("🔍 Saving workflow:", {
-        blocks: workflowData.blocks.length,
-        connections: validConnections.length,
-      });
-
-      // Add detailed logging for connections
-      console.log("🔍 All edges:", edges);
-      console.log(
-        "🔍 Edge details:",
-        edges.map((edge, index) => ({
-          index,
-          id: edge.id,
-          source: edge.source,
-          target: edge.target,
-          sourceHandle: edge.sourceHandle,
-          targetHandle: edge.targetHandle,
-        })),
-      );
-      console.log("🔍 Valid connections:", validConnections);
-      console.log(
-        "🔍 Workflow connections before save:",
-        workflowData.connections,
-      );
 
       await onSave(workflowData);
     } catch (error) {
@@ -915,6 +842,8 @@ function WorkflowEditor({
   ];
 
   const testWorkflow = async () => {
+    console.log("🧪 Test workflow function called!");
+
     if (!selectedTestContact) {
       toast({
         title: "Error",
@@ -933,18 +862,23 @@ function WorkflowEditor({
     const results: { type: string; success: boolean; message: string }[] = [];
 
     try {
+      console.log("🧪 Starting workflow test with nodes:", nodes.length);
+
       // Execute workflow steps based on nodes
       for (const node of nodes) {
         if (node.type === "send_email" && node.data?.config) {
+          console.log("🧪 Found email node:", node.data.config);
           // Only send email if the contact is an email address
           if (selectedTestContact.includes("@")) {
-            const result = await messagingService.sendMockEmail({
+            const result = await messagingService.sendEmail({
               to: selectedTestContact,
               subject: node.data.config.subject || "Workflow Test Email",
               body:
                 node.data.config.body ||
                 "This is a test email from your workflow.",
               type: "email",
+              orgId: workflow?.id, // Use workflow ID as org ID for now
+              clientId: undefined, // No client ID for test messages
             });
             results.push({ type: "Email", ...result });
           } else {
@@ -955,6 +889,7 @@ function WorkflowEditor({
             });
           }
         } else if (node.type === "send_sms" && node.data?.config) {
+          console.log("🧪 Found SMS node:", node.data.config);
           // Only send SMS if the contact is a phone number
           if (!selectedTestContact.includes("@")) {
             const result = await messagingService.sendMockSMS({
@@ -980,10 +915,11 @@ function WorkflowEditor({
       const totalCount = results.length;
 
       if (totalCount === 0) {
+        console.log("🧪 No actions found in workflow");
         toast({
           title: "No Actions Found",
           description:
-            "This workflow doesn't contain any email or SMS actions to test.",
+            "This workflow doesn't contain any email or SMS actions to test. Add a 'Send Email' or 'Send SMS' node first.",
         });
       } else {
         toast({
@@ -1418,8 +1354,11 @@ function WorkflowEditor({
                   <SelectItem value="pwntastickevin@gmail.com">
                     Kevin Email (pwntastickevin@gmail.com)
                   </SelectItem>
-                  <SelectItem value="+1234567890">
-                    Kevin Phone (+1234567890)
+                  <SelectItem value="kendra@honeyraeaesthetics.com">
+                    Kendra Email (kendra@honeyraeaesthetics.com)
+                  </SelectItem>
+                  <SelectItem value="+18018850601">
+                    Kevin Phone (+8018850601)
                   </SelectItem>
                 </SelectContent>
               </Select>

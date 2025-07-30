@@ -4,6 +4,8 @@ export interface MessageConfig {
   subject?: string;
   body: string;
   type: "email" | "sms";
+  orgId?: string;
+  clientId?: string;
 }
 
 export class MessagingService {
@@ -20,10 +22,14 @@ export class MessagingService {
 
   async sendEmail(
     config: MessageConfig,
-  ): Promise<{ success: boolean; message: string }> {
+  ): Promise<{ success: boolean; message: string; messageId?: string }> {
     try {
-      // For now, we'll use a simple fetch to a mock endpoint
-      // In production, this would integrate with AWS SES or similar
+      console.log("📧 Sending email via API:", {
+        to: config.to,
+        subject: config.subject,
+        bodyLength: config.body.length,
+      });
+
       const response = await fetch("/api/send-email", {
         method: "POST",
         headers: {
@@ -33,20 +39,29 @@ export class MessagingService {
           to: config.to,
           subject: config.subject || "Workflow Test Email",
           body: config.body,
+          orgId: config.orgId,
+          clientId: config.clientId,
         }),
       });
 
+      const result = await response.json();
+
       if (response.ok) {
-        return { success: true, message: "Email sent successfully" };
+        console.log("📧 Email sent successfully:", result);
+        return {
+          success: true,
+          message: result.message || "Email sent successfully",
+          messageId: result.messageId,
+        };
       } else {
-        const error = await response.json();
+        console.error("📧 Email sending failed:", result);
         return {
           success: false,
-          message: error.message || "Failed to send email",
+          message: result.error || "Failed to send email",
         };
       }
     } catch (error) {
-      console.error("Email sending error:", error);
+      console.error("📧 Email sending error:", error);
       return { success: false, message: "Failed to send email" };
     }
   }
