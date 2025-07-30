@@ -1,6 +1,4 @@
 ---
-description:
-globs:
 alwaysApply: false
 ---
 
@@ -11,3 +9,7 @@ alwaysApply: false
 Assume I always have my server running and I have a terminal open.
 
 try not to start up your own server and just assume mines is running. if its not running, Then you may start it up.
+
+# Tests before completing prompts
+
+I want you to at the least, visit the page before you complete the prompts. this will tell us everything is working in order at least to visit the page.

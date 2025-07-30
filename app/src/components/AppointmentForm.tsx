@@ -3,262 +3,314 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Calendar, Clock, User, Phone, Mail } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { CalendarIcon, Clock, User, Phone, Mail, MapPin } from "lucide-react";
+import { format } from "date-fns";
+import { useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 interface AppointmentFormProps {
-	onSubmit: (data: any) => void;
-	onCancel: () => void;
-	initialData?: any;
-	clients?: any[];
+  orgId: string;
+  clients: Array<{
+    _id: string;
+    fullName: string;
+    email?: string;
+    phones: string[];
+  }>;
+  onSuccess?: () => void;
+  onCancel?: () => void;
 }
 
-export function AppointmentForm({ onSubmit, onCancel, initialData, clients = [] }: AppointmentFormProps) {
-	const [formData, setFormData] = useState({
-		clientId: initialData?.clientId || "",
-		dateTime: initialData?.dateTime || "",
-		type: initialData?.type || "consultation",
-		duration: initialData?.duration || 60,
-		provider: initialData?.provider || "Dr. Rae",
-		status: initialData?.status || "scheduled",
-		notes: initialData?.notes || "",
-		location: initialData?.location || "Main Office",
-		reminderSent: initialData?.reminderSent || false,
-	});
+export function AppointmentForm({
+  orgId,
+  clients,
+  onSuccess,
+  onCancel,
+}: AppointmentFormProps) {
+  const { toast } = useToast();
+  const createAppointment = useMutation(api.appointments.create);
 
-	const appointmentTypes = [
-		{ value: "consultation", label: "Consultation" },
-		{ value: "treatment", label: "Treatment" },
-		{ value: "follow-up", label: "Follow-up" },
-		{ value: "emergency", label: "Emergency" },
-		{ value: "maintenance", label: "Maintenance" },
-	];
+  const [formData, setFormData] = useState({
+    clientId: "",
+    service: "",
+    startDate: new Date(),
+    startTime: "09:00",
+    endTime: "10:00",
+    notes: "",
+    location: "",
+    provider: "",
+  });
 
-	const appointmentStatuses = [
-		{ value: "scheduled", label: "Scheduled" },
-		{ value: "confirmed", label: "Confirmed" },
-		{ value: "in-progress", label: "In Progress" },
-		{ value: "completed", label: "Completed" },
-		{ value: "cancelled", label: "Cancelled" },
-		{ value: "no-show", label: "No Show" },
-	];
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-	const durationOptions = [
-		{ value: 30, label: "30 minutes" },
-		{ value: 60, label: "1 hour" },
-		{ value: 90, label: "1.5 hours" },
-		{ value: 120, label: "2 hours" },
-	];
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-	const handleInputChange = (field: string, value: any) => {
-		setFormData(prev => ({
-			...prev,
-			[field]: value,
-		}));
-	};
+    if (!formData.clientId || !formData.service || !formData.provider) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in all required fields.",
+        variant: "destructive",
+      });
+      return;
+    }
 
-	const handleSubmit = (e: React.FormEvent) => {
-		e.preventDefault();
-		
-		// Validate required fields
-		if (!formData.clientId) {
-			alert("Please select a client");
-			return;
-		}
-		
-		if (!formData.dateTime) {
-			alert("Please select a date and time");
-			return;
-		}
-		
-		onSubmit(formData);
-	};
+    setIsSubmitting(true);
 
-	const selectedClient = clients.find(client => client._id === formData.clientId);
+    try {
+      // Combine date and time
+      const startDateTime = new Date(formData.startDate);
+      const [startHour, startMinute] = formData.startTime
+        .split(":")
+        .map(Number);
+      startDateTime.setHours(startHour, startMinute, 0, 0);
 
-	return (
-		<form onSubmit={handleSubmit} className="space-y-6">
-			{/* Client Selection */}
-			<Card>
-				<CardHeader>
-					<CardTitle>Client Information</CardTitle>
-					<CardDescription>Select the client for this appointment</CardDescription>
-				</CardHeader>
-				<CardContent className="space-y-4">
-					<div className="space-y-2">
-						<Label htmlFor="clientId">Client *</Label>
-						<Select
-							value={formData.clientId}
-							onValueChange={(value) => handleInputChange("clientId", value)}
-						>
-							<SelectTrigger>
-								<SelectValue placeholder="Select a client" />
-							</SelectTrigger>
-							<SelectContent>
-								{clients.map((client) => (
-									<SelectItem key={client._id} value={client._id}>
-										{client.fullName}
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
-					</div>
+      const endDateTime = new Date(formData.startDate);
+      const [endHour, endMinute] = formData.endTime.split(":").map(Number);
+      endDateTime.setHours(endHour, endMinute, 0, 0);
 
-					{selectedClient && (
-						<div className="p-4 bg-gray-50 rounded-lg">
-							<div className="flex items-center space-x-3 mb-2">
-								<User className="h-4 w-4 text-gray-500" />
-								<span className="font-medium">{selectedClient.fullName}</span>
-							</div>
-							{selectedClient.email && (
-								<div className="flex items-center space-x-2 text-sm text-gray-600">
-									<Mail className="h-4 w-4" />
-									<span>{selectedClient.email}</span>
-								</div>
-							)}
-							{selectedClient.phones && selectedClient.phones.length > 0 && (
-								<div className="flex items-center space-x-2 text-sm text-gray-600">
-									<Phone className="h-4 w-4" />
-									<span>{selectedClient.phones[0]}</span>
-								</div>
-							)}
-						</div>
-					)}
-				</CardContent>
-			</Card>
+      const result = await createAppointment({
+        orgId,
+        clientId: formData.clientId,
+        service: formData.service,
+        startTime: startDateTime.getTime(),
+        endTime: endDateTime.getTime(),
+        notes: formData.notes,
+        location: formData.location,
+        provider: formData.provider,
+      });
 
-			{/* Appointment Details */}
-			<Card>
-				<CardHeader>
-					<CardTitle>Appointment Details</CardTitle>
-					<CardDescription>Set the appointment time and details</CardDescription>
-				</CardHeader>
-				<CardContent className="space-y-4">
-					<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-						<div className="space-y-2">
-							<Label htmlFor="dateTime">Date & Time *</Label>
-							<Input
-								id="dateTime"
-								type="datetime-local"
-								value={formData.dateTime}
-								onChange={(e) => handleInputChange("dateTime", e.target.value)}
-								required
-							/>
-						</div>
-						<div className="space-y-2">
-							<Label htmlFor="duration">Duration</Label>
-							<Select
-								value={formData.duration.toString()}
-								onValueChange={(value) => handleInputChange("duration", parseInt(value))}
-							>
-								<SelectTrigger>
-									<SelectValue />
-								</SelectTrigger>
-								<SelectContent>
-									{durationOptions.map((option) => (
-										<SelectItem key={option.value} value={option.value.toString()}>
-											{option.label}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
-						</div>
-					</div>
+      if (result.success) {
+        toast({
+          title: "Appointment Created",
+          description:
+            "The appointment has been created and added to your calendar.",
+        });
+        onSuccess?.();
+      }
+    } catch (error) {
+      console.error("Failed to create appointment:", error);
+      toast({
+        title: "Error",
+        description: "Failed to create appointment. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
-					<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-						<div className="space-y-2">
-							<Label htmlFor="type">Appointment Type</Label>
-							<Select
-								value={formData.type}
-								onValueChange={(value) => handleInputChange("type", value)}
-							>
-								<SelectTrigger>
-									<SelectValue />
-								</SelectTrigger>
-								<SelectContent>
-									{appointmentTypes.map((type) => (
-										<SelectItem key={type.value} value={type.value}>
-											{type.label}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
-						</div>
-						<div className="space-y-2">
-							<Label htmlFor="provider">Provider</Label>
-							<Input
-								id="provider"
-								value={formData.provider}
-								onChange={(e) => handleInputChange("provider", e.target.value)}
-								placeholder="Dr. Rae"
-							/>
-						</div>
-					</div>
+  const selectedClient = clients.find((c) => c._id === formData.clientId);
 
-					<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-						<div className="space-y-2">
-							<Label htmlFor="status">Status</Label>
-							<Select
-								value={formData.status}
-								onValueChange={(value) => handleInputChange("status", value)}
-							>
-								<SelectTrigger>
-									<SelectValue />
-								</SelectTrigger>
-								<SelectContent>
-									{appointmentStatuses.map((status) => (
-										<SelectItem key={status.value} value={status.value}>
-											{status.label}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
-						</div>
-						<div className="space-y-2">
-							<Label htmlFor="location">Location</Label>
-							<Input
-								id="location"
-								value={formData.location}
-								onChange={(e) => handleInputChange("location", e.target.value)}
-								placeholder="Main Office"
-							/>
-						</div>
-					</div>
-				</CardContent>
-			</Card>
+  return (
+    <Card className="w-full max-w-2xl">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <CalendarIcon className="h-5 w-5" />
+          Create New Appointment
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Client Selection */}
+          <div className="space-y-2">
+            <Label htmlFor="client">Client *</Label>
+            <Select
+              value={formData.clientId}
+              onValueChange={(value) =>
+                setFormData({ ...formData, clientId: value })
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select a client" />
+              </SelectTrigger>
+              <SelectContent>
+                {clients.map((client) => (
+                  <SelectItem key={client._id} value={client._id}>
+                    <div className="flex items-center gap-2">
+                      <User className="h-4 w-4" />
+                      {client.fullName}
+                      {client.email && (
+                        <span className="text-muted-foreground">
+                          ({client.email})
+                        </span>
+                      )}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-			{/* Notes */}
-			<Card>
-				<CardHeader>
-					<CardTitle>Notes</CardTitle>
-					<CardDescription>Add any additional notes for this appointment</CardDescription>
-				</CardHeader>
-				<CardContent>
-					<div className="space-y-2">
-						<Label htmlFor="notes">Appointment Notes</Label>
-						<Textarea
-							id="notes"
-							value={formData.notes}
-							onChange={(e) => handleInputChange("notes", e.target.value)}
-							placeholder="Enter any notes about this appointment..."
-							rows={4}
-						/>
-					</div>
-				</CardContent>
-			</Card>
+          {/* Service */}
+          <div className="space-y-2">
+            <Label htmlFor="service">Service *</Label>
+            <Input
+              id="service"
+              value={formData.service}
+              onChange={(e) =>
+                setFormData({ ...formData, service: e.target.value })
+              }
+              placeholder="e.g., Botox, Filler, Consultation"
+            />
+          </div>
 
-			{/* Form Actions */}
-			<div className="flex justify-end space-x-2">
-				<Button type="button" variant="outline" onClick={onCancel}>
-					Cancel
-				</Button>
-				<Button type="submit">
-					{initialData ? "Update Appointment" : "Create Appointment"}
-				</Button>
-			</div>
-		</form>
-	);
-} 
+          {/* Provider */}
+          <div className="space-y-2">
+            <Label htmlFor="provider">Provider *</Label>
+            <Input
+              id="provider"
+              value={formData.provider}
+              onChange={(e) =>
+                setFormData({ ...formData, provider: e.target.value })
+              }
+              placeholder="e.g., Dr. Smith, Nurse Johnson"
+            />
+          </div>
+
+          {/* Date and Time */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label>Date *</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !formData.startDate && "text-muted-foreground",
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {formData.startDate
+                      ? format(formData.startDate, "PPP")
+                      : "Pick a date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar
+                    mode="single"
+                    selected={formData.startDate}
+                    onSelect={(date) =>
+                      date && setFormData({ ...formData, startDate: date })
+                    }
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Start Time *</Label>
+              <Input
+                type="time"
+                value={formData.startTime}
+                onChange={(e) =>
+                  setFormData({ ...formData, startTime: e.target.value })
+                }
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>End Time *</Label>
+              <Input
+                type="time"
+                value={formData.endTime}
+                onChange={(e) =>
+                  setFormData({ ...formData, endTime: e.target.value })
+                }
+              />
+            </div>
+          </div>
+
+          {/* Location */}
+          <div className="space-y-2">
+            <Label htmlFor="location">Location</Label>
+            <div className="relative">
+              <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="location"
+                value={formData.location}
+                onChange={(e) =>
+                  setFormData({ ...formData, location: e.target.value })
+                }
+                placeholder="Office address or room number"
+                className="pl-10"
+              />
+            </div>
+          </div>
+
+          {/* Notes */}
+          <div className="space-y-2">
+            <Label htmlFor="notes">Notes</Label>
+            <Textarea
+              id="notes"
+              value={formData.notes}
+              onChange={(e) =>
+                setFormData({ ...formData, notes: e.target.value })
+              }
+              placeholder="Any special instructions or notes..."
+              rows={3}
+            />
+          </div>
+
+          {/* Client Info Display */}
+          {selectedClient && (
+            <Card className="bg-muted/50">
+              <CardContent className="pt-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <User className="h-4 w-4" />
+                  <span className="font-medium">{selectedClient.fullName}</span>
+                </div>
+                {selectedClient.email && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Mail className="h-3 w-3" />
+                    {selectedClient.email}
+                  </div>
+                )}
+                {selectedClient.phones[0] && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Phone className="h-3 w-3" />
+                    {selectedClient.phones[0]}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Action Buttons */}
+          <div className="flex gap-2 justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onCancel}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Creating..." : "Create Appointment"}
+            </Button>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
+  );
+}

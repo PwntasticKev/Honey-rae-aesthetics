@@ -26,6 +26,7 @@ import {
   LogIn,
   LogOut,
   Loader2,
+  AlertCircle,
 } from "lucide-react";
 import {
   format,
@@ -52,12 +53,24 @@ export function GoogleCalendar() {
   const [isInitializing, setIsInitializing] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [view, setView] = useState<"day" | "week" | "month" | "all">("month");
+  const [apiKeysConfigured, setApiKeysConfigured] = useState(true);
 
   // Initialize Google Calendar service
   useEffect(() => {
     const initializeService = async () => {
       try {
         await googleCalendarService.initialize();
+
+        // Check if API keys are configured
+        const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+        const apiKey = process.env.NEXT_PUBLIC_GOOGLE_API_KEY;
+
+        if (!clientId || !apiKey) {
+          setApiKeysConfigured(false);
+          setIsInitializing(false);
+          return;
+        }
+
         const authenticated = await googleCalendarService.isAuthenticated();
         setIsAuthenticated(authenticated);
 
@@ -101,14 +114,14 @@ export function GoogleCalendar() {
   const handleGoogleLogout = () => {
     googleCalendarService.logout();
     setIsAuthenticated(false);
-    setCalendars([]);
     setEvents([]);
+    setCalendars([]);
   };
 
   const loadCalendars = async () => {
     try {
-      const calendars = await googleCalendarService.getCalendars();
-      setCalendars(calendars);
+      const calendarList = await googleCalendarService.getCalendars();
+      setCalendars(calendarList);
     } catch (error) {
       console.error("Failed to load calendars:", error);
     }
@@ -116,16 +129,16 @@ export function GoogleCalendar() {
 
   const loadEvents = async () => {
     try {
-      const timeMin = startOfMonth(currentDate);
-      const timeMax = endOfMonth(currentDate);
+      const startDate = startOfMonth(currentDate);
+      const endDate = endOfMonth(currentDate);
       const allEvents: GoogleCalendarEvent[] = [];
 
       for (const calendar of calendars) {
         if (calendar.isSelected) {
           const calendarEvents = await googleCalendarService.getEvents(
             calendar.id,
-            timeMin,
-            timeMax,
+            startDate,
+            endDate,
           );
           allEvents.push(...calendarEvents);
         }
@@ -145,31 +158,23 @@ export function GoogleCalendar() {
     );
   };
 
-  const filteredEvents = events.filter((event) => {
-    const matchesSearch = event.title
-      .toLowerCase()
-      .includes(searchTerm.toLowerCase());
-    const calendarSelected = calendars.find(
-      (cal) => cal.id === event.calendarId,
-    )?.isSelected;
-    return matchesSearch && calendarSelected;
-  });
-
-  const monthStart = startOfMonth(currentDate);
-  const monthEnd = endOfMonth(currentDate);
-  const monthDays = eachDayOfInterval({ start: monthStart, end: monthEnd });
-
   const getEventsForDay = (date: Date) => {
-    return filteredEvents.filter((event) => isSameDay(event.start, date));
+    return events.filter((event) => isSameDay(event.start, date));
   };
 
   const navigateMonth = (direction: "prev" | "next") => {
     setCurrentDate((prev) =>
-      direction === "prev" ? subMonths(prev, 1) : addMonths(prev, 1),
+      direction === "next" ? addMonths(prev, 1) : subMonths(prev, 1),
     );
   };
 
-  // Show loading state while initializing
+  // Generate calendar days for current month
+  const monthDays = eachDayOfInterval({
+    start: startOfMonth(currentDate),
+    end: endOfMonth(currentDate),
+  });
+
+  // Show loading state
   if (isInitializing) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -181,21 +186,77 @@ export function GoogleCalendar() {
     );
   }
 
-  // If not authenticated, show login screen
+  // Show API keys not configured message
+  if (!apiKeysConfigured) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-orange-500" />
+              Google Calendar Setup Required
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="text-sm text-gray-600">
+              To use Google Calendar integration, you need to configure Google
+              API keys in your environment.
+            </div>
+
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <h4 className="font-medium text-gray-900 mb-2">
+                Required Environment Variables:
+              </h4>
+              <div className="space-y-1 text-xs font-mono">
+                <div>NEXT_PUBLIC_GOOGLE_CLIENT_ID=your_client_id</div>
+                <div>NEXT_PUBLIC_GOOGLE_API_KEY=your_api_key</div>
+              </div>
+            </div>
+
+            <div className="text-xs text-gray-500">
+              <p className="mb-2">To get these keys:</p>
+              <ol className="list-decimal list-inside space-y-1">
+                <li>
+                  Go to{" "}
+                  <a
+                    href="https://console.cloud.google.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:underline"
+                  >
+                    Google Cloud Console
+                  </a>
+                </li>
+                <li>Create a new project or select existing</li>
+                <li>Enable Google Calendar API</li>
+                <li>Create OAuth 2.0 credentials</li>
+                <li>Add the keys to your .env.local file</li>
+              </ol>
+            </div>
+
+            <Button
+              onClick={() => window.location.reload()}
+              className="w-full"
+              variant="outline"
+            >
+              Reload After Configuration
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Show login screen
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md shadow-xl">
-          <CardHeader className="text-center pb-6">
-            <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-              <Calendar className="h-8 w-8 text-blue-600" />
-            </div>
-            <CardTitle className="text-2xl font-bold text-gray-900">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-blue-600" />
               Connect Google Calendar
             </CardTitle>
-            <p className="text-gray-600 mt-2">
-              Sync your appointments and manage your schedule seamlessly
-            </p>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="space-y-4">
@@ -349,43 +410,43 @@ export function GoogleCalendar() {
                 const dayEvents = getEventsForDay(day);
                 const isCurrentMonth =
                   day.getMonth() === currentDate.getMonth();
+                const isCurrentDay = isToday(day);
 
                 return (
                   <div
-                    key={day.toISOString()}
-                    className={`min-h-[120px] bg-white p-2 hover:bg-gray-50 transition-colors ${
-                      !isCurrentMonth ? "bg-gray-50" : ""
-                    }`}
+                    key={index}
+                    className={`min-h-[120px] p-2 ${
+                      isCurrentMonth ? "bg-white" : "bg-gray-50"
+                    } ${isCurrentDay ? "bg-blue-50" : ""}`}
                   >
-                    <div
-                      className={`text-sm font-medium mb-1 ${
-                        isToday(day)
-                          ? "bg-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center"
-                          : isCurrentMonth
-                            ? "text-gray-900"
-                            : "text-gray-400"
-                      }`}
-                    >
-                      {format(day, "d")}
+                    <div className="flex items-center justify-between mb-1">
+                      <span
+                        className={`text-sm ${
+                          isCurrentMonth ? "text-gray-900" : "text-gray-400"
+                        } ${isCurrentDay ? "font-bold" : ""}`}
+                      >
+                        {format(day, "d")}
+                      </span>
+                      {dayEvents.length > 0 && (
+                        <Badge variant="secondary" className="text-xs">
+                          {dayEvents.length}
+                        </Badge>
+                      )}
                     </div>
 
                     <div className="space-y-1">
-                      {dayEvents.slice(0, 3).map((event) => (
+                      {dayEvents.slice(0, 2).map((event) => (
                         <div
                           key={event.id}
-                          className="text-xs p-1 rounded cursor-pointer truncate hover:opacity-80 transition-opacity"
-                          style={{
-                            backgroundColor: event.calendarColor + "20",
-                            color: event.calendarColor,
-                          }}
+                          className="text-xs p-1 rounded bg-blue-100 text-blue-800 truncate cursor-pointer hover:bg-blue-200"
                           title={event.title}
                         >
                           {event.title}
                         </div>
                       ))}
-                      {dayEvents.length > 3 && (
-                        <div className="text-xs text-gray-500">
-                          +{dayEvents.length - 3} more
+                      {dayEvents.length > 2 && (
+                        <div className="text-xs text-gray-500 text-center">
+                          +{dayEvents.length - 2} more
                         </div>
                       )}
                     </div>
@@ -396,76 +457,76 @@ export function GoogleCalendar() {
           </div>
         </div>
 
-        {/* Right Sidebar */}
+        {/* Sidebar */}
         <div className="w-80 bg-white border-l border-gray-200 p-6">
-          {/* Mini Calendar */}
-          <Card className="mb-6">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">
-                {format(currentDate, "MMM yyyy")}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-7 gap-1 text-xs">
-                {["S", "M", "T", "W", "T", "F", "S"].map((day) => (
-                  <div key={day} className="text-center text-gray-500 p-1">
-                    {day}
-                  </div>
-                ))}
-                {monthDays.map((day) => (
+          <div className="space-y-6">
+            {/* Calendar List */}
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                Calendars
+              </h3>
+              <div className="space-y-2">
+                {calendars.map((calendar) => (
                   <div
-                    key={day.toISOString()}
-                    className={`text-center p-1 cursor-pointer rounded hover:bg-gray-100 transition-colors ${
-                      isToday(day)
-                        ? "bg-blue-600 text-white"
-                        : day.getMonth() === currentDate.getMonth()
-                          ? "text-gray-900"
-                          : "text-gray-300"
-                    }`}
+                    key={calendar.id}
+                    className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-50"
                   >
-                    {format(day, "d")}
+                    <Checkbox
+                      checked={calendar.isSelected}
+                      onCheckedChange={() => toggleCalendar(calendar.id)}
+                    />
+                    <div
+                      className="w-3 h-3 rounded-full"
+                      style={{ backgroundColor: calendar.color }}
+                    ></div>
+                    <span className="text-sm text-gray-700 flex-1 truncate">
+                      {calendar.name}
+                    </span>
                   </div>
                 ))}
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Calendar Filters */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-medium text-gray-900">Calendars</h3>
-              <Badge variant="secondary" className="text-xs">
-                {calendars.filter((cal) => cal.isSelected).length} active
-              </Badge>
             </div>
 
-            <div className="space-y-3">
-              {calendars.map((calendar) => (
-                <div
-                  key={calendar.id}
-                  className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  <Checkbox
-                    checked={calendar.isSelected}
-                    onCheckedChange={() => toggleCalendar(calendar.id)}
-                  />
-                  <div
-                    className="w-3 h-3 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: calendar.color }}
-                  />
-                  <span className="text-sm text-gray-700 flex-1 truncate">
-                    {calendar.name}
-                  </span>
-                </div>
-              ))}
-            </div>
-
-            {calendars.length === 0 && (
-              <div className="text-center py-8">
-                <Calendar className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                <p className="text-sm text-gray-500">No calendars found</p>
+            {/* Upcoming Events */}
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                Upcoming Events
+              </h3>
+              <div className="space-y-3">
+                {events
+                  .filter((event) => event.start > new Date())
+                  .slice(0, 5)
+                  .map((event) => (
+                    <div
+                      key={event.id}
+                      className="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
+                    >
+                      <div className="flex items-start space-x-3">
+                        <div
+                          className="w-2 h-2 rounded-full mt-2"
+                          style={{
+                            backgroundColor: event.calendarColor,
+                          }}
+                        ></div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-sm font-medium text-gray-900 truncate">
+                            {event.title}
+                          </h4>
+                          <p className="text-xs text-gray-500">
+                            {format(event.start, "MMM d, h:mm a")}
+                          </p>
+                          {event.location && (
+                            <p className="text-xs text-gray-500 flex items-center mt-1">
+                              <MapPin className="h-3 w-3 mr-1" />
+                              {event.location}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
               </div>
-            )}
+            </div>
           </div>
         </div>
       </div>
