@@ -37,6 +37,7 @@ import {
 import { ExecutionLogs } from "@/components/ExecutionLogs";
 import { EnrollmentHistory } from "@/components/EnrollmentHistory";
 import { EmailService } from "@/lib/emailService";
+import { MessagingService } from "@/lib/messagingService";
 import { useToast } from "@/hooks/use-toast";
 import {
   Zap,
@@ -800,7 +801,9 @@ function WorkflowEditor({
   const [editingNode, setEditingNode] = useState<Node | null>(null);
   const [showRightPanel, setShowRightPanel] = useState(false);
   const [showTestPanel, setShowTestPanel] = useState(false);
-  const [selectedTestContact, setSelectedTestContact] = useState<string>("");
+  const [selectedTestContact, setSelectedTestContact] = useState<string>(
+    "pwntastickevin@gmail.com",
+  );
   const [activeTab, setActiveTab] = useState<
     "builder" | "execution-logs" | "enrollment-history"
   >("builder");
@@ -926,13 +929,79 @@ function WorkflowEditor({
       description: `Running workflow test for ${selectedTestContact}...`,
     });
 
-    // Simulate workflow execution
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    const messagingService = MessagingService.getInstance();
+    const results: { type: string; success: boolean; message: string }[] = [];
 
-    toast({
-      title: "Test Complete",
-      description: `Workflow test completed for ${selectedTestContact}`,
-    });
+    try {
+      // Execute workflow steps based on nodes
+      for (const node of nodes) {
+        if (node.type === "send_email" && node.data?.config) {
+          // Only send email if the contact is an email address
+          if (selectedTestContact.includes("@")) {
+            const result = await messagingService.sendMockEmail({
+              to: selectedTestContact,
+              subject: node.data.config.subject || "Workflow Test Email",
+              body:
+                node.data.config.body ||
+                "This is a test email from your workflow.",
+              type: "email",
+            });
+            results.push({ type: "Email", ...result });
+          } else {
+            results.push({
+              type: "Email",
+              success: false,
+              message: "Cannot send email to phone number",
+            });
+          }
+        } else if (node.type === "send_sms" && node.data?.config) {
+          // Only send SMS if the contact is a phone number
+          if (!selectedTestContact.includes("@")) {
+            const result = await messagingService.sendMockSMS({
+              to: selectedTestContact,
+              body:
+                node.data.config.message ||
+                "This is a test SMS from your workflow.",
+              type: "sms",
+            });
+            results.push({ type: "SMS", ...result });
+          } else {
+            results.push({
+              type: "SMS",
+              success: false,
+              message: "Cannot send SMS to email address",
+            });
+          }
+        }
+      }
+
+      // Show results
+      const successCount = results.filter((r) => r.success).length;
+      const totalCount = results.length;
+
+      if (totalCount === 0) {
+        toast({
+          title: "No Actions Found",
+          description:
+            "This workflow doesn't contain any email or SMS actions to test.",
+        });
+      } else {
+        toast({
+          title: "Test Complete",
+          description: `${successCount}/${totalCount} actions executed successfully for ${selectedTestContact}`,
+        });
+
+        // Log detailed results
+        console.log("🧪 Workflow Test Results:", results);
+      }
+    } catch (error) {
+      console.error("Workflow test error:", error);
+      toast({
+        title: "Test Failed",
+        description: "An error occurred while testing the workflow.",
+        variant: "destructive",
+      });
+    }
   };
 
   const onConnect = useCallback(
@@ -1322,59 +1391,57 @@ function WorkflowEditor({
         </div>
       )}
 
-      {/* Test Panel */}
+      {/* Right Panel - Test Workflow */}
       {showTestPanel && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-96">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Test Workflow</h3>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowTestPanel(false)}
+        <div className="w-80 bg-white border-l border-gray-200 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold">Test Workflow</h3>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowTestPanel(false)}
+            >
+              <X className="w-4 h-4" />
+            </Button>
+          </div>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="test-contact">Test Contact</Label>
+              <Select
+                value={selectedTestContact}
+                onValueChange={setSelectedTestContact}
               >
-                <X className="w-4 h-4" />
-              </Button>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a test contact" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pwntastickevin@gmail.com">
+                    Kevin Email (pwntastickevin@gmail.com)
+                  </SelectItem>
+                  <SelectItem value="+1234567890">
+                    Kevin Phone (+1234567890)
+                  </SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="test-contact">Test Contact</Label>
-                <Select
-                  value={selectedTestContact}
-                  onValueChange={setSelectedTestContact}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a test contact" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="sarah.johnson@email.com">
-                      Sarah Johnson
-                    </SelectItem>
-                    <SelectItem value="michael.chen@email.com">
-                      Michael Chen
-                    </SelectItem>
-                    <SelectItem value="emily.rodriguez@email.com">
-                      Emily Rodriguez
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex space-x-2">
-                <Button
-                  onClick={testWorkflow}
-                  disabled={!selectedTestContact}
-                  className="flex-1"
-                >
-                  <Play className="w-4 h-4 mr-2" />
-                  Run Test
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => setShowTestPanel(false)}
-                >
-                  Cancel
-                </Button>
-              </div>
+            <div className="text-sm text-gray-600">
+              <p>
+                This will send real test emails/SMS to the selected contact.
+              </p>
+              <p className="mt-2">Check the console for detailed logs.</p>
+            </div>
+            <div className="flex space-x-2">
+              <Button
+                onClick={testWorkflow}
+                disabled={!selectedTestContact}
+                className="flex-1"
+              >
+                <Play className="w-4 h-4 mr-2" />
+                Run Test
+              </Button>
+              <Button variant="outline" onClick={() => setShowTestPanel(false)}>
+                Cancel
+              </Button>
             </div>
           </div>
         </div>
