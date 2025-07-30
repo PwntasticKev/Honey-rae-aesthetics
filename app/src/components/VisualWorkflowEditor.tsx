@@ -602,9 +602,14 @@ function WorkflowEditor({
     console.log("🔍 Edges state changed:", edges.length, "edges");
   }, [nodes, edges]);
 
-  // Reset initialization when workflow changes
+  // Reset nodes and edges when workflow ID changes
   useEffect(() => {
-    setNodesInitialized(false);
+    if (workflow?.id) {
+      console.log("🔍 Workflow ID changed, resetting nodes and edges");
+      setNodes([]);
+      setEdges([]);
+      setNodesInitialized(false);
+    }
   }, [workflow?.id]);
 
   // Update workflow name and description when workflow changes
@@ -627,8 +632,8 @@ function WorkflowEditor({
       return;
     }
 
-    // Always load nodes when workflow blocks are available and we haven't initialized yet
-    if (workflow?.blocks && workflow.blocks.length > 0 && !nodesInitialized) {
+    // Always load nodes when workflow blocks are available
+    if (workflow?.blocks && workflow.blocks.length > 0) {
       console.log(
         "🔍 Loading workflow blocks:",
         workflow.blocks.length,
@@ -1255,6 +1260,7 @@ function WorkflowEditor({
       {/* Main Canvas */}
       <div className="flex-1 relative">
         <ReactFlow
+          key={workflow?.id || "new"}
           nodes={nodes}
           edges={edges}
           onNodesChange={onNodesChange}
