@@ -6,13 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Combobox } from "@/components/ui/combobox";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
@@ -58,6 +52,12 @@ export function AppointmentForm({
     provider: "",
   });
 
+  const clientOptions = clients.map((client) => ({
+    value: client._id,
+    label: client.fullName,
+    email: client.email,
+  }));
+
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -87,8 +87,8 @@ export function AppointmentForm({
       endDateTime.setHours(endHour, endMinute, 0, 0);
 
       const result = await createAppointment({
-        orgId,
-        clientId: formData.clientId,
+        orgId: orgId as any,
+        clientId: formData.clientId as any,
         service: formData.service,
         startTime: startDateTime.getTime(),
         endTime: endDateTime.getTime(),
@@ -132,31 +132,20 @@ export function AppointmentForm({
           {/* Client Selection */}
           <div className="space-y-2">
             <Label htmlFor="client">Client *</Label>
-            <Select
+            <Combobox
+              options={clientOptions}
               value={formData.clientId}
               onValueChange={(value) =>
                 setFormData({ ...formData, clientId: value })
               }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select a client" />
-              </SelectTrigger>
-              <SelectContent>
-                {clients.map((client) => (
-                  <SelectItem key={client._id} value={client._id}>
-                    <div className="flex items-center gap-2">
-                      <User className="h-4 w-4" />
-                      {client.fullName}
-                      {client.email && (
-                        <span className="text-muted-foreground">
-                          ({client.email})
-                        </span>
-                      )}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              placeholder="Select a client"
+              searchPlaceholder="Search clients..."
+              emptyText="No clients found"
+              onAddNew={() => {
+                // TODO: Implement add new client functionality
+                console.log("Add new client clicked");
+              }}
+            />
           </div>
 
           {/* Service */}
@@ -186,7 +175,7 @@ export function AppointmentForm({
           </div>
 
           {/* Date and Time */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-4">
             <div className="space-y-2">
               <Label>Date *</Label>
               <Popover>
@@ -217,26 +206,28 @@ export function AppointmentForm({
               </Popover>
             </div>
 
-            <div className="space-y-2">
-              <Label>Start Time *</Label>
-              <Input
-                type="time"
-                value={formData.startTime}
-                onChange={(e) =>
-                  setFormData({ ...formData, startTime: e.target.value })
-                }
-              />
-            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Start Time *</Label>
+                <Input
+                  type="time"
+                  value={formData.startTime}
+                  onChange={(e) =>
+                    setFormData({ ...formData, startTime: e.target.value })
+                  }
+                />
+              </div>
 
-            <div className="space-y-2">
-              <Label>End Time *</Label>
-              <Input
-                type="time"
-                value={formData.endTime}
-                onChange={(e) =>
-                  setFormData({ ...formData, endTime: e.target.value })
-                }
-              />
+              <div className="space-y-2">
+                <Label>End Time *</Label>
+                <Input
+                  type="time"
+                  value={formData.endTime}
+                  onChange={(e) =>
+                    setFormData({ ...formData, endTime: e.target.value })
+                  }
+                />
+              </div>
             </div>
           </div>
 

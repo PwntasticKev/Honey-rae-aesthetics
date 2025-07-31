@@ -52,6 +52,14 @@ import {
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { AppointmentForm } from "./AppointmentForm";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface EnhancedCalendarProps {
   orgId: string;
@@ -72,6 +80,10 @@ export function EnhancedCalendar({ orgId, clients }: EnhancedCalendarProps) {
   const [apiKeysConfigured, setApiKeysConfigured] = useState(true);
   const [showAppointmentForm, setShowAppointmentForm] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showDisconnectDialog, setShowDisconnectDialog] = useState(false);
+  const [calendarToDisconnect, setCalendarToDisconnect] = useState<
+    string | null
+  >(null);
 
   // Convex mutations
   const saveProvider = useMutation(api.googleCalendarProviders.saveProvider);
@@ -107,34 +119,6 @@ export function EnhancedCalendar({ orgId, clients }: EnhancedCalendarProps) {
       );
     }
   }, [currentDate, view]);
-
-  // Load selected calendars from localStorage
-  useEffect(() => {
-    if (typeof window !== "undefined" && calendars.length > 0) {
-      const savedCalendars = localStorage.getItem("selected_calendars");
-      if (savedCalendars) {
-        try {
-          const selectedCalendarIds = JSON.parse(savedCalendars);
-          setCalendars((prev) =>
-            prev.map((cal) => ({
-              ...cal,
-              isSelected: selectedCalendarIds.includes(cal.id),
-            })),
-          );
-        } catch (error) {
-          console.error("Failed to parse saved calendars:", error);
-        }
-      } else {
-        // If no saved calendars, select the primary calendar by default
-        setCalendars((prev) =>
-          prev.map((cal, index) => ({
-            ...cal,
-            isSelected: index === 0, // Select first calendar by default
-          })),
-        );
-      }
-    }
-  }, [calendars.length]); // Re-run when calendars are loaded
 
   // Save selected calendars to localStorage
   useEffect(() => {
@@ -191,10 +175,26 @@ export function EnhancedCalendar({ orgId, clients }: EnhancedCalendarProps) {
     }
   }, [isAuthenticated]);
 
+  // Debug log for calendar state
+  useEffect(() => {
+    console.log("📋 Calendar state updated:", {
+      totalCalendars: calendars.length,
+      selectedCalendars: calendars.filter((c) => c.isSelected).length,
+      isAuthenticated,
+    });
+  }, [calendars, isAuthenticated]);
+
   // Load events when calendars, date, or view changes
   useEffect(() => {
     if (isAuthenticated && calendars.length > 0) {
-      loadEvents();
+      const selectedCalendars = calendars.filter((cal) => cal.isSelected);
+      if (selectedCalendars.length > 0) {
+        console.log(
+          "🔄 Loading events for selected calendars:",
+          selectedCalendars.length,
+        );
+        loadEvents();
+      }
     }
   }, [currentDate, calendars, view, isAuthenticated]);
 
@@ -256,14 +256,43 @@ export function EnhancedCalendar({ orgId, clients }: EnhancedCalendarProps) {
       const calendarList = await simpleGoogleCalendarService.getCalendars();
       console.log("📋 Calendars loaded:", calendarList.length);
 
-      // Set default selection for first calendar if no saved selection
+      // Check for saved calendar selections
       const savedCalendars = localStorage.getItem("selected_calendars");
-      if (!savedCalendars && calendarList.length > 0) {
-        console.log("📋 Setting default selection for first calendar");
-        calendarList[0].isSelected = true;
+      let selectedCalendarIds: string[] = [];
+
+      if (savedCalendars) {
+        try {
+          selectedCalendarIds = JSON.parse(savedCalendars);
+          console.log(
+            "📋 Found saved calendar selections:",
+            selectedCalendarIds,
+          );
+        } catch (error) {
+          console.error("Failed to parse saved calendars:", error);
+        }
       }
 
-      setCalendars(calendarList);
+      // Apply selections to calendars
+      const calendarsWithSelection = calendarList.map((calendar, index) => {
+        const isSelected =
+          selectedCalendarIds.length > 0
+            ? selectedCalendarIds.includes(calendar.id)
+            : index === 0; // Default to first calendar if no saved selection
+
+        return {
+          ...calendar,
+          isSelected,
+        };
+      });
+
+      console.log(
+        "📋 Calendars with selection:",
+        calendarsWithSelection.map((c) => ({
+          name: c.name,
+          selected: c.isSelected,
+        })),
+      );
+      setCalendars(calendarsWithSelection);
     } catch (error) {
       console.error("Failed to load calendars:", error);
     }
@@ -354,27 +383,39 @@ export function EnhancedCalendar({ orgId, clients }: EnhancedCalendarProps) {
   };
 
   const handleDisconnectCalendar = async (calendarId: string) => {
+    setCalendarToDisconnect(calendarId);
+    setShowDisconnectDialog(true);
+  };
+
+  const confirmDisconnectCalendar = async () => {
+    if (!calendarToDisconnect) return;
+
     try {
       // Remove from calendars list
-      setCalendars((prev) => prev.filter((cal) => cal.id !== calendarId));
+      setCalendars((prev) =>
+        prev.filter((cal) => cal.id !== calendarToDisconnect),
+      );
 
       // Remove events from this calendar
       setEvents((prev) =>
-        prev.filter((event) => event.calendarId !== calendarId),
+        prev.filter((event) => event.calendarId !== calendarToDisconnect),
       );
 
       // Update localStorage
       const selectedCalendarIds = calendars
-        .filter((cal) => cal.id !== calendarId && cal.isSelected)
+        .filter((cal) => cal.id !== calendarToDisconnect && cal.isSelected)
         .map((cal) => cal.id);
       localStorage.setItem(
         "selected_calendars",
         JSON.stringify(selectedCalendarIds),
       );
 
-      console.log(`Calendar ${calendarId} disconnected`);
+      console.log(`Calendar ${calendarToDisconnect} disconnected`);
     } catch (error) {
       console.error("Failed to disconnect calendar:", error);
+    } finally {
+      setShowDisconnectDialog(false);
+      setCalendarToDisconnect(null);
     }
   };
 
@@ -991,6 +1032,10 @@ export function EnhancedCalendar({ orgId, clients }: EnhancedCalendarProps) {
       {/* Appointment Form Sidebar */}
       {showAppointmentForm && (
         <div className="fixed inset-0 z-50">
+          <div
+            className="absolute inset-0 bg-black/20"
+            onClick={() => setShowAppointmentForm(false)}
+          />
           <div className="absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-xl transform transition-transform duration-300 ease-in-out">
             <div className="h-full flex flex-col">
               <div className="flex items-center justify-between p-4 border-b">
@@ -1015,6 +1060,36 @@ export function EnhancedCalendar({ orgId, clients }: EnhancedCalendarProps) {
           </div>
         </div>
       )}
+
+      {/* Disconnect Calendar Dialog */}
+      <Dialog
+        open={showDisconnectDialog}
+        onOpenChange={setShowDisconnectDialog}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Disconnect Calendar</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to disconnect this calendar? This will
+              remove it from your calendar list and stop syncing events from it.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowDisconnectDialog(false);
+                setCalendarToDisconnect(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmDisconnectCalendar}>
+              Disconnect
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
