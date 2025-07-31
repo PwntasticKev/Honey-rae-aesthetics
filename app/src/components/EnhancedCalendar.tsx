@@ -110,7 +110,7 @@ export function EnhancedCalendar({ orgId, clients }: EnhancedCalendarProps) {
 
   // Load selected calendars from localStorage
   useEffect(() => {
-    if (typeof window !== "undefined") {
+    if (typeof window !== "undefined" && calendars.length > 0) {
       const savedCalendars = localStorage.getItem("selected_calendars");
       if (savedCalendars) {
         try {
@@ -124,9 +124,17 @@ export function EnhancedCalendar({ orgId, clients }: EnhancedCalendarProps) {
         } catch (error) {
           console.error("Failed to parse saved calendars:", error);
         }
+      } else {
+        // If no saved calendars, select the primary calendar by default
+        setCalendars((prev) =>
+          prev.map((cal, index) => ({
+            ...cal,
+            isSelected: index === 0, // Select first calendar by default
+          })),
+        );
       }
     }
-  }, []);
+  }, [calendars.length]); // Re-run when calendars are loaded
 
   // Save selected calendars to localStorage
   useEffect(() => {
@@ -188,7 +196,7 @@ export function EnhancedCalendar({ orgId, clients }: EnhancedCalendarProps) {
     if (isAuthenticated && calendars.length > 0) {
       loadEvents();
     }
-  }, [currentDate, calendars, view]);
+  }, [currentDate, calendars, view, isAuthenticated]);
 
   const handleGoogleLogin = async () => {
     setIsLoading(true);
@@ -247,6 +255,14 @@ export function EnhancedCalendar({ orgId, clients }: EnhancedCalendarProps) {
       console.log("📋 Loading calendars...");
       const calendarList = await simpleGoogleCalendarService.getCalendars();
       console.log("📋 Calendars loaded:", calendarList.length);
+
+      // Set default selection for first calendar if no saved selection
+      const savedCalendars = localStorage.getItem("selected_calendars");
+      if (!savedCalendars && calendarList.length > 0) {
+        console.log("📋 Setting default selection for first calendar");
+        calendarList[0].isSelected = true;
+      }
+
       setCalendars(calendarList);
     } catch (error) {
       console.error("Failed to load calendars:", error);
@@ -263,12 +279,27 @@ export function EnhancedCalendar({ orgId, clients }: EnhancedCalendarProps) {
         return;
       }
 
+      const selectedCalendars = calendars.filter((cal) => cal.isSelected);
+      console.log("📅 Selected calendars:", selectedCalendars.length);
+
+      if (selectedCalendars.length === 0) {
+        console.log("❌ No calendars selected");
+        return;
+      }
+
       const startDate = startOfMonth(currentDate);
       const endDate = endOfMonth(currentDate);
 
+      console.log(
+        "📅 Date range:",
+        startDate.toISOString(),
+        "to",
+        endDate.toISOString(),
+      );
+
       const allEvents =
         await simpleGoogleCalendarService.getEventsFromMultipleCalendars(
-          calendars,
+          selectedCalendars,
           startDate,
           endDate,
         );
@@ -355,9 +386,22 @@ export function EnhancedCalendar({ orgId, clients }: EnhancedCalendarProps) {
 
   // Get upcoming events (next 7 days)
   const upcomingEvents = events
-    .filter((event) => event.start > new Date())
+    .filter((event) => {
+      const now = new Date();
+      const eventStart = new Date(event.start);
+      return eventStart > now;
+    })
     .sort((a, b) => a.start.getTime() - b.start.getTime())
     .slice(0, 5);
+
+  // Debug log for upcoming events
+  useEffect(() => {
+    console.log("📅 Total events:", events.length);
+    console.log("📅 Upcoming events:", upcomingEvents.length);
+    if (upcomingEvents.length > 0) {
+      console.log("📅 Sample upcoming event:", upcomingEvents[0]);
+    }
+  }, [events, upcomingEvents]);
 
   // Show loading state
   if (isInitializing) {
@@ -514,6 +558,13 @@ export function EnhancedCalendar({ orgId, clients }: EnhancedCalendarProps) {
                 className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`}
               />
               Refresh
+            </Button>
+            <Button
+              onClick={() => setShowAppointmentForm(true)}
+              className="bg-pink-600 hover:bg-pink-700"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              New Appointment
             </Button>
             <div className="flex items-center space-x-1">
               {view === "day" ? (
@@ -768,13 +819,6 @@ export function EnhancedCalendar({ orgId, clients }: EnhancedCalendarProps) {
                       {format(currentDate, "EEEE, MMMM d, yyyy")}
                     </h3>
                   </div>
-                  <Button
-                    onClick={() => setShowAppointmentForm(true)}
-                    className="bg-pink-600 hover:bg-pink-700"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    New Appointment
-                  </Button>
                 </div>
 
                 <div className="space-y-2">
@@ -882,6 +926,17 @@ export function EnhancedCalendar({ orgId, clients }: EnhancedCalendarProps) {
                             .length
                         }
                       </Badge>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDisconnectCalendar(calendar.id);
+                        }}
+                        className="h-6 w-6 p-0 text-gray-400 hover:text-red-500"
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
                     </div>
                   ))
                 )}
