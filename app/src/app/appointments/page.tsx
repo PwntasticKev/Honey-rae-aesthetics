@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { GoogleCalendar } from "@/components/GoogleCalendar";
-import { AppointmentForm } from "@/components/AppointmentForm";
+import { EnhancedCalendar } from "@/components/EnhancedCalendar";
 import { Sidebar } from "@/components/Sidebar";
 import { useAuth } from "@/hooks/useAuth";
 import { useEnvironment } from "@/contexts/EnvironmentContext";
@@ -19,7 +18,6 @@ export default function AppointmentsPage() {
   const { user, logout } = useAuth();
   const { environment } = useEnvironment();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [showAppointmentForm, setShowAppointmentForm] = useState(false);
 
   // Get or create demo org
   const orgs = useQuery(api.orgs.list);
@@ -31,12 +29,6 @@ export default function AppointmentsPage() {
   // Get clients for the appointment form
   const clients = useQuery(api.clients.getByOrg, { orgId: orgId as any }) || [];
   const createDemoClients = useMutation(api.clients.createDemoClients);
-
-  const handleAppointmentCreated = () => {
-    setShowAppointmentForm(false);
-    // Refresh calendar data
-    // TODO: Add calendar refresh logic
-  };
 
   // Create demo org if none exists
   const handleCreateDemoOrg = async () => {
@@ -161,20 +153,7 @@ export default function AppointmentsPage() {
                 <h2 className="text-2xl font-bold text-gray-900">
                   Appointments
                 </h2>
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <Calendar className="h-4 w-4" />
-                  <span>Connected to Google Calendar</span>
-                </div>
               </div>
-
-              <Button
-                onClick={() => setShowAppointmentForm(true)}
-                className="bg-pink-600 hover:bg-pink-700"
-                disabled={!orgId || clients.length === 0}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                New Appointment
-              </Button>
             </div>
 
             {/* Loading State */}
@@ -200,36 +179,10 @@ export default function AppointmentsPage() {
               </div>
             )}
 
-            {/* Appointment Form Sidebar */}
-            {showAppointmentForm && orgId && clients.length > 0 && (
-              <div className="fixed inset-0 bg-black bg-opacity-50 z-50">
-                <div className="absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-xl transform transition-transform duration-300 ease-in-out">
-                  <div className="h-full flex flex-col">
-                    <div className="flex items-center justify-between p-6 border-b">
-                      <h3 className="text-lg font-semibold">New Appointment</h3>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setShowAppointmentForm(false)}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <div className="flex-1 overflow-y-auto p-6">
-                      <AppointmentForm
-                        orgId={orgId}
-                        clients={clients}
-                        onSuccess={handleAppointmentCreated}
-                        onCancel={() => setShowAppointmentForm(false)}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
             {/* Calendar */}
-            <GoogleCalendar />
+            {orgId && (
+              <EnhancedCalendar orgId={orgId as string} clients={clients} />
+            )}
           </div>
         </main>
       </div>

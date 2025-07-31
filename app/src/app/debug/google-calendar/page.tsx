@@ -8,6 +8,7 @@ import { SimpleCalendar } from "@/components/SimpleCalendar";
 import { OAuthConfigTest } from "@/components/OAuthConfigTest";
 import { QuickOAuthTest } from "@/components/QuickOAuthTest";
 import { OAuthSuccessHandler } from "@/components/OAuthSuccessHandler";
+import { TokenDebug } from "@/components/TokenDebug";
 
 export default function GoogleCalendarDebugPage() {
   return (
@@ -21,6 +22,7 @@ export default function GoogleCalendarDebugPage() {
         </div>
 
         <div className="space-y-6">
+          <TokenDebug />
           <OAuthSuccessHandler />
           <EnvironmentTest />
           <QuickOAuthTest />

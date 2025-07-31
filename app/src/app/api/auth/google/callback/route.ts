@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_SECRET;
-const REDIRECT_URI = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3001"}/api/auth/google/callback`;
+const REDIRECT_URI = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/auth/google/callback`;
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,13 +13,13 @@ export async function GET(request: NextRequest) {
     if (error) {
       console.error("OAuth error:", error);
       return NextResponse.redirect(
-        `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3001"}/debug/google-calendar?error=${encodeURIComponent(error)}`,
+        `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/debug/google-calendar?error=${encodeURIComponent(error)}`,
       );
     }
 
     if (!code) {
       return NextResponse.redirect(
-        `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3001"}/debug/google-calendar?error=No authorization code received`,
+        `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/debug/google-calendar?error=No authorization code received`,
       );
     }
 
@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
       const errorText = await tokenResponse.text();
       console.error("Token exchange failed:", errorText);
       return NextResponse.redirect(
-        `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3001"}/debug/google-calendar?error=Token exchange failed`,
+        `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/debug/google-calendar?error=Token exchange failed`,
       );
     }
 
@@ -58,12 +58,12 @@ export async function GET(request: NextRequest) {
 
     // Redirect back to the debug page with success
     return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3001"}/debug/google-calendar?success=true&token=${encodeURIComponent(accessToken)}&refresh=${encodeURIComponent(refreshToken || "")}`,
+      `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/debug/google-calendar?success=true&token=${encodeURIComponent(accessToken)}&refresh=${encodeURIComponent(refreshToken || "")}`,
     );
   } catch (error) {
     console.error("OAuth callback error:", error);
     return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3001"}/debug/google-calendar?error=${encodeURIComponent(error instanceof Error ? error.message : String(error))}`,
+      `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/debug/google-calendar?error=${encodeURIComponent(error instanceof Error ? error.message : String(error))}`,
     );
   }
 }

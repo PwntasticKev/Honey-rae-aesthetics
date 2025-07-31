@@ -1,92 +1,113 @@
-// Simple Google Calendar service using direct fetch calls
-// This is an alternative to the Google API client library
+// Simple Google Calendar API integration using direct fetch calls
+// This service handles OAuth authentication and calendar operations
 
-interface SimpleGoogleCalendarEvent {
+export interface GoogleCalendarEvent {
   id: string;
   title: string;
   start: Date;
   end: Date;
   description?: string;
   location?: string;
+  attendees?: string[];
   calendarId: string;
   calendarName: string;
+  calendarColor: string;
 }
 
-interface SimpleGoogleCalendar {
+export interface GoogleCalendar {
   id: string;
   name: string;
   color: string;
   isSelected: boolean;
+  email?: string;
 }
 
 class SimpleGoogleCalendarService {
-  private apiKey: string;
   private accessToken: string | null = null;
 
   constructor() {
-    this.apiKey = process.env.NEXT_PUBLIC_GOOGLE_API_KEY || "";
+    // Load token from localStorage on initialization
+    if (typeof window !== "undefined") {
+      this.accessToken = localStorage.getItem("google_calendar_access_token");
+    }
   }
 
   async initialize(): Promise<void> {
-    console.log("🔧 Initializing Simple Google Calendar service...");
-    console.log("📋 API Key configured:", !!this.apiKey);
-    console.log("📋 API Key length:", this.apiKey?.length || 0);
-  }
-
-  async authenticate(): Promise<boolean> {
     try {
-      console.log("🔐 Starting simple authentication...");
+      console.log("🔧 Initializing Simple Google Calendar service...");
 
-      // Check for OAuth token
-      const oauthToken = localStorage.getItem("google_calendar_access_token");
-      if (oauthToken) {
-        console.log("✅ OAuth token found - authentication successful");
-        return true;
-      } else {
-        console.log("⚠️ No OAuth token found - authentication required");
-        return false;
+      // Check if we have an access token
+      if (typeof window !== "undefined") {
+        this.accessToken = localStorage.getItem("google_calendar_access_token");
       }
+
+      if (!this.accessToken) {
+        console.warn("No access token found. Please authenticate first.");
+        return;
+      }
+
+      console.log("✅ Simple Google Calendar service initialized successfully");
     } catch (error) {
-      console.error("Authentication failed:", error);
-      return false;
+      console.error(
+        "Failed to initialize Simple Google Calendar service:",
+        error,
+      );
     }
   }
 
   async isAuthenticated(): Promise<boolean> {
-    // Check for OAuth token
-    const oauthToken = localStorage.getItem("google_calendar_access_token");
-    return !!oauthToken;
+    if (typeof window !== "undefined") {
+      this.accessToken = localStorage.getItem("google_calendar_access_token");
+    }
+    return !!this.accessToken;
   }
 
-  async getCalendars(): Promise<SimpleGoogleCalendar[]> {
+  async getCalendars(): Promise<GoogleCalendar[]> {
     try {
-      // Check for OAuth token first
-      const oauthToken = localStorage.getItem("google_calendar_access_token");
-      if (!oauthToken) {
-        console.warn("No OAuth token found - cannot access user calendars");
+      // Always check localStorage for the latest token
+      if (typeof window !== "undefined") {
+        this.accessToken = localStorage.getItem("google_calendar_access_token");
+      }
+
+      if (!this.accessToken) {
+        console.warn("No access token found - cannot access user calendars");
+        console.log("🔍 Checking localStorage for token...");
+        if (typeof window !== "undefined") {
+          const token = localStorage.getItem("google_calendar_access_token");
+          console.log(
+            "🔍 Token in localStorage:",
+            token ? "Found" : "Not found",
+          );
+          if (token) {
+            console.log("🔍 Token length:", token.length);
+            console.log("🔍 Token preview:", token.substring(0, 20) + "...");
+          }
+        }
         return [];
       }
 
-      console.log("📋 Fetching calendars with OAuth token...");
+      console.log("📋 Fetching calendars with access token...");
+      console.log("🔍 Token length:", this.accessToken.length);
+      console.log(
+        "🔍 Token preview:",
+        this.accessToken.substring(0, 20) + "...",
+      );
 
       const response = await fetch(
-        `https://www.googleapis.com/calendar/v3/users/me/calendarList`,
+        "https://www.googleapis.com/calendar/v3/users/me/calendarList",
         {
-          method: "GET",
           headers: {
+            Authorization: `Bearer ${this.accessToken}`,
             "Content-Type": "application/json",
-            Authorization: `Bearer ${oauthToken}`,
           },
         },
       );
 
-      console.log("📋 Calendar API response status:", response.status);
-
       if (!response.ok) {
         const errorText = await response.text();
-        console.error("📋 Calendar API error:", errorText);
+        console.error("🔍 Full error response:", errorText);
         throw new Error(
-          `Calendar API error: ${response.status} ${response.statusText}`,
+          `HTTP ${response.status}: ${response.statusText} - ${errorText}`,
         );
       }
 
@@ -95,18 +116,31 @@ class SimpleGoogleCalendarService {
 
       console.log(`📋 Found ${calendars.length} calendars`);
 
-      const mappedCalendars: SimpleGoogleCalendar[] = calendars.map(
-        (calendar: any) => ({
+      const mappedCalendars: GoogleCalendar[] = calendars.map(
+        (calendar: {
+          id: string;
+          summary: string;
+          backgroundColor?: string;
+        }) => ({
           id: calendar.id,
           name: calendar.summary,
-          color: calendar.backgroundColor || "#4285f4",
-          isSelected: calendar.id === "primary",
+          color: this.getColorFromId(calendar.backgroundColor || "1"),
+          isSelected: calendar.id === "primary", // Default to primary calendar selected
+          email: calendar.id,
         }),
       );
 
+      console.log(
+        "📋 Mapped calendars:",
+        mappedCalendars.map((c) => ({ name: c.name, selected: c.isSelected })),
+      );
       return mappedCalendars;
     } catch (error) {
       console.error("Failed to get calendars:", error);
+      console.error("Error details:", {
+        message: error instanceof Error ? error.message : String(error),
+        hasAccessToken: !!this.accessToken,
+      });
       return [];
     }
   }
@@ -115,14 +149,10 @@ class SimpleGoogleCalendarService {
     calendarId: string,
     timeMin: Date,
     timeMax: Date,
-  ): Promise<SimpleGoogleCalendarEvent[]> {
+  ): Promise<GoogleCalendarEvent[]> {
     try {
-      // Check for OAuth token first
-      const oauthToken = localStorage.getItem("google_calendar_access_token");
-      if (!oauthToken) {
-        console.warn(
-          "No OAuth token found - cannot access user calendar events",
-        );
+      if (!this.accessToken) {
+        console.warn("No access token found");
         return [];
       }
 
@@ -132,112 +162,171 @@ class SimpleGoogleCalendarService {
       );
 
       const url = new URL(
-        `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`,
+        `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(
+          calendarId,
+        )}/events`,
       );
-      url.searchParams.set("timeMin", timeMin.toISOString());
-      url.searchParams.set("timeMax", timeMax.toISOString());
-      url.searchParams.set("singleEvents", "true");
-      url.searchParams.set("orderBy", "startTime");
-      url.searchParams.set("maxResults", "2500");
+      url.searchParams.append("timeMin", timeMin.toISOString());
+      url.searchParams.append("timeMax", timeMax.toISOString());
+      url.searchParams.append("singleEvents", "true");
+      url.searchParams.append("orderBy", "startTime");
+      url.searchParams.append("maxResults", "2500");
 
       const response = await fetch(url.toString(), {
-        method: "GET",
         headers: {
+          Authorization: `Bearer ${this.accessToken}`,
           "Content-Type": "application/json",
-          Authorization: `Bearer ${oauthToken}`,
         },
       });
 
-      console.log("📅 Events API response status:", response.status);
-
       if (!response.ok) {
         const errorText = await response.text();
-        console.error("📅 Events API error:", errorText);
+        console.error("🔍 Full error response:", errorText);
         throw new Error(
-          `Events API error: ${response.status} ${response.statusText}`,
+          `HTTP ${response.status}: ${response.statusText} - ${errorText}`,
         );
       }
 
       const data = await response.json();
       const events = data.items || [];
 
-      console.log(`📅 Found ${events.length} events`);
+      console.log(`📅 Raw events from API:`, events.length);
 
-      const mappedEvents = events.map((event: any) => ({
-        id: event.id,
-        title: event.summary || "Untitled Event",
-        start: new Date(event.start.dateTime || event.start.date),
-        end: new Date(event.end.dateTime || event.end.date),
-        description: event.description,
-        location: event.location,
-        calendarId,
-        calendarName: "Calendar", // We could get this from the calendar list
-      }));
+      if (events.length === 0) {
+        console.log("📅 No events found in the specified time range");
+      }
+
+      const mappedEvents = events.map(
+        (event: {
+          id: string;
+          summary?: string;
+          start: { dateTime?: string; date?: string };
+          end: { dateTime?: string; date?: string };
+          description?: string;
+          location?: string;
+          attendees?: Array<{ email: string }>;
+        }) => ({
+          id: event.id,
+          title: event.summary || "Untitled Event",
+          start: new Date(
+            event.start.dateTime || event.start.date || new Date(),
+          ),
+          end: new Date(event.end.dateTime || event.end.date || new Date()),
+          description: event.description,
+          location: event.location,
+          attendees: event.attendees?.map((a) => a.email) || [],
+          calendarId,
+          calendarName: "Primary Calendar", // This could be enhanced to get actual calendar name
+          calendarColor: "#4285f4",
+        }),
+      );
+
+      console.log(`📅 Mapped events:`, mappedEvents.length);
+      if (mappedEvents.length > 0) {
+        console.log(
+          "📅 Sample events:",
+          mappedEvents.slice(0, 3).map((e: GoogleCalendarEvent) => ({
+            title: e.title,
+            start: e.start.toISOString(),
+            end: e.end.toISOString(),
+          })),
+        );
+      }
 
       return mappedEvents;
     } catch (error) {
       console.error("Failed to get events:", error);
+      console.error("Error details:", {
+        message: error instanceof Error ? error.message : String(error),
+        calendarId,
+        timeMin: timeMin.toISOString(),
+        timeMax: timeMax.toISOString(),
+        hasAccessToken: !!this.accessToken,
+      });
       return [];
     }
   }
 
   async getEventsFromMultipleCalendars(
-    calendars: SimpleGoogleCalendar[],
+    calendars: GoogleCalendar[],
     timeMin: Date,
     timeMax: Date,
-  ): Promise<SimpleGoogleCalendarEvent[]> {
+  ): Promise<GoogleCalendarEvent[]> {
     try {
       const selectedCalendars = calendars.filter((cal) => cal.isSelected);
-      console.log(
-        `📅 Fetching events from ${selectedCalendars.length} selected calendars`,
-      );
 
       if (selectedCalendars.length === 0) {
-        console.warn("⚠️ No calendars selected for event fetching");
+        console.log("📅 No calendars selected");
         return [];
       }
 
-      const allEvents: SimpleGoogleCalendarEvent[] = [];
+      console.log(
+        `📅 Fetching events from ${selectedCalendars.length} calendars`,
+      );
+
+      const allEvents: GoogleCalendarEvent[] = [];
 
       for (const calendar of selectedCalendars) {
         try {
-          console.log(
-            `📅 Fetching from calendar: ${calendar.name} (${calendar.id})`,
-          );
           const events = await this.getEvents(calendar.id, timeMin, timeMax);
-
-          // Add calendar info to each event
-          const eventsWithCalendarInfo = events.map((event) => ({
-            ...event,
-            calendarName: calendar.name,
-          }));
-
-          allEvents.push(...eventsWithCalendarInfo);
-          console.log(`📅 Added ${events.length} events from ${calendar.name}`);
+          allEvents.push(...events);
         } catch (error) {
           console.error(
-            `Failed to get events from calendar ${calendar.name}:`,
+            `Failed to get events for calendar ${calendar.name}:`,
             error,
           );
+          // Continue with other calendars
         }
       }
 
-      // Sort events by start time
-      const sortedEvents = allEvents.sort(
-        (a, b) => a.start.getTime() - b.start.getTime(),
-      );
-      console.log(`📅 Total events loaded: ${sortedEvents.length}`);
-      return sortedEvents;
+      console.log(`📅 Total events loaded: ${allEvents.length}`);
+      return allEvents;
     } catch (error) {
       console.error("Failed to get events from multiple calendars:", error);
       return [];
     }
   }
 
+  private getColorFromId(colorId: string): string {
+    const colors: { [key: string]: string } = {
+      "1": "#4285f4", // Blue
+      "2": "#ea4335", // Red
+      "3": "#fbbc04", // Yellow
+      "4": "#34a853", // Green
+      "5": "#ff6d01", // Orange
+      "6": "#46bdc6", // Teal
+      "7": "#7b1fa2", // Purple
+      "8": "#e67c73", // Pink
+      "9": "#d50000", // Dark Red
+      "10": "#e65100", // Dark Orange
+      "11": "#f57f17", // Amber
+      "12": "#f9a825", // Orange
+      "13": "#c0ca33", // Lime
+      "14": "#7cb342", // Light Green
+      "15": "#2e7d32", // Green
+      "16": "#388e3c", // Dark Green
+      "17": "#00695c", // Teal
+      "18": "#006064", // Cyan
+      "19": "#0277bd", // Blue
+      "20": "#1565c0", // Dark Blue
+      "21": "#283593", // Indigo
+      "22": "#303f9f", // Dark Indigo
+      "23": "#512da8", // Purple
+      "24": "#6a1b9a", // Dark Purple
+    };
+
+    return colors[colorId] || "#4285f4"; // Default to blue
+  }
+
   logout(): void {
     this.accessToken = null;
-    console.log("✅ Logged out from Simple Google Calendar service");
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("google_calendar_access_token");
+      localStorage.removeItem("google_calendar_refresh_token");
+    }
+    console.log("🔓 Logged out of Google Calendar");
   }
 }
 
+// Export singleton instance
 export const simpleGoogleCalendarService = new SimpleGoogleCalendarService();
