@@ -1,34 +1,35 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DataTable } from "@/components/ui/data-table";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import {
   Plus,
   Phone,
   Mail,
   User,
-  Heart,
+  Trash2,
   Download,
   MoreHorizontal,
 } from "lucide-react";
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useToast } from "@/hooks/use-toast";
 
 interface Client {
   _id: string;
   fullName: string;
-  email: string;
+  email?: string;
   phones: string[];
   gender: string;
   tags: string[];
-  referralSource: string;
-  clientPortalStatus: string;
+  referralSource?: string;
+  clientPortalStatus?: string;
   createdAt: number;
 }
 
@@ -49,16 +50,28 @@ export function ClientList({
   selectedClients = [],
   onSelectionChange,
 }: ClientListProps) {
+  console.log("ClientList received clients:", clients?.length, clients);
   const [filteredClients, setFilteredClients] = useState<Client[]>(clients);
+
+  // Update filteredClients when clients prop changes
+  useEffect(() => {
+    setFilteredClients(clients);
+  }, [clients]);
   const [exportingClient, setExportingClient] = useState<string | null>(null);
   const router = useRouter();
   const { toast } = useToast();
+
+  const addTag = useMutation(api.clients.addTag);
+  const removeTag = useMutation(api.clients.removeTag);
+  const [tagInputs, setTagInputs] = useState<Record<string, string>>({});
+  const [tagLoading, setTagLoading] = useState<Record<string, boolean>>({});
 
   const handleSearch = (term: string) => {
     const filtered = clients.filter((client) => {
       return (
         client.fullName.toLowerCase().includes(term.toLowerCase()) ||
-        client.email.toLowerCase().includes(term.toLowerCase()) ||
+        (client.email &&
+          client.email.toLowerCase().includes(term.toLowerCase())) ||
         client.phones.some((phone) => phone.includes(term))
       );
     });
@@ -108,6 +121,55 @@ export function ClientList({
       });
     } finally {
       setExportingClient(null);
+    }
+  };
+
+  const handleAddTag = async (clientId: string) => {
+    const tag = tagInputs[clientId]?.trim();
+    if (!tag) return;
+
+    console.log("Adding tag:", { clientId, tag });
+    setTagLoading((prev) => ({ ...prev, [clientId]: true }));
+
+    try {
+      console.log("Calling addTag mutation with:", { id: clientId, tag });
+      await addTag({ id: clientId as any, tag });
+      console.log("Tag added successfully");
+
+      setTagInputs((prev) => ({ ...prev, [clientId]: "" }));
+      toast({
+        title: "Tag Added",
+        description: `Added tag "${tag}" to client.`,
+      });
+    } catch (error) {
+      console.error("Failed to add tag:", error);
+      toast({
+        title: "Failed to Add Tag",
+        description: `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
+        variant: "destructive",
+      });
+    } finally {
+      setTagLoading((prev) => ({ ...prev, [clientId]: false }));
+    }
+  };
+
+  const handleRemoveTag = async (clientId: string, tag: string) => {
+    setTagLoading((prev) => ({ ...prev, [clientId]: true }));
+    try {
+      await removeTag({ id: clientId as any, tag });
+      toast({
+        title: "Tag Removed",
+        description: `Removed tag "${tag}" from client.`,
+      });
+    } catch (error) {
+      console.error("Failed to remove tag:", error);
+      toast({
+        title: "Failed to Remove Tag",
+        description: "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setTagLoading((prev) => ({ ...prev, [clientId]: false }));
     }
   };
 
@@ -196,17 +258,42 @@ export function ClientList({
       label: "Tags",
       width: "20%",
       render: (value: any, row: Client) => (
-        <div className="flex flex-wrap gap-1">
-          {row.tags.slice(0, 2).map((tag, index) => (
-            <Badge key={index} variant="secondary" className="text-xs">
-              {tag}
-            </Badge>
-          ))}
-          {row.tags.length > 2 && (
-            <Badge variant="outline" className="text-xs">
-              +{row.tags.length - 2}
-            </Badge>
-          )}
+        <div>
+          <div className="flex flex-wrap gap-1 mb-1">
+            {row.tags.map((tag, index) => (
+              <Badge
+                key={tag}
+                variant="secondary"
+                className="text-xs cursor-pointer hover:bg-red-200"
+                onClick={() => handleRemoveTag(row._id, tag)}
+                title="Remove tag"
+              >
+                {tag} <span className="ml-1">×</span>
+              </Badge>
+            ))}
+          </div>
+          <div className="flex items-center gap-1 mt-1">
+            <Input
+              value={tagInputs[row._id] || ""}
+              onChange={(e) =>
+                setTagInputs((prev) => ({ ...prev, [row._id]: e.target.value }))
+              }
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleAddTag(row._id);
+              }}
+              placeholder="Add tag"
+              className="h-6 text-xs px-2 py-1 w-20"
+              disabled={tagLoading[row._id]}
+            />
+            <Button
+              size="sm"
+              className="h-6 px-2 text-xs"
+              onClick={() => handleAddTag(row._id)}
+              disabled={tagLoading[row._id] || !tagInputs[row._id]?.trim()}
+            >
+              Add
+            </Button>
+          </div>
         </div>
       ),
     },
@@ -232,7 +319,7 @@ export function ClientList({
     {
       key: "actions",
       label: "Actions",
-      width: "120px",
+      width: "80px",
       render: (value: any, row: Client) => (
         <div className="flex items-center space-x-1">
           <Button
@@ -258,15 +345,6 @@ export function ClientList({
               <Download className="h-3 w-3" />
             )}
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onDeleteClient(row._id)}
-            className="h-7 w-7 p-0 text-red-600 hover:text-red-700"
-            title="Delete Client"
-          >
-            <Heart className="h-3 w-3" />
-          </Button>
         </div>
       ),
     },
@@ -282,6 +360,8 @@ export function ClientList({
       onSearch={handleSearch}
       onEdit={onEditClient}
       onDelete={onDeleteClient}
+      pageSize={50}
+      showPagination={true}
       actions={
         <Button
           onClick={onAddClient}

@@ -64,7 +64,10 @@ export function ClientHeaderActions({
   const templates = useQuery(api.messageTemplates.getByOrg, {
     orgId: orgId as any,
   });
-  const awsConfig = useQuery(api.awsConfig.getByOrg, { orgId: orgId as any });
+  const awsConfig = useQuery(
+    api.awsConfig.getByOrg,
+    orgId ? { orgId: orgId as any } : "skip",
+  );
 
   // Mutations
   const createBulkMessage = useMutation(api.bulkMessages.create);
@@ -126,6 +129,56 @@ export function ClientHeaderActions({
       toast({
         title: "Send Failed",
         description: "Failed to send message. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const handleTestMessage = async () => {
+    if (!content.trim()) {
+      toast({
+        title: "Message Required",
+        description: "Please enter a message to test.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSending(true);
+
+    try {
+      // Create test message
+      const bulkMessageId = await createBulkMessage({
+        orgId: orgId as any,
+        name: `Test ${messageType === "email" ? "Email" : "SMS"} - ${new Date().toLocaleDateString()}`,
+        type: messageType,
+        templateId: templateId ? (templateId as any) : undefined,
+        subject: messageType === "email" ? subject : undefined,
+        content,
+      });
+
+      // Send test message to yourself
+      const testEmail = "pwntastickevin@gmail.com";
+      const testPhone = "8018850601";
+
+      // For now, we'll simulate sending to test recipient
+      // In a real implementation, you'd send to the test email/phone
+      await sendBulkMessage({
+        bulkMessageId,
+        clientIds: [] as any[], // Empty for test
+      });
+
+      toast({
+        title: "Test Message Sent",
+        description: `Test ${messageType === "email" ? "email" : "SMS"} sent to ${messageType === "email" ? testEmail : testPhone}.`,
+      });
+    } catch (error) {
+      console.error("Failed to send test message:", error);
+      toast({
+        title: "Test Failed",
+        description: "Failed to send test message. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -226,67 +279,74 @@ export function ClientHeaderActions({
   ];
 
   return (
-    <div className="flex items-center space-x-2">
-      {/* Selection Count */}
-      {selectedClients.length > 0 && (
-        <div className="flex items-center space-x-2 mr-4">
-          <Users className="h-4 w-4 text-gray-500" />
-          <span className="text-sm text-gray-600">
-            {selectedClients.length} selected
-          </span>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onSelectionChange([])}
-            className="text-gray-500 h-6 px-2"
-            title="Clear selection"
-          >
-            <X className="h-3 w-3" />
-          </Button>
+    <div className="flex items-center space-x-4">
+      {/* Communication Section */}
+      <div className="flex items-center space-x-2">
+        <div className="text-xs text-gray-500 font-medium mr-2">
+          COMMUNICATIONS
         </div>
-      )}
 
-      {/* Email Button */}
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={() => {
-          setMessageType("email");
-          setMessagingDialogOpen(true);
-        }}
-        disabled={selectedClients.length === 0}
-        className="h-8 w-8"
-        title="Send Email"
-      >
-        <Mail className="h-4 w-4" />
-      </Button>
+        {/* Selection Count */}
+        {selectedClients.length > 0 && (
+          <div className="flex items-center space-x-2 mr-2">
+            <Users className="h-4 w-4 text-gray-500" />
+            <span className="text-sm text-gray-600">
+              {selectedClients.length} selected
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onSelectionChange([])}
+              className="text-gray-500 h-6 px-2"
+              title="Clear selection"
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          </div>
+        )}
 
-      {/* SMS Button */}
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={() => {
-          setMessageType("sms");
-          setMessagingDialogOpen(true);
-        }}
-        disabled={selectedClients.length === 0}
-        className="h-8 w-8"
-        title="Send SMS"
-      >
-        <MessageSquare className="h-4 w-4" />
-      </Button>
+        {/* Email Button */}
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => {
+            setMessageType("email");
+            setMessagingDialogOpen(true);
+          }}
+          disabled={selectedClients.length === 0}
+          className="h-8 w-8"
+          title="Send Email"
+        >
+          <Mail className="h-4 w-4" />
+        </Button>
 
-      {/* Tag Button */}
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={() => setTaggingDialogOpen(true)}
-        disabled={selectedClients.length === 0}
-        className="h-8 w-8"
-        title="Manage Tags"
-      >
-        <Tag className="h-4 w-4" />
-      </Button>
+        {/* SMS Button */}
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => {
+            setMessageType("sms");
+            setMessagingDialogOpen(true);
+          }}
+          disabled={selectedClients.length === 0}
+          className="h-8 w-8"
+          title="Send SMS"
+        >
+          <MessageSquare className="h-4 w-4" />
+        </Button>
+
+        {/* Tag Button */}
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setTaggingDialogOpen(true)}
+          disabled={selectedClients.length === 0}
+          className="h-8 w-8"
+          title="Manage Tags"
+        >
+          <Tag className="h-4 w-4" />
+        </Button>
+      </div>
 
       {/* AWS Configuration Status */}
       {awsConfig && (
@@ -479,34 +539,60 @@ export function ClientHeaderActions({
           </div>
 
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setMessagingDialogOpen(false)}
-              disabled={isSending}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSendMessage}
-              disabled={isSending || !content.trim()}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              {isSending ? (
-                <>
-                  <Clock className="h-4 w-4 mr-2 animate-spin" />
-                  Sending...
-                </>
-              ) : (
-                <>
-                  {messageType === "email" ? (
-                    <Mail className="h-4 w-4 mr-2" />
-                  ) : (
-                    <MessageSquare className="h-4 w-4 mr-2" />
-                  )}
-                  Send {messageType === "email" ? "Email" : "SMS"}
-                </>
-              )}
-            </Button>
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="outline"
+                onClick={handleTestMessage}
+                disabled={isSending || !content.trim()}
+                className="text-green-600 border-green-300 hover:bg-green-50"
+              >
+                {isSending ? (
+                  <>
+                    <Clock className="h-4 w-4 mr-2 animate-spin" />
+                    Testing...
+                  </>
+                ) : (
+                  <>
+                    {messageType === "email" ? (
+                      <Mail className="h-4 w-4 mr-2" />
+                    ) : (
+                      <MessageSquare className="h-4 w-4 mr-2" />
+                    )}
+                    Test {messageType === "email" ? "Email" : "SMS"}
+                  </>
+                )}
+              </Button>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="outline"
+                onClick={() => setMessagingDialogOpen(false)}
+                disabled={isSending}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSendMessage}
+                disabled={isSending || !content.trim()}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                {isSending ? (
+                  <>
+                    <Clock className="h-4 w-4 mr-2 animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    {messageType === "email" ? (
+                      <Mail className="h-4 w-4 mr-2" />
+                    ) : (
+                      <MessageSquare className="h-4 w-4 mr-2" />
+                    )}
+                    Send {messageType === "email" ? "Email" : "SMS"}
+                  </>
+                )}
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>

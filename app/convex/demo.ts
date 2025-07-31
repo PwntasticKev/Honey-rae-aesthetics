@@ -5,30 +5,45 @@ export const setupDemo = mutation({
   handler: async (ctx) => {
     const now = Date.now();
 
-    // Create demo organization
-    const orgId = await ctx.db.insert("orgs", {
-      name: "Honey Rae Aesthetics Demo",
-      logo: "",
-      domain: "demo.honeyrae.com",
-      qrKey: "demo-qr-key",
-      limits: {
-        clients: 1000,
-        storage_gb: 100,
-        messages_per_month: 10000,
-      },
-      createdAt: now,
-      updatedAt: now,
-    });
+    // Check if user already exists
+    const existingUser = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", "admin@honeyrae.com"))
+      .first();
 
-    // Create demo user
-    const userId = await ctx.db.insert("users", {
-      orgId,
-      name: "Kevin Rae",
-      email: "kevin@honeyrae.com",
-      role: "admin",
-      createdAt: now,
-      updatedAt: now,
-    });
+    let orgId;
+    let userId;
+
+    if (existingUser) {
+      // Use existing user's organization
+      orgId = existingUser.orgId;
+      userId = existingUser._id;
+    } else {
+      // Create demo organization
+      orgId = await ctx.db.insert("orgs", {
+        name: "Honey Rae Aesthetics Demo",
+        logo: "",
+        domain: "demo.honeyrae.com",
+        qrKey: "demo-qr-key",
+        limits: {
+          clients: 1000,
+          storage_gb: 100,
+          messages_per_month: 10000,
+        },
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      // Create demo user
+      userId = await ctx.db.insert("users", {
+        orgId,
+        name: "Kevin Rae",
+        email: "admin@honeyrae.com",
+        role: "admin",
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
 
     // Create demo clients
     const client1Id = await ctx.db.insert("clients", {

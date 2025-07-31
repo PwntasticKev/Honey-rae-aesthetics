@@ -1,0 +1,95 @@
+# Your rule content
+
+# You can @ files here
+# You can use markdown but dont have to
+
+# if eslint is not in the codebase you can go off of:
+module.exports = {
+	env: {
+		browser: true,
+		es6: true,
+		node: true,
+		"react-native/react-native": true
+	},
+	extends: [
+		"eslint:recommended",
+		"plugin:react/recommended",
+		"plugin:react-native/all",
+		"plugin:@typescript-eslint/recommended",
+		"prettier",
+		"plugin:prettier/recommended"
+	],
+	globals: {
+		fetch: false
+	},
+	parser: "@typescript-eslint/parser",
+	parserOptions: {
+		ecmaFeatures: {
+			jsx: true
+		},
+		ecmaVersion: 2020,
+		sourceType: "module"
+	},
+	plugins: [
+		"react",
+		"react-native",
+		"@typescript-eslint",
+		"typescript-sort-keys",
+		"sort-keys-fix"
+	],
+	root: true,
+	rules: {
+		"react/react-in-jsx-scope": "off", // ✅ Fix JSX scope issue
+		indent: ["error", "tab"], // ✅ Enforce tabs
+		"no-mixed-spaces-and-tabs": "error", // ✅ Prevent mixed indentation
+		"prettier/prettier": "off",
+		"react-native/no-inline-styles": "off",
+		"react-native/no-color-literals": "off",
+		"@typescript-eslint/no-explicit-any": "off"
+	},
+	settings: {
+		react: {
+			version: "detect"
+		}
+	}
+};
+
+assuming they are using typescript, otherwise use good standards for javascript.
+
+# CONVEX QUERY VALIDATION RULE - CRITICAL
+# ALWAYS validate arguments before calling Convex queries to prevent ArgumentValidationError
+
+## Convex Query Safety Pattern:
+When calling Convex queries with potentially undefined/null arguments (especially orgId, userId, etc.), ALWAYS use conditional validation:
+
+```typescript
+// ❌ WRONG - Will cause ArgumentValidationError
+const clients = useQuery(api.clients.getByOrg, { orgId: orgId as any }) || [];
+
+// ✅ CORRECT - Validates before calling
+const clients = useQuery(
+  api.clients.getByOrg, 
+  orgId ? { orgId: orgId as any } : "skip"
+) || [];
+```
+
+## Required Pattern for All Convex Queries:
+1. **ALWAYS check if required arguments exist** before calling queries
+2. **Use "skip" as fallback** when arguments are undefined/null
+3. **Test with undefined values** to ensure no validation errors
+4. **Add proper error boundaries** around Convex query calls
+
+## Common Patterns to Fix:
+- `{ orgId: orgId as any }` → `orgId ? { orgId: orgId as any } : "skip"`
+- `{ userId: userId as any }` → `userId ? { userId: userId as any } : "skip"`
+- `{ clientId: clientId as any }` → `clientId ? { clientId: clientId as any } : "skip"`
+
+## Testing Checklist:
+- [ ] Test with undefined orgId
+- [ ] Test with undefined userId  
+- [ ] Test with undefined clientId
+- [ ] Verify no ArgumentValidationError in console
+- [ ] Add proper loading states for skipped queries
+
+## Error Prevention:
+This prevents the common error: "ArgumentValidationError: Object is missing the required field `orgId`" 

@@ -17,6 +17,7 @@ import type * as appointments from "../appointments.js";
 import type * as awsConfig from "../awsConfig.js";
 import type * as bulkMessages from "../bulkMessages.js";
 import type * as clients from "../clients.js";
+import type * as debug from "../debug.js";
 import type * as demo from "../demo.js";
 import type * as files from "../files.js";
 import type * as googleCalendar from "../googleCalendar.js";
@@ -42,6 +43,7 @@ declare const fullApi: ApiFromModules<{
   awsConfig: typeof awsConfig;
   bulkMessages: typeof bulkMessages;
   clients: typeof clients;
+  debug: typeof debug;
   demo: typeof demo;
   files: typeof files;
   googleCalendar: typeof googleCalendar;

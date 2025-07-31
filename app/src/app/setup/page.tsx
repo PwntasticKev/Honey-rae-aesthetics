@@ -12,15 +12,21 @@ import {
 } from "@/components/ui/card";
 import { Loader2, CheckCircle, Sparkles } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
 
 export default function SetupPage() {
   const [isSettingUp, setIsSettingUp] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
   const { login } = useAuth();
+  const setupDemo = useMutation(api.demo.setupDemo);
 
   const handleSetupDemo = async () => {
     setIsSettingUp(true);
     try {
+      // Call the actual Convex setupDemo mutation
+      await setupDemo({});
+
       // Simulate setup delay
       await new Promise((resolve) => setTimeout(resolve, 2000));
 

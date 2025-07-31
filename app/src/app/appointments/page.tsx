@@ -27,7 +27,9 @@ export default function AppointmentsPage() {
   const orgId = orgs && orgs.length > 0 ? orgs[0]._id : null;
 
   // Get clients for the appointment form
-  const clients = useQuery(api.clients.getByOrg, { orgId: orgId as any }) || [];
+  const clients =
+    useQuery(api.clients.getByOrg, orgId ? { orgId: orgId as any } : "skip") ||
+    [];
   const createDemoClients = useMutation(api.clients.createDemoClients);
 
   // Create demo org if none exists

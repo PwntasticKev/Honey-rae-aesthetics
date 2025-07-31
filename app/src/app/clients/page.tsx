@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ClientList } from "@/components/ClientList";
 import { ClientImportExport } from "@/components/ClientImportExport";
 import { ClientHeaderActions } from "@/components/ClientHeaderActions";
@@ -13,54 +13,59 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Menu, Search, Bell, LogOut } from "lucide-react";
 import { NotificationDropdown } from "@/components/NotificationDropdown";
 import { GlobalSearch } from "@/components/GlobalSearch";
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { DebugInfo } from "@/components/DebugInfo";
 
-// Mock data
-const mockClients = [
-  {
-    _id: "1",
-    fullName: "Sarah Johnson",
-    email: "sarah.johnson@email.com",
-    phones: ["+1 (555) 123-4567"],
-    gender: "female",
-    tags: ["VIP", "Regular"],
-    referralSource: "Google Search",
-    clientPortalStatus: "active",
-    createdAt: Date.now() - 86400000 * 30,
-  },
-  {
-    _id: "2",
-    fullName: "Michael Chen",
-    email: "michael.chen@email.com",
-    phones: ["+1 (555) 234-5678"],
-    gender: "male",
-    tags: ["New Client"],
-    referralSource: "Referral",
-    clientPortalStatus: "active",
-    createdAt: Date.now() - 86400000 * 7,
-  },
-  {
-    _id: "3",
-    fullName: "Emily Rodriguez",
-    email: "emily.rodriguez@email.com",
-    phones: ["+1 (555) 345-6789"],
-    gender: "female",
-    tags: ["VIP", "Returning"],
-    referralSource: "Social Media",
-    clientPortalStatus: "inactive",
-    createdAt: Date.now() - 86400000 * 60,
-  },
-];
+// Remove mock data - we'll use real Convex data
 
 export default function ClientsPage() {
   const { user, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedClients, setSelectedClients] = useState<string[]>([]);
+  const [isSettingUpDemo, setIsSettingUpDemo] = useState(false);
 
-  // Get the first org (in a real app, this would be the user's org)
+  // Get the user's organization
+  const { user: authUser } = useAuth();
+  const userData = useQuery(api.users.getByEmail, {
+    email: authUser?.email || "admin@honeyrae.com",
+  });
+
+  // Fallback: if user not found, use first organization
   const orgs = useQuery(api.orgs.list);
-  const orgId = orgs?.[0]?._id;
+  const orgId = userData?.orgId || orgs?.[0]?._id;
+
+  // Debug logging for org and user data
+  useEffect(() => {
+    console.log("Auth user:", authUser);
+    console.log("User data:", userData);
+    console.log("Orgs:", orgs);
+    console.log("Using orgId:", orgId);
+  }, [authUser, userData, orgs, orgId]);
+
+  // Get real client data from Convex
+  const clientsQuery = useQuery(
+    api.clients.getByOrg,
+    orgId ? { orgId: orgId as any } : "skip",
+  );
+
+  const clients = clientsQuery || [];
+
+  // Debug logging
+  useEffect(() => {
+    console.log("Clients query result:", clients?.length, clients);
+    console.log(
+      "Clients query status:",
+      clientsQuery === undefined
+        ? "loading"
+        : clientsQuery === null
+          ? "error"
+          : "loaded",
+    );
+  }, [clients, clientsQuery]);
+
+  // Setup demo data mutation
+  const setupDemo = useMutation(api.demo.setupDemo);
 
   const handleAddClient = () => {
     console.log("Add client clicked");
@@ -77,6 +82,23 @@ export default function ClientsPage() {
     // TODO: Implement delete client functionality
   };
 
+  const handleSetupDemo = async () => {
+    setIsSettingUpDemo(true);
+    try {
+      console.log("Starting demo data setup...");
+      const result = await setupDemo({});
+      console.log("Demo data created successfully:", result);
+
+      // Force a page refresh to reload the data
+      window.location.reload();
+    } catch (error) {
+      console.error("Failed to create demo data:", error);
+      alert("Failed to create demo data. Check console for details.");
+    } finally {
+      setIsSettingUpDemo(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-rose-50">
       {/* Sidebar */}
@@ -87,6 +109,27 @@ export default function ClientsPage() {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col lg:ml-64 relative">
+        {/* Debug Info */}
+        <DebugInfo />
+
+        {/* Setup Demo Button */}
+        <div className="p-4 bg-blue-50 border-b border-blue-200">
+          <Button
+            onClick={handleSetupDemo}
+            disabled={isSettingUpDemo}
+            className="bg-blue-600 hover:bg-blue-700"
+          >
+            {isSettingUpDemo ? (
+              <>
+                <div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                Setting up...
+              </>
+            ) : (
+              "Setup Demo Data"
+            )}
+          </Button>
+        </div>
+
         {/* Header */}
         <header className="bg-white border-b border-gray-200 shadow-sm">
           <div className="flex items-center justify-between px-6 h-16">
@@ -172,8 +215,9 @@ export default function ClientsPage() {
               </div>
             </div>
 
+            {/* Client List */}
             <ClientList
-              clients={mockClients}
+              clients={clients}
               onAddClient={handleAddClient}
               onEditClient={handleEditClient}
               onDeleteClient={handleDeleteClient}
