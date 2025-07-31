@@ -37,12 +37,16 @@ import {
   isToday,
   addMonths,
   subMonths,
+  startOfWeek,
+  endOfWeek,
 } from "date-fns";
 import {
   googleCalendarService,
   type GoogleCalendarEvent,
   type GoogleCalendar,
 } from "@/lib/googleCalendarService";
+import { useMutation, useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
 
 export function GoogleCalendar() {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -51,9 +55,16 @@ export function GoogleCalendar() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
+  const [isLoadingEvents, setIsLoadingEvents] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [view, setView] = useState<"day" | "week" | "month" | "all">("month");
   const [apiKeysConfigured, setApiKeysConfigured] = useState(true);
+
+  // Convex mutations
+  const saveProvider = useMutation(api.googleCalendarProviders.saveProvider);
+  const disconnectProvider = useMutation(
+    api.googleCalendarProviders.disconnect,
+  );
 
   // Initialize Google Calendar service
   useEffect(() => {
@@ -88,12 +99,27 @@ export function GoogleCalendar() {
     initializeService();
   }, []);
 
-  // Load events when calendars or date changes
+  // Load calendars when authenticated
+  useEffect(() => {
+    if (isAuthenticated && calendars.length === 0) {
+      console.log("🔄 Auto-loading calendars after authentication...");
+      loadCalendars();
+    }
+  }, [isAuthenticated]);
+
+  // Load events when calendars, date, or view changes
   useEffect(() => {
     if (isAuthenticated && calendars.length > 0) {
       loadEvents();
     }
-  }, [currentDate, calendars]);
+  }, [currentDate, calendars, view]);
+
+  // Reload events when calendar selection changes
+  useEffect(() => {
+    if (isAuthenticated && calendars.length > 0) {
+      loadEvents();
+    }
+  }, [calendars.map((cal) => cal.isSelected).join(",")]); // This will trigger when any calendar selection changes
 
   const handleGoogleLogin = async () => {
     setIsLoading(true);
@@ -101,8 +127,40 @@ export function GoogleCalendar() {
       const success = await googleCalendarService.authenticate();
       if (success) {
         setIsAuthenticated(true);
+        console.log("✅ Authentication successful, loading calendars...");
+
+        // Load calendars first
         await loadCalendars();
-        await loadEvents();
+
+        // Wait a moment for state to update, then load events
+        setTimeout(async () => {
+          console.log("📋 Calendars loaded, now loading events...");
+          await loadEvents();
+        }, 100);
+
+        // Save the first calendar to the database
+        if (calendars.length > 0) {
+          const primaryCalendar = calendars[0];
+          const accessToken = localStorage.getItem(
+            "google_calendar_access_token",
+          );
+
+          if (accessToken) {
+            try {
+              await saveProvider({
+                orgId: "demo-org-id" as any, // TODO: Get from context
+                name: primaryCalendar.name,
+                email: primaryCalendar.email || "",
+                color: primaryCalendar.color,
+                accessToken,
+                googleCalendarId: primaryCalendar.id,
+              });
+              console.log("✅ Google Calendar provider saved to database");
+            } catch (error) {
+              console.error("Failed to save provider to database:", error);
+            }
+          }
+        }
       }
     } catch (error) {
       console.error("Google login failed:", error);
@@ -111,16 +169,30 @@ export function GoogleCalendar() {
     }
   };
 
-  const handleGoogleLogout = () => {
+  const handleGoogleLogout = async () => {
     googleCalendarService.logout();
     setIsAuthenticated(false);
     setEvents([]);
     setCalendars([]);
+
+    // TODO: Disconnect from database when we have the provider ID
+    // For now, just log that we're logged out
+    console.log("✅ Google Calendar logged out");
   };
 
   const loadCalendars = async () => {
     try {
+      console.log("📋 Loading calendars...");
       const calendarList = await googleCalendarService.getCalendars();
+      console.log("📋 Calendars loaded:", calendarList.length);
+      console.log(
+        "📋 Calendar details:",
+        calendarList.map((cal) => ({
+          id: cal.id,
+          name: cal.name,
+          isSelected: cal.isSelected,
+        })),
+      );
       setCalendars(calendarList);
     } catch (error) {
       console.error("Failed to load calendars:", error);
@@ -129,24 +201,50 @@ export function GoogleCalendar() {
 
   const loadEvents = async () => {
     try {
-      const startDate = startOfMonth(currentDate);
-      const endDate = endOfMonth(currentDate);
-      const allEvents: GoogleCalendarEvent[] = [];
+      setIsLoadingEvents(true);
+      console.log("🔄 Loading events...");
+      console.log("📅 Current date:", currentDate);
+      console.log("📊 View:", view);
+      console.log("📋 Calendars:", calendars.length);
+      console.log("✅ Authenticated:", isAuthenticated);
+      console.log(
+        "📋 Selected calendars:",
+        calendars.filter((cal) => cal.isSelected).map((cal) => cal.name),
+      );
 
-      for (const calendar of calendars) {
-        if (calendar.isSelected) {
-          const calendarEvents = await googleCalendarService.getEvents(
-            calendar.id,
-            startDate,
-            endDate,
-          );
-          allEvents.push(...calendarEvents);
-        }
+      if (!isAuthenticated || calendars.length === 0) {
+        console.log("❌ Not authenticated or no calendars");
+        return;
       }
 
+      const startDate = startOfMonth(currentDate);
+      const endDate = endOfMonth(currentDate);
+
+      console.log("📅 Date range:", startDate, "to", endDate);
+
+      // Use the new method to get events from multiple calendars
+      const allEvents =
+        await googleCalendarService.getEventsFromMultipleCalendars(
+          calendars,
+          startDate,
+          endDate,
+        );
+
+      console.log("📅 Loaded events:", allEvents.length);
+      console.log(
+        "📅 Event details:",
+        allEvents.map((event) => ({
+          title: event.title,
+          start: event.start,
+          end: event.end,
+          calendarName: event.calendarName,
+        })),
+      );
       setEvents(allEvents);
     } catch (error) {
       console.error("Failed to load events:", error);
+    } finally {
+      setIsLoadingEvents(false);
     }
   };
 
@@ -159,7 +257,13 @@ export function GoogleCalendar() {
   };
 
   const getEventsForDay = (date: Date) => {
-    return events.filter((event) => isSameDay(event.start, date));
+    const dayEvents = events.filter((event) => isSameDay(event.start, date));
+    console.log(
+      `📅 Events for ${format(date, "yyyy-MM-dd")}:`,
+      dayEvents.length,
+      dayEvents.map((e) => e.title),
+    );
+    return dayEvents;
   };
 
   const navigateMonth = (direction: "prev" | "next") => {
@@ -341,10 +445,41 @@ export function GoogleCalendar() {
           <div className="flex items-center space-x-3">
             <Button
               variant="outline"
-              onClick={() => setCurrentDate(new Date())}
+              onClick={() => {
+                setCurrentDate(new Date());
+                if (view === "day") {
+                  // In day view, also refresh events for today
+                  setTimeout(() => loadEvents(), 100);
+                }
+              }}
               size="sm"
             >
               Today
+            </Button>
+            <Button
+              variant="outline"
+              onClick={loadEvents}
+              size="sm"
+              disabled={isLoading}
+            >
+              <RefreshCw
+                className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`}
+              />
+              Refresh
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                console.log("🔍 Debug: Current state");
+                console.log("Events:", events.length);
+                console.log("Calendars:", calendars);
+                console.log("Authenticated:", isAuthenticated);
+                loadEvents();
+              }}
+              size="sm"
+              className="text-xs"
+            >
+              Debug
             </Button>
             <div className="flex items-center space-x-1">
               <Button
@@ -391,69 +526,213 @@ export function GoogleCalendar() {
             </div>
           </div>
 
-          {/* Month View */}
+          {/* Calendar View */}
           <div className="bg-white rounded-lg border shadow-sm">
-            {/* Calendar Header */}
-            <div className="grid grid-cols-7 gap-px bg-gray-200 border-b">
-              {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
-                <div key={day} className="bg-gray-50 p-3 text-center">
-                  <span className="text-sm font-medium text-gray-700">
-                    {day}
-                  </span>
+            {isLoadingEvents && (
+              <div className="p-8 text-center">
+                <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
+                <p className="text-gray-600">Loading calendar events...</p>
+              </div>
+            )}
+
+            {!isLoadingEvents && view === "month" && (
+              <>
+                {/* Calendar Header */}
+                <div className="grid grid-cols-7 gap-px bg-gray-200 border-b">
+                  {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
+                    (day) => (
+                      <div key={day} className="bg-gray-50 p-3 text-center">
+                        <span className="text-sm font-medium text-gray-700">
+                          {day}
+                        </span>
+                      </div>
+                    ),
+                  )}
                 </div>
-              ))}
-            </div>
 
-            {/* Calendar Grid */}
-            <div className="grid grid-cols-7 gap-px bg-gray-200">
-              {monthDays.map((day, index) => {
-                const dayEvents = getEventsForDay(day);
-                const isCurrentMonth =
-                  day.getMonth() === currentDate.getMonth();
-                const isCurrentDay = isToday(day);
+                {/* Calendar Grid */}
+                <div className="grid grid-cols-7 gap-px bg-gray-200">
+                  {monthDays.map((day, index) => {
+                    const dayEvents = getEventsForDay(day);
+                    const isCurrentMonth =
+                      day.getMonth() === currentDate.getMonth();
+                    const isCurrentDay = isToday(day);
 
-                return (
-                  <div
-                    key={index}
-                    className={`min-h-[120px] p-2 ${
-                      isCurrentMonth ? "bg-white" : "bg-gray-50"
-                    } ${isCurrentDay ? "bg-blue-50" : ""}`}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span
-                        className={`text-sm ${
-                          isCurrentMonth ? "text-gray-900" : "text-gray-400"
-                        } ${isCurrentDay ? "font-bold" : ""}`}
+                    return (
+                      <div
+                        key={index}
+                        className={`min-h-[120px] p-2 cursor-pointer hover:bg-gray-50 ${
+                          isCurrentMonth ? "bg-white" : "bg-gray-50"
+                        } ${isCurrentDay ? "bg-blue-50" : ""}`}
+                        onClick={() => {
+                          setCurrentDate(day);
+                          setView("day");
+                        }}
                       >
-                        {format(day, "d")}
-                      </span>
-                      {dayEvents.length > 0 && (
-                        <Badge variant="secondary" className="text-xs">
-                          {dayEvents.length}
-                        </Badge>
-                      )}
-                    </div>
+                        <div className="flex items-center justify-between mb-1">
+                          <span
+                            className={`text-sm ${
+                              isCurrentMonth ? "text-gray-900" : "text-gray-400"
+                            } ${isCurrentDay ? "font-bold" : ""}`}
+                          >
+                            {format(day, "d")}
+                          </span>
+                          {dayEvents.length > 0 && (
+                            <Badge variant="secondary" className="text-xs">
+                              {dayEvents.length}
+                            </Badge>
+                          )}
+                        </div>
 
-                    <div className="space-y-1">
-                      {dayEvents.slice(0, 2).map((event) => (
-                        <div
-                          key={event.id}
-                          className="text-xs p-1 rounded bg-blue-100 text-blue-800 truncate cursor-pointer hover:bg-blue-200"
-                          title={event.title}
-                        >
-                          {event.title}
+                        <div className="space-y-1">
+                          {dayEvents.slice(0, 2).map((event) => (
+                            <div
+                              key={event.id}
+                              className="text-xs p-1 rounded bg-blue-100 text-blue-800 truncate cursor-pointer hover:bg-blue-200"
+                              title={event.title}
+                            >
+                              {event.title}
+                            </div>
+                          ))}
+                          {dayEvents.length > 2 && (
+                            <div className="text-xs text-gray-500 text-center">
+                              +{dayEvents.length - 2} more
+                            </div>
+                          )}
                         </div>
-                      ))}
-                      {dayEvents.length > 2 && (
-                        <div className="text-xs text-gray-500 text-center">
-                          +{dayEvents.length - 2} more
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+
+            {view === "week" && (
+              <div className="p-6">
+                <div className="mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Week of {format(startOfWeek(currentDate), "MMM d")} -{" "}
+                    {format(endOfWeek(currentDate), "MMM d, yyyy")}
+                  </h3>
+                </div>
+
+                <div className="grid grid-cols-7 gap-4">
+                  {eachDayOfInterval({
+                    start: startOfWeek(currentDate),
+                    end: endOfWeek(currentDate),
+                  }).map((day) => {
+                    const dayEvents = getEventsForDay(day);
+                    const isCurrentDay = isToday(day);
+
+                    return (
+                      <div
+                        key={day.toISOString()}
+                        className={`p-3 border rounded-lg ${
+                          isCurrentDay
+                            ? "bg-blue-50 border-blue-200"
+                            : "bg-white border-gray-200"
+                        }`}
+                      >
+                        <div className="mb-2">
+                          <div
+                            className={`text-sm font-medium ${
+                              isCurrentDay ? "text-blue-900" : "text-gray-900"
+                            }`}
+                          >
+                            {format(day, "EEE")}
+                          </div>
+                          <div
+                            className={`text-lg ${
+                              isCurrentDay
+                                ? "text-blue-900 font-bold"
+                                : "text-gray-700"
+                            }`}
+                          >
+                            {format(day, "d")}
+                          </div>
                         </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+
+                        <div className="space-y-1">
+                          {dayEvents.slice(0, 3).map((event) => (
+                            <div
+                              key={event.id}
+                              className="text-xs p-1 rounded bg-blue-100 text-blue-800 truncate cursor-pointer hover:bg-blue-200"
+                              title={event.title}
+                            >
+                              {format(event.start, "h:mm")} {event.title}
+                            </div>
+                          ))}
+                          {dayEvents.length > 3 && (
+                            <div className="text-xs text-gray-500 text-center">
+                              +{dayEvents.length - 3} more
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {view === "day" && (
+              <div className="p-6">
+                <div className="mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    {format(currentDate, "EEEE, MMMM d, yyyy")}
+                  </h3>
+                </div>
+
+                <div className="space-y-2">
+                  {(() => {
+                    const dayEvents = getEventsForDay(currentDate);
+                    if (dayEvents.length === 0) {
+                      return (
+                        <div className="text-center py-8 text-gray-500">
+                          <Calendar className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                          <p>No events scheduled for today</p>
+                        </div>
+                      );
+                    }
+
+                    return dayEvents.map((event) => (
+                      <div
+                        key={event.id}
+                        className="p-4 border border-gray-200 rounded-lg bg-white shadow-sm"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <h4 className="font-medium text-gray-900 mb-1">
+                              {event.title}
+                            </h4>
+                            <p className="text-sm text-gray-600">
+                              {format(event.start, "h:mm a")} -{" "}
+                              {format(event.end, "h:mm a")}
+                            </p>
+                            {event.location && (
+                              <p className="text-sm text-gray-500 mt-1">
+                                📍 {event.location}
+                              </p>
+                            )}
+                            {event.description && (
+                              <p className="text-sm text-gray-600 mt-2">
+                                {event.description}
+                              </p>
+                            )}
+                          </div>
+                          <div className="ml-4">
+                            <div
+                              className="w-3 h-3 rounded-full"
+                              style={{ backgroundColor: event.calendarColor }}
+                            ></div>
+                          </div>
+                        </div>
+                      </div>
+                    ));
+                  })()}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -462,28 +741,51 @@ export function GoogleCalendar() {
           <div className="space-y-6">
             {/* Calendar List */}
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                Calendars
-              </h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Calendars
+                </h3>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => loadCalendars()}
+                  className="text-xs"
+                >
+                  <RefreshCw className="h-3 w-3 mr-1" />
+                  Refresh
+                </Button>
+              </div>
               <div className="space-y-2">
-                {calendars.map((calendar) => (
-                  <div
-                    key={calendar.id}
-                    className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-50"
-                  >
-                    <Checkbox
-                      checked={calendar.isSelected}
-                      onCheckedChange={() => toggleCalendar(calendar.id)}
-                    />
-                    <div
-                      className="w-3 h-3 rounded-full"
-                      style={{ backgroundColor: calendar.color }}
-                    ></div>
-                    <span className="text-sm text-gray-700 flex-1 truncate">
-                      {calendar.name}
-                    </span>
+                {calendars.length === 0 ? (
+                  <div className="text-sm text-gray-500 text-center py-4">
+                    No calendars found
                   </div>
-                ))}
+                ) : (
+                  calendars.map((calendar) => (
+                    <div
+                      key={calendar.id}
+                      className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-50 transition-colors"
+                    >
+                      <Checkbox
+                        checked={calendar.isSelected}
+                        onCheckedChange={() => toggleCalendar(calendar.id)}
+                      />
+                      <div
+                        className="w-3 h-3 rounded-full"
+                        style={{ backgroundColor: calendar.color }}
+                      ></div>
+                      <span className="text-sm text-gray-700 flex-1 truncate">
+                        {calendar.name}
+                      </span>
+                      <Badge variant="secondary" className="text-xs">
+                        {
+                          events.filter((e) => e.calendarId === calendar.id)
+                            .length
+                        }
+                      </Badge>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
 

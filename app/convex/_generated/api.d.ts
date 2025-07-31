@@ -18,6 +18,7 @@ import type * as clients from "../clients.js";
 import type * as demo from "../demo.js";
 import type * as files from "../files.js";
 import type * as googleCalendar from "../googleCalendar.js";
+import type * as googleCalendarProviders from "../googleCalendarProviders.js";
 import type * as messageTemplates from "../messageTemplates.js";
 import type * as messages from "../messages.js";
 import type * as notes from "../notes.js";
@@ -40,6 +41,7 @@ declare const fullApi: ApiFromModules<{
   demo: typeof demo;
   files: typeof files;
   googleCalendar: typeof googleCalendar;
+  googleCalendarProviders: typeof googleCalendarProviders;
   messageTemplates: typeof messageTemplates;
   messages: typeof messages;
   notes: typeof notes;

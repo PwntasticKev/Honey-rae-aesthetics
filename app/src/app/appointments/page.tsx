@@ -9,7 +9,7 @@ import { useEnvironment } from "@/contexts/EnvironmentContext";
 import { EnvironmentToggle } from "@/components/EnvironmentToggle";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Menu, Bell, LogOut, Plus, Calendar } from "lucide-react";
+import { Menu, Bell, LogOut, Plus, Calendar, X } from "lucide-react";
 import { NotificationDropdown } from "@/components/NotificationDropdown";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import { useQuery, useMutation } from "convex/react";
@@ -41,20 +41,33 @@ export default function AppointmentsPage() {
   // Create demo org if none exists
   const handleCreateDemoOrg = async () => {
     if (!orgId) {
-      await createDemoOrg();
+      try {
+        console.log("🔄 Creating demo org...");
+        await createDemoOrg();
+        console.log("✅ Demo org created successfully");
+      } catch (error) {
+        console.error("❌ Failed to create demo org:", error);
+      }
     }
   };
 
   // Create demo clients if none exist
   const handleCreateDemoClients = async () => {
     if (orgId && clients.length === 0) {
-      await createDemoClients({ orgId });
+      try {
+        console.log("🔄 Creating demo clients...");
+        await createDemoClients({ orgId });
+        console.log("✅ Demo clients created successfully");
+      } catch (error) {
+        console.error("❌ Failed to create demo clients:", error);
+      }
     }
   };
 
   // Auto-create demo org and clients when component mounts
   useEffect(() => {
     if (!orgId && orgs !== undefined) {
+      console.log("🔄 Creating demo org...");
       handleCreateDemoOrg();
     }
   }, [orgId, orgs, createDemoOrg]);
@@ -62,6 +75,7 @@ export default function AppointmentsPage() {
   // Auto-create demo clients when org is available
   useEffect(() => {
     if (orgId && clients.length === 0) {
+      console.log("🔄 Creating demo clients...");
       handleCreateDemoClients();
     }
   }, [orgId, clients.length, createDemoClients]);
@@ -168,19 +182,48 @@ export default function AppointmentsPage() {
               <div className="text-center py-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-600 mx-auto mb-4"></div>
                 <p className="text-gray-600">Setting up demo data...</p>
+                <p className="text-sm text-gray-500 mt-2">
+                  {!orgId
+                    ? "Creating organization..."
+                    : "Creating demo clients..."}
+                </p>
+                <button
+                  onClick={() => {
+                    console.log("🔄 Manual refresh triggered");
+                    handleCreateDemoOrg();
+                    handleCreateDemoClients();
+                  }}
+                  className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                >
+                  Retry Setup
+                </button>
               </div>
             )}
 
-            {/* Appointment Form Modal */}
+            {/* Appointment Form Sidebar */}
             {showAppointmentForm && orgId && clients.length > 0 && (
-              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                <div className="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-                  <AppointmentForm
-                    orgId={orgId}
-                    clients={clients}
-                    onSuccess={handleAppointmentCreated}
-                    onCancel={() => setShowAppointmentForm(false)}
-                  />
+              <div className="fixed inset-0 bg-black bg-opacity-50 z-50">
+                <div className="absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-xl transform transition-transform duration-300 ease-in-out">
+                  <div className="h-full flex flex-col">
+                    <div className="flex items-center justify-between p-6 border-b">
+                      <h3 className="text-lg font-semibold">New Appointment</h3>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setShowAppointmentForm(false)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <div className="flex-1 overflow-y-auto p-6">
+                      <AppointmentForm
+                        orgId={orgId}
+                        clients={clients}
+                        onSuccess={handleAppointmentCreated}
+                        onCancel={() => setShowAppointmentForm(false)}
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
