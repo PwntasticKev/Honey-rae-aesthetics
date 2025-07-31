@@ -209,6 +209,11 @@ export function ClientHeaderActions({
     }
   };
 
+  const handleCreateTemplate = () => {
+    // Redirect to template creation page
+    window.open("/templates", "_blank");
+  };
+
   const availableVariables = [
     "{{first_name}}",
     "{{last_name}}",
@@ -310,54 +315,94 @@ export function ClientHeaderActions({
               ) : (
                 <MessageSquare className="h-5 w-5" />
               )}
-              Send {messageType.toUpperCase()} to {selectedClients.length}{" "}
-              clients
+              Send {messageType === "email" ? "Email" : "SMS"} to{" "}
+              {selectedClients.length} clients
             </DialogTitle>
             <DialogDescription>
-              Send a {messageType} message to all selected clients. You can use
-              variables like {"{{first_name}}"} to personalize the message.
+              {messageType === "email"
+                ? "Send an email to all selected clients. You can use variables like {{first_name}} to personalize the message."
+                : "Send an SMS to all selected clients. You can use variables like {{first_name}} to personalize the message."}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
-            {/* Message Type */}
-            <div>
-              <Label>Message Type</Label>
-              <Select
-                value={messageType}
-                onValueChange={(value: "email" | "sms") =>
-                  setMessageType(value)
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="email">Email</SelectItem>
-                  <SelectItem value="sms">SMS</SelectItem>
-                </SelectContent>
-              </Select>
+            {/* Sender Information */}
+            <div className="p-4 bg-blue-50 rounded-lg">
+              <h4 className="font-medium text-sm mb-2">
+                {messageType === "email"
+                  ? "Email Configuration"
+                  : "SMS Configuration"}
+              </h4>
+              {messageType === "email" ? (
+                <div className="space-y-2">
+                  <div className="flex items-center text-sm">
+                    <span className="font-medium">From:</span>
+                    <span className="ml-2 text-gray-600">
+                      {awsConfig?.fromEmail || "Not configured"}
+                    </span>
+                  </div>
+                  {!awsConfig?.fromEmail && (
+                    <p className="text-xs text-orange-600">
+                      Please configure your email settings in AWS configuration.
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex items-center text-sm">
+                    <span className="font-medium">From:</span>
+                    <span className="ml-2 text-gray-600">
+                      {awsConfig?.fromPhone || "Not configured"}
+                    </span>
+                  </div>
+                  {!awsConfig?.fromPhone && (
+                    <p className="text-xs text-orange-600">
+                      Please configure your SMS settings in AWS configuration.
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
 
-            {/* Template Selection */}
-            {templates && templates.length > 0 && (
+            {/* Template Selection - Only show for email */}
+            {messageType === "email" && (
               <div>
-                <Label>Template (Optional)</Label>
-                <Select value={templateId} onValueChange={handleTemplateChange}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a template" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">No template</SelectItem>
-                    {templates
-                      .filter((t) => t.type === messageType)
-                      .map((template) => (
-                        <SelectItem key={template._id} value={template._id}>
-                          {template.name}
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
+                <Label>Email Template (Optional)</Label>
+                {templates &&
+                templates.filter((t) => t.type === "email").length > 0 ? (
+                  <Select
+                    value={templateId}
+                    onValueChange={handleTemplateChange}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select an email template" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No template</SelectItem>
+                      {templates
+                        .filter((t) => t.type === "email")
+                        .map((template) => (
+                          <SelectItem key={template._id} value={template._id}>
+                            {template.name}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <div className="p-4 bg-yellow-50 rounded-lg">
+                    <p className="text-sm text-yellow-800 mb-2">
+                      No email templates available.
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleCreateTemplate}
+                      className="text-yellow-700 border-yellow-300 hover:bg-yellow-100"
+                    >
+                      Create Email Template
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
 
@@ -453,8 +498,12 @@ export function ClientHeaderActions({
                 </>
               ) : (
                 <>
-                  <MessageSquare className="h-4 w-4 mr-2" />
-                  Send {messageType.toUpperCase()}
+                  {messageType === "email" ? (
+                    <Mail className="h-4 w-4 mr-2" />
+                  ) : (
+                    <MessageSquare className="h-4 w-4 mr-2" />
+                  )}
+                  Send {messageType === "email" ? "Email" : "SMS"}
                 </>
               )}
             </Button>

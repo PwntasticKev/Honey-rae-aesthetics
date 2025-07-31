@@ -28,7 +28,7 @@ describe("Client Messaging", () => {
     cy.get("button[title='Send Email']").click();
 
     // Dialog should open
-    cy.get("h2").should("contain", "Send EMAIL");
+    cy.get("h2").should("contain", "Send Email");
     cy.get('input[placeholder="Enter email subject"]').should("be.visible");
     cy.get("textarea").should("be.visible");
   });
