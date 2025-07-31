@@ -4,25 +4,51 @@ import { mutation, query } from "./_generated/server";
 export const create = mutation({
   args: {
     orgId: v.id("orgs"),
+    // Basic Information
     fullName: v.string(),
+    firstName: v.optional(v.string()),
+    lastName: v.optional(v.string()),
     gender: v.union(v.literal("male"), v.literal("female"), v.literal("other")),
     dateOfBirth: v.optional(v.string()),
-    phones: v.array(v.string()),
+    nickName: v.optional(v.string()),
+
+    // Contact Information
     email: v.optional(v.string()),
-    tags: v.optional(v.array(v.string())),
+    phones: v.array(v.string()),
+    phone2: v.optional(v.string()),
+
+    // Address Information
     address: v.optional(
       v.object({
         street: v.string(),
+        addressLine2: v.optional(v.string()),
         city: v.string(),
         state: v.string(),
+        country: v.optional(v.string()),
         zip: v.string(),
       }),
     ),
+
+    // Business Information
     referralSource: v.optional(v.string()),
+    membershipType: v.optional(v.string()),
+    totalSales: v.optional(v.number()),
+    relationship: v.optional(v.string()),
+
+    // Status and Tracking
     clientPortalStatus: v.optional(
       v.union(v.literal("active"), v.literal("inactive"), v.literal("pending")),
     ),
+    visited: v.optional(v.boolean()),
+    fired: v.optional(v.boolean()),
+    upcomingAppointment: v.optional(v.number()),
+
+    // Additional Fields
+    tags: v.optional(v.array(v.string())),
     profileImageUrl: v.optional(v.string()),
+    externalId: v.optional(v.string()),
+    importSource: v.optional(v.string()),
+    clientCreatedDate: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const now = Date.now();
@@ -208,9 +234,346 @@ export const removeTag = mutation({
   },
 });
 
+// Add tag to multiple clients
+export const addTagToMultiple = mutation({
+  args: {
+    orgId: v.id("orgs"),
+    clientIds: v.array(v.id("clients")),
+    tag: v.string(),
+  },
+  handler: async (ctx, args) => {
+    for (const clientId of args.clientIds) {
+      const client = await ctx.db.get(clientId);
+      if (client && client.orgId === args.orgId) {
+        const currentTags = client.tags || [];
+        if (!currentTags.includes(args.tag)) {
+          await ctx.db.patch(clientId, {
+            tags: [...currentTags, args.tag],
+            updatedAt: Date.now(),
+          });
+        }
+      }
+    }
+  },
+});
+
+// Remove tag from multiple clients
+export const removeTagFromMultiple = mutation({
+  args: {
+    orgId: v.id("orgs"),
+    clientIds: v.array(v.id("clients")),
+    tag: v.string(),
+  },
+  handler: async (ctx, args) => {
+    for (const clientId of args.clientIds) {
+      const client = await ctx.db.get(clientId);
+      if (client && client.orgId === args.orgId) {
+        const currentTags = client.tags || [];
+        const updatedTags = currentTags.filter((tag) => tag !== args.tag);
+        await ctx.db.patch(clientId, {
+          tags: updatedTags,
+          updatedAt: Date.now(),
+        });
+      }
+    }
+  },
+});
+
 export const remove = mutation({
   args: { id: v.id("clients") },
   handler: async (ctx, args) => {
     await ctx.db.delete(args.id);
+  },
+});
+
+// Import clients from CSV
+export const importClients = mutation({
+  args: {
+    orgId: v.id("orgs"),
+    csvData: v.string(),
+    importSource: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const lines = args.csvData.split("\n").filter((line) => line.trim());
+    const headers = lines[0].split("\t");
+    const dataLines = lines.slice(1);
+
+    const results = {
+      imported: 0,
+      skipped: 0,
+      errors: [] as string[],
+    };
+
+    for (let i = 0; i < dataLines.length; i++) {
+      const line = dataLines[i];
+      const values = line.split("\t");
+
+      if (values.length < headers.length) {
+        results.errors.push(`Line ${i + 2}: Invalid data format`);
+        continue;
+      }
+
+      const row: any = {};
+      headers.forEach((header, index) => {
+        row[header.trim()] = values[index]?.trim() || "";
+      });
+
+      try {
+        // Check for duplicates
+        const email = row["Email"] || row["email"];
+        const phone = row["Phone"] || row["phone"];
+        const firstName = row["First Name"] || row["firstName"];
+        const lastName = row["Last Name"] || row["lastName"];
+
+        let existingClient = null;
+
+        if (email) {
+          existingClient = await ctx.db
+            .query("clients")
+            .withIndex("by_email", (q) => q.eq("email", email))
+            .filter((q) => q.eq(q.field("orgId"), args.orgId))
+            .first();
+        }
+
+        if (!existingClient && phone) {
+          existingClient = await ctx.db
+            .query("clients")
+            .withIndex("by_phone", (q) => q.eq("phones", phone))
+            .filter((q) => q.eq(q.field("orgId"), args.orgId))
+            .first();
+        }
+
+        if (!existingClient && firstName && lastName) {
+          const fullName = `${firstName} ${lastName}`;
+          existingClient = await ctx.db
+            .query("clients")
+            .withIndex("by_name", (q) => q.eq("fullName", fullName))
+            .filter((q) => q.eq(q.field("orgId"), args.orgId))
+            .first();
+        }
+
+        if (existingClient) {
+          results.skipped++;
+          continue;
+        }
+
+        // Parse date
+        let clientCreatedDate = undefined;
+        if (row["Client Created Date"]) {
+          const date = new Date(row["Client Created Date"]);
+          if (!isNaN(date.getTime())) {
+            clientCreatedDate = date.getTime();
+          }
+        }
+
+        // Parse upcoming appointment
+        let upcomingAppointment = undefined;
+        if (row["Upcoming Appointment"]) {
+          const date = new Date(row["Upcoming Appointment"]);
+          if (!isNaN(date.getTime())) {
+            upcomingAppointment = date.getTime();
+          }
+        }
+
+        // Create client
+        const clientData = {
+          orgId: args.orgId,
+          fullName:
+            `${row["First Name"] || ""} ${row["Last Name"] || ""}`.trim(),
+          firstName: row["First Name"] || undefined,
+          lastName: row["Last Name"] || undefined,
+          email: row["Email"] || undefined,
+          phones: [row["Phone"] || ""].filter(Boolean),
+          phone2: row["Phone 2"] || undefined,
+          gender: (row["Gender"] || "other").toLowerCase() as
+            | "male"
+            | "female"
+            | "other",
+          dateOfBirth: row["DOB"] || undefined,
+          nickName: row["Nick Name"] || undefined,
+          address: row["Address Line 1"]
+            ? {
+                street: row["Address Line 1"],
+                addressLine2: row["Address Line 2"] || undefined,
+                city: row["City"] || "",
+                state: row["State"] || "",
+                country: row["Country"] || undefined,
+                zip: row["Zip#"] || "",
+              }
+            : undefined,
+          referralSource: row["Referral Source"] || undefined,
+          membershipType: row["Membership Type"] || undefined,
+          totalSales: row["Total Sales"]
+            ? parseFloat(row["Total Sales"])
+            : undefined,
+          relationship: row["Relationship"] || undefined,
+          visited: row["Visited"] === "true" || row["Visited"] === "1",
+          fired: row["Fired"] === "true" || row["Fired"] === "1",
+          upcomingAppointment,
+          clientPortalStatus: row["Client Portal Status"] || "active",
+          tags: [],
+          externalId: row["ID"] || undefined,
+          importSource: args.importSource,
+          clientCreatedDate,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        };
+
+        await ctx.db.insert("clients", clientData);
+        results.imported++;
+      } catch (error) {
+        results.errors.push(`Line ${i + 2}: ${error}`);
+      }
+    }
+
+    return results;
+  },
+});
+
+// Export clients to CSV
+export const exportClients = query({
+  args: { orgId: v.id("orgs") },
+  handler: async (ctx, args) => {
+    const clients = await ctx.db
+      .query("clients")
+      .withIndex("by_org", (q) => q.eq("orgId", args.orgId))
+      .collect();
+
+    const headers = [
+      "ID",
+      "First Name",
+      "Last Name",
+      "Email",
+      "Gender",
+      "Phone",
+      "Phone 2",
+      "DOB",
+      "Address Line 1",
+      "Address Line 2",
+      "City",
+      "State",
+      "Country",
+      "Zip#",
+      "Visited",
+      "Nick Name",
+      "Fired",
+      "Membership Type",
+      "Total Sales",
+      "Relationship",
+      "Referral Source",
+      "Client Created Date",
+      "Client Portal Status",
+      "Upcoming Appointment",
+    ];
+
+    const csvLines = [headers.join("\t")];
+
+    for (const client of clients) {
+      const row = [
+        client.externalId || client._id,
+        client.firstName || "",
+        client.lastName || "",
+        client.email || "",
+        client.gender || "",
+        client.phones[0] || "",
+        client.phone2 || "",
+        client.dateOfBirth || "",
+        client.address?.street || "",
+        client.address?.addressLine2 || "",
+        client.address?.city || "",
+        client.address?.state || "",
+        client.address?.country || "",
+        client.address?.zip || "",
+        client.visited ? "true" : "false",
+        client.nickName || "",
+        client.fired ? "true" : "false",
+        client.membershipType || "",
+        client.totalSales?.toString() || "",
+        client.relationship || "",
+        client.referralSource || "",
+        client.clientCreatedDate
+          ? new Date(client.clientCreatedDate).toISOString()
+          : "",
+        client.clientPortalStatus || "",
+        client.upcomingAppointment
+          ? new Date(client.upcomingAppointment).toISOString()
+          : "",
+      ];
+
+      csvLines.push(row.join("\t"));
+    }
+
+    return csvLines.join("\n");
+  },
+});
+
+// Export single client to CSV
+export const exportSingleClient = query({
+  args: { clientId: v.id("clients") },
+  handler: async (ctx, args) => {
+    const client = await ctx.db.get(args.clientId);
+    if (!client) {
+      throw new Error("Client not found");
+    }
+
+    const headers = [
+      "ID",
+      "First Name",
+      "Last Name",
+      "Email",
+      "Gender",
+      "Phone",
+      "Phone 2",
+      "DOB",
+      "Address Line 1",
+      "Address Line 2",
+      "City",
+      "State",
+      "Country",
+      "Zip#",
+      "Visited",
+      "Nick Name",
+      "Fired",
+      "Membership Type",
+      "Total Sales",
+      "Relationship",
+      "Referral Source",
+      "Client Created Date",
+      "Client Portal Status",
+      "Upcoming Appointment",
+    ];
+
+    const row = [
+      client.externalId || client._id,
+      client.firstName || "",
+      client.lastName || "",
+      client.email || "",
+      client.gender || "",
+      client.phones[0] || "",
+      client.phone2 || "",
+      client.dateOfBirth || "",
+      client.address?.street || "",
+      client.address?.addressLine2 || "",
+      client.address?.city || "",
+      client.address?.state || "",
+      client.address?.country || "",
+      client.address?.zip || "",
+      client.visited ? "true" : "false",
+      client.nickName || "",
+      client.fired ? "true" : "false",
+      client.membershipType || "",
+      client.totalSales?.toString() || "",
+      client.relationship || "",
+      client.referralSource || "",
+      client.clientCreatedDate
+        ? new Date(client.clientCreatedDate).toISOString()
+        : "",
+      client.clientPortalStatus || "",
+      client.upcomingAppointment
+        ? new Date(client.upcomingAppointment).toISOString()
+        : "",
+    ];
+
+    return [headers.join("\t"), row.join("\t")].join("\n");
   },
 });

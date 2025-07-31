@@ -35,32 +35,62 @@ export default defineSchema({
   // Clients - aesthetic customers
   clients: defineTable({
     orgId: v.id("orgs"),
+    // Basic Information
     fullName: v.string(),
+    firstName: v.optional(v.string()),
+    lastName: v.optional(v.string()),
     gender: v.union(v.literal("male"), v.literal("female"), v.literal("other")),
     dateOfBirth: v.optional(v.string()),
-    phones: v.array(v.string()),
+    nickName: v.optional(v.string()),
+
+    // Contact Information
     email: v.optional(v.string()),
-    tags: v.array(v.string()),
+    phones: v.array(v.string()),
+    phone2: v.optional(v.string()),
+
+    // Address Information
     address: v.optional(
       v.object({
         street: v.string(),
+        addressLine2: v.optional(v.string()),
         city: v.string(),
         state: v.string(),
+        country: v.optional(v.string()),
         zip: v.string(),
       }),
     ),
+
+    // Business Information
     referralSource: v.optional(v.string()),
+    membershipType: v.optional(v.string()),
+    totalSales: v.optional(v.number()),
+    relationship: v.optional(v.string()),
+
+    // Status and Tracking
     clientPortalStatus: v.union(
       v.literal("active"),
       v.literal("inactive"),
       v.literal("pending"),
     ),
+    visited: v.optional(v.boolean()),
+    fired: v.optional(v.boolean()),
+    upcomingAppointment: v.optional(v.number()),
+
+    // Additional Fields
+    tags: v.array(v.string()),
     profileImageUrl: v.optional(v.string()),
+    externalId: v.optional(v.string()), // Original ID from import
+    importSource: v.optional(v.string()), // Track where client was imported from
+
+    // Timestamps
+    clientCreatedDate: v.optional(v.number()), // Original creation date from import
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_org", ["orgId"])
-    .index("by_email", ["email"]),
+    .index("by_email", ["email"])
+    .index("by_phone", ["phones"])
+    .index("by_name", ["fullName"]),
 
   // Appointments - linked to clients
   appointments: defineTable({
@@ -354,4 +384,67 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_read", ["read"])
     .index("by_created", ["createdAt"]),
+
+  // Bulk Messages - track bulk messaging campaigns
+  bulkMessages: defineTable({
+    orgId: v.id("orgs"),
+    name: v.string(),
+    type: v.union(v.literal("email"), v.literal("sms")),
+    templateId: v.optional(v.id("messageTemplates")),
+    subject: v.optional(v.string()),
+    content: v.string(),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("scheduled"),
+      v.literal("sending"),
+      v.literal("completed"),
+      v.literal("failed"),
+    ),
+    scheduledFor: v.optional(v.number()),
+    totalRecipients: v.number(),
+    sentCount: v.number(),
+    failedCount: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_status", ["status"]),
+
+  // Message Recipients - track individual message delivery
+  messageRecipients: defineTable({
+    orgId: v.id("orgs"),
+    bulkMessageId: v.id("bulkMessages"),
+    clientId: v.id("clients"),
+    type: v.union(v.literal("email"), v.literal("sms")),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("sent"),
+      v.literal("delivered"),
+      v.literal("failed"),
+    ),
+    externalId: v.optional(v.string()), // AWS SNS/SES message ID
+    errorMessage: v.optional(v.string()),
+    sentAt: v.optional(v.number()),
+    deliveredAt: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_bulk_message", ["bulkMessageId"])
+    .index("by_client", ["clientId"])
+    .index("by_status", ["status"]),
+
+  // AWS Configuration - store AWS credentials and settings
+  awsConfig: defineTable({
+    orgId: v.id("orgs"),
+    region: v.string(),
+    sesAccessKey: v.optional(v.string()),
+    sesSecretKey: v.optional(v.string()),
+    snsAccessKey: v.optional(v.string()),
+    snsSecretKey: v.optional(v.string()),
+    fromEmail: v.optional(v.string()),
+    fromPhone: v.optional(v.string()),
+    isConfigured: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_org", ["orgId"]),
 });

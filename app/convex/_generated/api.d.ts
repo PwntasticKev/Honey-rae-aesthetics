@@ -14,6 +14,8 @@ import type {
   FunctionReference,
 } from "convex/server";
 import type * as appointments from "../appointments.js";
+import type * as awsConfig from "../awsConfig.js";
+import type * as bulkMessages from "../bulkMessages.js";
 import type * as clients from "../clients.js";
 import type * as demo from "../demo.js";
 import type * as files from "../files.js";
@@ -37,6 +39,8 @@ import type * as workflows from "../workflows.js";
  */
 declare const fullApi: ApiFromModules<{
   appointments: typeof appointments;
+  awsConfig: typeof awsConfig;
+  bulkMessages: typeof bulkMessages;
   clients: typeof clients;
   demo: typeof demo;
   files: typeof files;
