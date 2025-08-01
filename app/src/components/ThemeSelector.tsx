@@ -21,9 +21,9 @@ const themes = [
     name: "Default",
     description: "Clean and professional",
     colors: {
-      primary: "hsl(var(--primary))",
-      background: "hsl(var(--background))",
-      foreground: "hsl(var(--foreground))",
+      primary: "oklch(0.65 0.15 350)",
+      background: "oklch(0.99 0.005 300)",
+      foreground: "oklch(0.15 0.02 300)",
     },
     font: "Inter",
   },
@@ -32,9 +32,9 @@ const themes = [
     name: "Ocean Blue",
     description: "Calming blue tones",
     colors: {
-      primary: "hsl(210, 100%, 50%)",
-      background: "hsl(210, 40%, 98%)",
-      foreground: "hsl(210, 10%, 10%)",
+      primary: "oklch(0.6 0.2 240)",
+      background: "oklch(0.98 0.01 240)",
+      foreground: "oklch(0.2 0.02 240)",
     },
     font: "Inter",
   },
@@ -43,9 +43,9 @@ const themes = [
     name: "Sunset Orange",
     description: "Warm and inviting",
     colors: {
-      primary: "hsl(25, 95%, 53%)",
-      background: "hsl(25, 40%, 98%)",
-      foreground: "hsl(25, 10%, 10%)",
+      primary: "oklch(0.7 0.15 30)",
+      background: "oklch(0.98 0.01 30)",
+      foreground: "oklch(0.2 0.02 30)",
     },
     font: "Inter",
   },
@@ -54,9 +54,9 @@ const themes = [
     name: "Forest Green",
     description: "Natural and organic",
     colors: {
-      primary: "hsl(142, 76%, 36%)",
-      background: "hsl(142, 40%, 98%)",
-      foreground: "hsl(142, 10%, 10%)",
+      primary: "oklch(0.6 0.15 140)",
+      background: "oklch(0.98 0.01 140)",
+      foreground: "oklch(0.2 0.02 140)",
     },
     font: "Inter",
   },
@@ -65,17 +65,36 @@ const themes = [
     name: "Royal Purple",
     description: "Elegant and sophisticated",
     colors: {
-      primary: "hsl(262, 83%, 58%)",
-      background: "hsl(262, 40%, 98%)",
-      foreground: "hsl(262, 10%, 10%)",
+      primary: "oklch(0.65 0.2 280)",
+      background: "oklch(0.98 0.01 280)",
+      foreground: "oklch(0.2 0.02 280)",
+    },
+    font: "Inter",
+  },
+  {
+    id: "rose",
+    name: "Rose Pink",
+    description: "Feminine and elegant",
+    colors: {
+      primary: "oklch(0.7 0.2 330)",
+      background: "oklch(0.98 0.01 330)",
+      foreground: "oklch(0.2 0.02 330)",
     },
     font: "Inter",
   },
 ];
 
+const fonts = [
+  { id: "inter", name: "Inter", value: "Inter" },
+  { id: "system", name: "System", value: "system-ui, sans-serif" },
+  { id: "georgia", name: "Georgia", value: "Georgia, serif" },
+  { id: "arial", name: "Arial", value: "Arial, sans-serif" },
+];
+
 export function ThemeSelector() {
   const { user } = useAuth();
   const [selectedTheme, setSelectedTheme] = useState("default");
+  const [selectedFont, setSelectedFont] = useState("inter");
 
   // Get user's organization
   const userData = useQuery(
@@ -94,27 +113,29 @@ export function ThemeSelector() {
 
   // Load saved theme on mount
   useEffect(() => {
-    if (org?.theme?.themeId) {
-      setSelectedTheme(org.theme.themeId);
-      applyTheme(org.theme.themeId);
+    if (org?.theme && "themeId" in org.theme) {
+      const themeId = (org.theme as any).themeId;
+      setSelectedTheme(themeId);
+      applyTheme(themeId, selectedFont);
     }
   }, [org]);
 
-  const applyTheme = (themeId: string) => {
+  const applyTheme = (themeId: string, fontId: string = "inter") => {
     const theme = themes.find((t) => t.id === themeId);
-    if (!theme) return;
+    const font = fonts.find((f) => f.id === fontId);
+    if (!theme || !font) return;
 
     // Apply CSS custom properties
     const root = document.documentElement;
     root.style.setProperty("--primary", theme.colors.primary);
     root.style.setProperty("--background", theme.colors.background);
     root.style.setProperty("--foreground", theme.colors.foreground);
-    root.style.setProperty("--font-family", theme.font);
+    root.style.setProperty("--font-family", font.value);
   };
 
   const handleThemeSelect = async (themeId: string) => {
     setSelectedTheme(themeId);
-    applyTheme(themeId);
+    applyTheme(themeId, selectedFont);
 
     // Save to database
     if (userData?.orgId) {
@@ -128,6 +149,11 @@ export function ThemeSelector() {
     }
   };
 
+  const handleFontSelect = async (fontId: string) => {
+    setSelectedFont(fontId);
+    applyTheme(selectedTheme, fontId);
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -136,50 +162,114 @@ export function ThemeSelector() {
           Theme Settings
         </CardTitle>
         <CardDescription>
-          Choose a theme to customize your experience
+          Choose a theme and font to customize your experience
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {themes.map((theme) => (
-            <Card
-              key={theme.id}
-              className={`cursor-pointer transition-all hover:shadow-md ${
-                selectedTheme === theme.id
-                  ? "ring-2 ring-primary border-primary"
-                  : "hover:border-primary/50"
-              }`}
-              onClick={() => handleThemeSelect(theme.id)}
-            >
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-semibold">{theme.name}</h3>
-                  {selectedTheme === theme.id && (
-                    <Badge variant="secondary" className="text-xs">
-                      Active
-                    </Badge>
-                  )}
-                </div>
-                <p className="text-sm text-muted-foreground mb-3">
-                  {theme.description}
-                </p>
-                <div className="flex gap-2">
-                  <div
-                    className="w-6 h-6 rounded-full border"
-                    style={{ backgroundColor: theme.colors.primary }}
-                  />
-                  <div
-                    className="w-6 h-6 rounded-full border"
-                    style={{ backgroundColor: theme.colors.background }}
-                  />
-                  <div
-                    className="w-6 h-6 rounded-full border"
-                    style={{ backgroundColor: theme.colors.foreground }}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+      <CardContent className="space-y-6">
+        {/* Theme Selection */}
+        <div>
+          <h3 className="text-lg font-semibold mb-4">Color Themes</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {themes.map((theme) => (
+              <Card
+                key={theme.id}
+                className={`cursor-pointer transition-all hover:shadow-md ${
+                  selectedTheme === theme.id
+                    ? "ring-2 ring-primary border-primary"
+                    : "hover:border-primary/50"
+                }`}
+                onClick={() => handleThemeSelect(theme.id)}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="font-semibold">{theme.name}</h3>
+                    {selectedTheme === theme.id && (
+                      <Badge variant="secondary" className="text-xs">
+                        Active
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    {theme.description}
+                  </p>
+                  {/* Live Preview */}
+                  <div className="space-y-2 mb-3">
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="w-4 h-4 rounded border"
+                        style={{
+                          backgroundColor: theme.colors.primary,
+                        }}
+                      />
+                      <span className="text-xs">Primary</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="w-4 h-4 rounded border"
+                        style={{
+                          backgroundColor: theme.colors.background,
+                        }}
+                      />
+                      <span className="text-xs">Background</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="w-4 h-4 rounded border"
+                        style={{
+                          backgroundColor: theme.colors.foreground,
+                        }}
+                      />
+                      <span className="text-xs">Text</span>
+                    </div>
+                  </div>
+                  {/* Button Preview */}
+                  <Button
+                    size="sm"
+                    className="w-full"
+                    style={{
+                      backgroundColor: theme.colors.primary,
+                      color: theme.colors.background,
+                    }}
+                  >
+                    Sample Button
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+
+        {/* Font Selection */}
+        <div>
+          <h3 className="text-lg font-semibold mb-4">Font Family</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {fonts.map((font) => (
+              <Card
+                key={font.id}
+                className={`cursor-pointer transition-all hover:shadow-md ${
+                  selectedFont === font.id
+                    ? "ring-2 ring-primary border-primary"
+                    : "hover:border-primary/50"
+                }`}
+                onClick={() => handleFontSelect(font.id)}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="font-semibold">{font.name}</h3>
+                    {selectedFont === font.id && (
+                      <Badge variant="secondary" className="text-xs">
+                        Active
+                      </Badge>
+                    )}
+                  </div>
+                  {/* Font Preview */}
+                  <div className="text-sm" style={{ fontFamily: font.value }}>
+                    The quick brown fox jumps over the lazy dog
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
       </CardContent>
     </Card>
