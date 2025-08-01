@@ -164,7 +164,7 @@ const TestWorkflowModal = ({
             <Button
               onClick={handleSendTest}
               disabled={!recipient || !message || isSending}
-              className="bg-gradient-to-r from-pink-500 to-purple-600"
+              data-theme-aware="true"
             >
               {isSending ? "Sending..." : `Send Test ${testType.toUpperCase()}`}
             </Button>
@@ -359,11 +359,7 @@ export function WorkflowList({
           variant={isActive ? "outline" : "default"}
           size="sm"
           onClick={() => onToggleWorkflow(workflow._id, !isActive)}
-          className={
-            isActive
-              ? "border-green-500 text-green-600 hover:bg-green-50"
-              : "bg-green-600 hover:bg-green-700"
-          }
+          data-theme-aware="true"
         >
           {isActive ? (
             <Pause className="w-4 h-4" />
@@ -407,7 +403,7 @@ export function WorkflowList({
           <div className="flex space-x-2">
             <Button
               onClick={handleAddWorkflow}
-              className="bg-gradient-to-r from-pink-500 to-purple-600"
+              data-theme-aware="true"
               data-testid="add-workflow-button"
             >
               <Plus className="w-4 h-4 mr-2" />

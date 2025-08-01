@@ -228,7 +228,10 @@ export default function Dashboard() {
                 <div className="flex items-center space-x-3">
                   <Avatar className="w-8 h-8">
                     <AvatarImage src="/avatar.jpg" />
-                    <AvatarFallback className="bg-orange-500 text-white">
+                    <AvatarFallback
+                      className="text-white avatar-fallback"
+                      data-theme-aware="true"
+                    >
                       {user?.email?.charAt(0).toUpperCase() || "A"}
                     </AvatarFallback>
                   </Avatar>
@@ -285,7 +288,7 @@ export default function Dashboard() {
                     <CardTitle className="text-sm font-medium">
                       Total Clients
                     </CardTitle>
-                    <Heart className="h-4 w-4 text-pink-500" />
+                    <Heart className="h-4 w-4" data-theme-aware="true" />
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold gradient-text">
@@ -302,7 +305,7 @@ export default function Dashboard() {
                     <CardTitle className="text-sm font-medium">
                       Today's Appointments
                     </CardTitle>
-                    <Calendar className="h-4 w-4 text-rose-500" />
+                    <Calendar className="h-4 w-4" data-theme-aware="true" />
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold gradient-text">
@@ -319,7 +322,10 @@ export default function Dashboard() {
                     <CardTitle className="text-sm font-medium">
                       Messages Sent
                     </CardTitle>
-                    <MessageSquare className="h-4 w-4 text-purple-500" />
+                    <MessageSquare
+                      className="h-4 w-4"
+                      data-theme-aware="true"
+                    />
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold gradient-text">
@@ -354,7 +360,7 @@ export default function Dashboard() {
                     <CardTitle className="text-sm font-medium">
                       Photos Uploaded
                     </CardTitle>
-                    <Camera className="h-4 w-4 text-orange-500" />
+                    <Camera className="h-4 w-4" data-theme-aware="true" />
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold gradient-text">
@@ -373,25 +379,30 @@ export default function Dashboard() {
                 <Card className="glass border-pink-200/50">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <Zap className="h-5 w-5 text-pink-500" />
+                      <Zap className="h-5 w-5" data-theme-aware="true" />
                       Quick Actions
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    <Button className="w-full justify-start bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600">
+                    <Button
+                      className="w-full justify-start"
+                      data-theme-aware="true"
+                    >
                       <UserPlus className="w-4 h-4 mr-2" />
                       Add New Client
                     </Button>
                     <Button
                       variant="outline"
-                      className="w-full justify-start border-pink-200 text-pink-700 hover:bg-pink-50"
+                      className="w-full justify-start"
+                      data-theme-aware="true"
                     >
                       <Calendar className="w-4 h-4 mr-2" />
                       Schedule Appointment
                     </Button>
                     <Button
                       variant="outline"
-                      className="w-full justify-start border-pink-200 text-pink-700 hover:bg-pink-50"
+                      className="w-full justify-start"
+                      data-theme-aware="true"
                     >
                       <Workflow className="w-4 h-4 mr-2" />
                       Create Workflow
@@ -403,14 +414,17 @@ export default function Dashboard() {
                 <Card className="glass border-pink-200/50">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <Activity className="h-5 w-5 text-pink-500" />
+                      <Activity className="h-5 w-5" data-theme-aware="true" />
                       Recent Activity
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
                       <div className="flex items-center space-x-3">
-                        <div className="w-2 h-2 bg-pink-500 rounded-full"></div>
+                        <div
+                          className="w-2 h-2 rounded-full"
+                          data-theme-aware="true"
+                        ></div>
                         <div className="flex-1">
                           <p className="text-sm font-medium">
                             New client added
@@ -421,7 +435,10 @@ export default function Dashboard() {
                         </div>
                       </div>
                       <div className="flex items-center space-x-3">
-                        <div className="w-2 h-2 bg-rose-500 rounded-full"></div>
+                        <div
+                          className="w-2 h-2 rounded-full"
+                          data-theme-aware="true"
+                        ></div>
                         <div className="flex-1">
                           <p className="text-sm font-medium">
                             Appointment scheduled
@@ -432,7 +449,10 @@ export default function Dashboard() {
                         </div>
                       </div>
                       <div className="flex items-center space-x-3">
-                        <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                        <div
+                          className="w-2 h-2 rounded-full"
+                          data-theme-aware="true"
+                        ></div>
                         <div className="flex-1">
                           <p className="text-sm font-medium">Message sent</p>
                           <p className="text-xs text-muted-foreground">

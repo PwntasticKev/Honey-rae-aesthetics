@@ -87,6 +87,10 @@ export function ThemeLoader() {
         root.style.setProperty("--background", theme.colors.background);
         root.style.setProperty("--foreground", theme.colors.foreground);
         root.style.setProperty("--font-family", theme.font);
+        root.style.setProperty("--hover-primary", theme.colors.primary + "20");
+        root.style.setProperty("--hover-text", theme.colors.primary);
+        root.style.setProperty("--primary-light", theme.colors.primary + "20");
+        root.style.setProperty("--primary-dark", theme.colors.primary);
 
         // Apply theme to body for background gradient
         const body = document.body;
@@ -139,21 +143,45 @@ export function ThemeLoader() {
           });
         }
 
-        // Update theme-aware buttons only (not default UI components)
-        const themeButtons = document.querySelectorAll(
+        // Update theme-aware elements
+        const themeElements = document.querySelectorAll(
           "[data-theme-aware='true']",
         );
-        themeButtons.forEach((button) => {
-          (button as HTMLElement).style.backgroundColor = theme.colors.primary;
-          (button as HTMLElement).style.color = theme.colors.background;
+        themeElements.forEach((element) => {
+          const el = element as HTMLElement;
+
+          // Check if it's a button, badge, or avatar fallback
+          if (
+            el.tagName === "BUTTON" ||
+            el.classList.contains("badge") ||
+            el.classList.contains("avatar-fallback") ||
+            el.getAttribute("data-slot") === "badge"
+          ) {
+            el.style.backgroundColor = theme.colors.primary;
+            el.style.color = theme.colors.background;
+          } else {
+            // For text elements, only change color, not background
+            el.style.color = theme.colors.foreground;
+          }
         });
 
-        // Update theme-aware text elements only
-        const themeTextElements = document.querySelectorAll(
-          "[data-theme-aware='true']",
+        // Update hover-aware elements
+        const hoverElements = document.querySelectorAll(
+          "[data-hover-aware='true']",
         );
-        themeTextElements.forEach((element) => {
-          (element as HTMLElement).style.color = theme.colors.foreground;
+        hoverElements.forEach((element) => {
+          const el = element as HTMLElement;
+
+          // Add hover event listeners
+          el.addEventListener("mouseenter", () => {
+            el.style.backgroundColor = theme.colors.primary + "10";
+          });
+
+          el.addEventListener("mouseleave", () => {
+            if (!el.getAttribute("data-theme-aware")) {
+              el.style.backgroundColor = "";
+            }
+          });
         });
 
         // Update page headers
@@ -186,23 +214,128 @@ export function ThemeLoader() {
 
         // Update all pink-colored elements
         const pinkElements = document.querySelectorAll(
-          ".bg-pink-600, .text-pink-600, .border-pink-600",
+          ".bg-pink-600, .text-pink-600, .border-pink-600, .bg-pink-500, .text-pink-500, .border-pink-500",
         );
         pinkElements.forEach((element) => {
           (element as HTMLElement).style.backgroundColor =
-            element.classList.contains("bg-pink-600")
+            element.classList.contains("bg-pink-600") ||
+            element.classList.contains("bg-pink-500")
+              ? theme.colors.primary
+              : "";
+          (element as HTMLElement).style.color =
+            element.classList.contains("text-pink-600") ||
+            element.classList.contains("text-pink-500")
+              ? theme.colors.primary
+              : "";
+          (element as HTMLElement).style.borderColor =
+            element.classList.contains("border-pink-600") ||
+            element.classList.contains("border-pink-500")
+              ? theme.colors.primary
+              : "";
+        });
+
+        // Update rose elements
+        const roseElements = document.querySelectorAll(
+          ".bg-rose-500, .text-rose-500, .border-rose-500",
+        );
+        roseElements.forEach((element) => {
+          (element as HTMLElement).style.backgroundColor =
+            element.classList.contains("bg-rose-500")
               ? theme.colors.primary
               : "";
           (element as HTMLElement).style.color = element.classList.contains(
-            "text-pink-600",
+            "text-rose-500",
           )
             ? theme.colors.primary
             : "";
           (element as HTMLElement).style.borderColor =
-            element.classList.contains("border-pink-600")
+            element.classList.contains("border-rose-500")
               ? theme.colors.primary
               : "";
         });
+
+        // Update blue elements (for consistency)
+        const blueElements = document.querySelectorAll(
+          ".bg-blue-500, .text-blue-500, .border-blue-500, .bg-blue-600, .text-blue-600, .border-blue-600",
+        );
+        blueElements.forEach((element) => {
+          (element as HTMLElement).style.backgroundColor =
+            element.classList.contains("bg-blue-500") ||
+            element.classList.contains("bg-blue-600")
+              ? theme.colors.primary
+              : "";
+          (element as HTMLElement).style.color =
+            element.classList.contains("text-blue-500") ||
+            element.classList.contains("text-blue-600")
+              ? theme.colors.primary
+              : "";
+          (element as HTMLElement).style.borderColor =
+            element.classList.contains("border-blue-500") ||
+            element.classList.contains("border-blue-600")
+              ? theme.colors.primary
+              : "";
+        });
+
+        // Update red elements
+        const redElements = document.querySelectorAll(
+          ".bg-red-500, .text-red-500, .border-red-500, .bg-red-600, .text-red-600, .border-red-600, .bg-red-700, .text-red-700, .border-red-700",
+        );
+        redElements.forEach((element) => {
+          (element as HTMLElement).style.backgroundColor =
+            element.classList.contains("bg-red-500") ||
+            element.classList.contains("bg-red-600") ||
+            element.classList.contains("bg-red-700")
+              ? theme.colors.primary
+              : "";
+          (element as HTMLElement).style.color =
+            element.classList.contains("text-red-500") ||
+            element.classList.contains("text-red-600") ||
+            element.classList.contains("text-red-700")
+              ? theme.colors.primary
+              : "";
+          (element as HTMLElement).style.borderColor =
+            element.classList.contains("border-red-500") ||
+            element.classList.contains("border-red-600") ||
+            element.classList.contains("border-red-700")
+              ? theme.colors.primary
+              : "";
+        });
+
+        // Update input focus states
+        const inputs = document.querySelectorAll(
+          "input[data-theme-aware='true'], textarea[data-theme-aware='true']",
+        );
+        inputs.forEach((input) => {
+          const el = input as HTMLElement;
+          // Add CSS custom properties for focus states only
+          el.style.setProperty("--focus-border-color", theme.colors.primary);
+          el.style.setProperty(
+            "--focus-ring-color",
+            theme.colors.primary + "50",
+          );
+          // Don't change background color
+        });
+
+        // Reapply theme periodically to catch any missed elements
+        setTimeout(() => {
+          if (org?.theme && "themeId" in org.theme) {
+            const themeId = (org.theme as any).themeId;
+            const theme = themes.find((t) => t.id === themeId);
+            if (theme) {
+              // Reapply the same theme logic here
+              const root = document.documentElement;
+              root.style.setProperty("--primary", theme.colors.primary);
+              root.style.setProperty("--background", theme.colors.background);
+              root.style.setProperty("--foreground", theme.colors.foreground);
+              root.style.setProperty("--font-family", theme.font);
+              root.style.setProperty(
+                "--hover-primary",
+                theme.colors.primary + "20",
+              );
+              root.style.setProperty("--hover-text", theme.colors.primary);
+            }
+          }
+        }, 1000);
       }
     }
   }, [org]);

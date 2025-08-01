@@ -243,7 +243,7 @@ export default function TemplatesPage() {
               <Button
                 onClick={handleCreateTemplate}
                 disabled={isCreating || !templateName.trim() || !content.trim()}
-                className="bg-blue-600 hover:bg-blue-700"
+                data-theme-aware="true"
               >
                 {isCreating ? (
                   <>

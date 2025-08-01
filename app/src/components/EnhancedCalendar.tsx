@@ -449,7 +449,10 @@ export function EnhancedCalendar({ orgId, clients }: EnhancedCalendarProps) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
+          <Loader2
+            className="h-8 w-8 animate-spin mx-auto mb-4"
+            data-theme-aware="true"
+          />
           <p className="text-gray-600">Initializing calendar...</p>
         </div>
       </div>
@@ -521,7 +524,8 @@ export function EnhancedCalendar({ orgId, clients }: EnhancedCalendarProps) {
             <Button
               onClick={handleGoogleLogin}
               disabled={isLoading}
-              className="w-full bg-blue-600 hover:bg-blue-700 h-12 text-base font-medium"
+              className="w-full h-12 text-base font-medium"
+              data-theme-aware="true"
             >
               {isLoading ? (
                 <Loader2 className="h-5 w-5 mr-2 animate-spin" />
@@ -602,7 +606,7 @@ export function EnhancedCalendar({ orgId, clients }: EnhancedCalendarProps) {
             </Button>
             <Button
               onClick={() => setShowAppointmentForm(true)}
-              className="bg-pink-600 hover:bg-pink-700"
+              data-theme-aware="true"
             >
               <Plus className="h-4 w-4 mr-2" />
               New Appointment
@@ -674,7 +678,10 @@ export function EnhancedCalendar({ orgId, clients }: EnhancedCalendarProps) {
           <div className="bg-white rounded-lg border shadow-sm">
             {isLoadingEvents && (
               <div className="p-8 text-center">
-                <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
+                <Loader2
+                  className="h-8 w-8 animate-spin mx-auto mb-4"
+                  data-theme-aware="true"
+                />
                 <p className="text-gray-600">Loading calendar events...</p>
               </div>
             )}

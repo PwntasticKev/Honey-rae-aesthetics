@@ -577,7 +577,7 @@ export function ClientHeaderActions({
               <Button
                 onClick={handleSendMessage}
                 disabled={isSending || !content.trim()}
-                className="bg-blue-600 hover:bg-blue-700"
+                data-theme-aware="true"
               >
                 {isSending ? (
                   <>
@@ -664,11 +664,7 @@ export function ClientHeaderActions({
             <Button
               onClick={handleTagging}
               disabled={isTagging || !tagName.trim()}
-              className={
-                tagAction === "add"
-                  ? "bg-green-600 hover:bg-green-700"
-                  : "bg-red-600 hover:bg-red-700"
-              }
+              data-theme-aware="true"
             >
               {isTagging ? (
                 <>

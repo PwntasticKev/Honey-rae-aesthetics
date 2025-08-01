@@ -124,7 +124,10 @@ export default function AppointmentsPage() {
               <div className="flex items-center space-x-3">
                 <Avatar className="w-8 h-8">
                   <AvatarImage src="/avatar.jpg" />
-                  <AvatarFallback className="bg-orange-500 text-white">
+                  <AvatarFallback
+                    className="text-white avatar-fallback"
+                    data-theme-aware="true"
+                  >
                     {user?.email?.charAt(0).toUpperCase() || "A"}
                   </AvatarFallback>
                 </Avatar>

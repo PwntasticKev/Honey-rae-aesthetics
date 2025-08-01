@@ -15,15 +15,10 @@ import { NotificationDropdown } from "@/components/NotificationDropdown";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { DebugInfo } from "@/components/DebugInfo";
-
-// Remove mock data - we'll use real Convex data
-
 export default function ClientsPage() {
   const { user, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedClients, setSelectedClients] = useState<string[]>([]);
-  const [isSettingUpDemo, setIsSettingUpDemo] = useState(false);
 
   // Get the user's organization
   const { user: authUser } = useAuth();
@@ -35,14 +30,6 @@ export default function ClientsPage() {
   const orgs = useQuery(api.orgs.list);
   const orgId = userData?.orgId || orgs?.[0]?._id;
 
-  // Debug logging for org and user data
-  useEffect(() => {
-    console.log("Auth user:", authUser);
-    console.log("User data:", userData);
-    console.log("Orgs:", orgs);
-    console.log("Using orgId:", orgId);
-  }, [authUser, userData, orgs, orgId]);
-
   // Get real client data from Convex
   const clientsQuery = useQuery(
     api.clients.getByOrg,
@@ -51,52 +38,16 @@ export default function ClientsPage() {
 
   const clients = clientsQuery || [];
 
-  // Debug logging
-  useEffect(() => {
-    console.log("Clients query result:", clients?.length, clients);
-    console.log(
-      "Clients query status:",
-      clientsQuery === undefined
-        ? "loading"
-        : clientsQuery === null
-          ? "error"
-          : "loaded",
-    );
-  }, [clients, clientsQuery]);
-
-  // Setup demo data mutation
-  const setupDemo = useMutation(api.demo.setupDemo);
-
   const handleAddClient = () => {
-    console.log("Add client clicked");
     // TODO: Implement add client functionality
   };
 
   const handleEditClient = (clientId: string) => {
-    console.log("Edit client clicked:", clientId);
     // TODO: Implement edit client functionality
   };
 
   const handleDeleteClient = (clientId: string) => {
-    console.log("Delete client clicked:", clientId);
     // TODO: Implement delete client functionality
-  };
-
-  const handleSetupDemo = async () => {
-    setIsSettingUpDemo(true);
-    try {
-      console.log("Starting demo data setup...");
-      const result = await setupDemo({});
-      console.log("Demo data created successfully:", result);
-
-      // Force a page refresh to reload the data
-      window.location.reload();
-    } catch (error) {
-      console.error("Failed to create demo data:", error);
-      alert("Failed to create demo data. Check console for details.");
-    } finally {
-      setIsSettingUpDemo(false);
-    }
   };
 
   return (
@@ -115,27 +66,6 @@ export default function ClientsPage() {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col lg:ml-64 relative">
-        {/* Debug Info */}
-        <DebugInfo />
-
-        {/* Setup Demo Button */}
-        <div className="p-4 bg-blue-50 border-b border-blue-200">
-          <Button
-            onClick={handleSetupDemo}
-            disabled={isSettingUpDemo}
-            className="bg-blue-600 hover:bg-blue-700"
-          >
-            {isSettingUpDemo ? (
-              <>
-                <div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                Setting up...
-              </>
-            ) : (
-              "Setup Demo Data"
-            )}
-          </Button>
-        </div>
-
         {/* Header */}
         <header className="bg-white border-b border-gray-200 shadow-sm">
           <div className="flex items-center justify-between px-6 h-16">
@@ -177,7 +107,10 @@ export default function ClientsPage() {
               <div className="flex items-center space-x-3">
                 <Avatar className="w-8 h-8">
                   <AvatarImage src="/avatar.jpg" />
-                  <AvatarFallback className="bg-orange-500 text-white">
+                  <AvatarFallback
+                    className="text-white avatar-fallback"
+                    data-theme-aware="true"
+                  >
                     {user?.email?.charAt(0).toUpperCase() || "A"}
                   </AvatarFallback>
                 </Avatar>

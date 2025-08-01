@@ -98,7 +98,10 @@ export default function WorkflowsPage() {
                 <div className="flex items-center space-x-3">
                   <Avatar className="w-8 h-8">
                     <AvatarImage src="/avatar.jpg" />
-                    <AvatarFallback className="bg-orange-500 text-white">
+                    <AvatarFallback
+                      className="text-white avatar-fallback"
+                      data-theme-aware="true"
+                    >
                       {user?.email?.charAt(0).toUpperCase() || "A"}
                     </AvatarFallback>
                   </Avatar>
@@ -134,10 +137,7 @@ export default function WorkflowsPage() {
                 </div>
                 <div className="flex items-center gap-4">
                   <EnvironmentToggle />
-                  <Button
-                    onClick={handleAddWorkflow}
-                    className="bg-pink-600 hover:bg-pink-700"
-                  >
+                  <Button onClick={handleAddWorkflow} data-theme-aware="true">
                     <Plus className="w-4 h-4 mr-2" />
                     Add Workflow
                   </Button>
@@ -203,7 +203,10 @@ export default function WorkflowsPage() {
               <div className="flex items-center space-x-3">
                 <Avatar className="w-8 h-8">
                   <AvatarImage src="/avatar.jpg" />
-                  <AvatarFallback className="bg-orange-500 text-white">
+                  <AvatarFallback
+                    className="text-white avatar-fallback"
+                    data-theme-aware="true"
+                  >
                     {user?.email?.charAt(0).toUpperCase() || "A"}
                   </AvatarFallback>
                 </Avatar>
@@ -237,10 +240,7 @@ export default function WorkflowsPage() {
               </div>
               <div className="flex items-center gap-4">
                 <EnvironmentToggle />
-                <Button
-                  onClick={handleAddWorkflow}
-                  className="bg-pink-600 hover:bg-pink-700"
-                >
+                <Button onClick={handleAddWorkflow} data-theme-aware="true">
                   <Plus className="w-4 h-4 mr-2" />
                   Add Workflow
                 </Button>

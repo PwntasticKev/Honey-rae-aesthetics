@@ -81,9 +81,9 @@ export function ClientList({
   const getStatusColor = (status: string) => {
     switch (status) {
       case "active":
-        return "bg-green-100 text-green-800";
+        return "bg-gray-100 text-gray-800";
       case "pending":
-        return "bg-yellow-100 text-yellow-800";
+        return "bg-gray-100 text-gray-800";
       case "inactive":
         return "bg-gray-100 text-gray-800";
       default:
@@ -218,7 +218,10 @@ export function ClientList({
         >
           <Avatar className="w-10 h-10">
             <AvatarImage src="/avatar.jpg" />
-            <AvatarFallback className="bg-gradient-to-br from-pink-400 to-rose-500 text-white">
+            <AvatarFallback
+              className="text-white avatar-fallback"
+              data-theme-aware="true"
+            >
               {row.fullName.charAt(0).toUpperCase()}
             </AvatarFallback>
           </Avatar>
@@ -264,7 +267,8 @@ export function ClientList({
               <Badge
                 key={tag}
                 variant="secondary"
-                className="text-xs cursor-pointer hover:bg-red-200"
+                className="text-xs cursor-pointer"
+                data-theme-aware="true"
                 onClick={() => handleRemoveTag(row._id, tag)}
                 title="Remove tag"
               >
@@ -288,6 +292,7 @@ export function ClientList({
             <Button
               size="sm"
               className="h-6 px-2 text-xs"
+              data-theme-aware="true"
               onClick={() => handleAddTag(row._id)}
               disabled={tagLoading[row._id] || !tagInputs[row._id]?.trim()}
             >
@@ -328,6 +333,7 @@ export function ClientList({
             onClick={() => onEditClient(row._id)}
             className="h-7 w-7 p-0"
             title="Edit Client"
+            data-theme-aware="true"
           >
             <User className="h-3 w-3" />
           </Button>
@@ -338,6 +344,7 @@ export function ClientList({
             className="h-7 w-7 p-0"
             title="Export Client"
             disabled={exportingClient === row._id}
+            data-theme-aware="true"
           >
             {exportingClient === row._id ? (
               <div className="h-3 w-3 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600" />
@@ -363,10 +370,7 @@ export function ClientList({
       pageSize={50}
       showPagination={true}
       actions={
-        <Button
-          onClick={onAddClient}
-          className="bg-gradient-to-r from-pink-500 to-purple-600"
-        >
+        <Button onClick={onAddClient} data-theme-aware="true">
           <Plus className="w-4 h-4 mr-2" />
           Add Client
         </Button>

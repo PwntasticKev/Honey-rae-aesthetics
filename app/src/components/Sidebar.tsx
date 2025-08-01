@@ -186,7 +186,10 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
           {/* Header with Logo */}
           <div className="flex items-center p-6 border-b border-gray-200">
             <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
+              <div
+                className="w-8 h-8 rounded-lg flex items-center justify-center"
+                data-theme-aware="true"
+              >
                 <Sparkles className="w-5 h-5 text-white" />
               </div>
               <div>
@@ -212,35 +215,46 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
                 data-testid={`sidebar-item-${item.id}`}
                 onClick={() => handleNavigation(item.href)}
                 className={cn(
-                  "w-full flex items-center justify-between p-3 rounded-lg text-left transition-all duration-200 group hover:bg-gray-50",
-                  isActive(item.href) &&
-                    "bg-orange-50 border-l-4 border-orange-500",
+                  "w-full flex items-center justify-between p-3 rounded-lg text-left transition-all duration-200 group",
+                  isActive(item.href) && "border-l-4",
                 )}
+                data-theme-aware={isActive(item.href) ? "true" : undefined}
+                data-hover-aware="true"
               >
                 <div className="flex items-center space-x-3">
                   <div
                     className={cn(
                       "w-6 h-6 flex items-center justify-center transition-all duration-200",
                       isActive(item.href)
-                        ? "text-orange-600"
+                        ? ""
                         : "text-gray-500 group-hover:text-gray-700",
                     )}
+                    data-theme-aware={isActive(item.href) ? "true" : undefined}
                   >
-                    <item.icon className="w-5 h-5" />
+                    <item.icon
+                      className="w-5 h-5"
+                      data-theme-aware={
+                        isActive(item.href) ? "true" : undefined
+                      }
+                    />
                   </div>
                   <span
                     className={cn(
                       "text-sm font-medium transition-colors",
                       isActive(item.href)
-                        ? "text-orange-900"
+                        ? ""
                         : "text-gray-700 group-hover:text-gray-900",
                     )}
+                    data-theme-aware={isActive(item.href) ? "true" : undefined}
                   >
                     {item.label}
                   </span>
                 </div>
                 {item.notification && (
-                  <div className="w-5 h-5 bg-orange-500 rounded-full flex items-center justify-center">
+                  <div
+                    className="w-5 h-5 rounded-full flex items-center justify-center"
+                    data-theme-aware="true"
+                  >
                     <span className="text-xs text-white font-medium">
                       {item.notification}
                     </span>
