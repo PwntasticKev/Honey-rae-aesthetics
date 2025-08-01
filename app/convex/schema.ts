@@ -14,6 +14,23 @@ export default defineSchema({
       storage_gb: v.number(),
       messages_per_month: v.number(),
     }),
+    theme: v.optional(
+      v.union(
+        v.object({
+          themeId: v.string(),
+          appliedAt: v.number(),
+        }),
+        v.object({
+          primaryColor: v.string(),
+          secondaryColor: v.string(),
+          accentColor: v.string(),
+          backgroundColor: v.string(),
+          textColor: v.string(),
+          borderRadius: v.string(),
+          fontFamily: v.string(),
+        }),
+      ),
+    ),
     createdAt: v.number(),
     updatedAt: v.number(),
   }),
