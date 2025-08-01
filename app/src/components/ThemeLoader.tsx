@@ -87,6 +87,62 @@ export function ThemeLoader() {
         root.style.setProperty("--background", theme.colors.background);
         root.style.setProperty("--foreground", theme.colors.foreground);
         root.style.setProperty("--font-family", theme.font);
+
+        // Apply theme to body for background gradient
+        const body = document.body;
+        body.style.setProperty("--theme-primary", theme.colors.primary);
+        body.style.setProperty("--theme-background", theme.colors.background);
+        body.style.setProperty("--theme-foreground", theme.colors.foreground);
+        body.style.setProperty("--theme-font", theme.font);
+        body.style.setProperty(
+          "--theme-gradient",
+          `linear-gradient(135deg, ${theme.colors.background} 0%, ${theme.colors.background} 50%, ${theme.colors.primary}20 100%)`,
+        );
+
+        // Update main background gradient
+        const mainElement = document.querySelector("main") as HTMLElement;
+        if (mainElement) {
+          mainElement.style.background = `linear-gradient(135deg, ${theme.colors.background} 0%, ${theme.colors.background} 50%, ${theme.colors.primary}20 100%)`;
+        }
+
+        // Update sidebar colors
+        const sidebar = document.querySelector("[data-sidebar]") as HTMLElement;
+        if (sidebar) {
+          sidebar.style.setProperty(
+            "--sidebar-background",
+            theme.colors.background,
+          );
+          sidebar.style.setProperty(
+            "--sidebar-foreground",
+            theme.colors.foreground,
+          );
+          sidebar.style.setProperty("--sidebar-primary", theme.colors.primary);
+        }
+
+        // Update theme-aware buttons only (not default UI components)
+        const themeButtons = document.querySelectorAll(
+          "[data-theme-aware='true']",
+        );
+        themeButtons.forEach((button) => {
+          (button as HTMLElement).style.backgroundColor = theme.colors.primary;
+          (button as HTMLElement).style.color = theme.colors.background;
+        });
+
+        // Update theme-aware text elements only
+        const themeTextElements = document.querySelectorAll(
+          "[data-theme-aware='true']",
+        );
+        themeTextElements.forEach((element) => {
+          (element as HTMLElement).style.color = theme.colors.foreground;
+        });
+
+        // Update page headers
+        const pageHeaders = document.querySelectorAll("h1, h2, h3");
+        pageHeaders.forEach((header) => {
+          if (header.classList.contains("text-gray-900")) {
+            (header as HTMLElement).style.color = theme.colors.foreground;
+          }
+        });
       }
     }
   }, [org]);

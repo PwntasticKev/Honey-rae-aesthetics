@@ -316,6 +316,7 @@ export function ClientHeaderActions({
           disabled={selectedClients.length === 0}
           className="h-8 w-8"
           title="Send Email"
+          data-theme-aware="true"
         >
           <Mail className="h-4 w-4" />
         </Button>
@@ -331,6 +332,7 @@ export function ClientHeaderActions({
           disabled={selectedClients.length === 0}
           className="h-8 w-8"
           title="Send SMS"
+          data-theme-aware="true"
         >
           <MessageSquare className="h-4 w-4" />
         </Button>
@@ -343,6 +345,7 @@ export function ClientHeaderActions({
           disabled={selectedClients.length === 0}
           className="h-8 w-8"
           title="Manage Tags"
+          data-theme-aware="true"
         >
           <Tag className="h-4 w-4" />
         </Button>

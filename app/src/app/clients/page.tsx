@@ -100,7 +100,13 @@ export default function ClientsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-rose-50">
+    <div
+      className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-rose-50"
+      style={{
+        background:
+          "var(--theme-gradient, linear-gradient(135deg, oklch(0.99 0.005 300) 0%, oklch(0.99 0.005 300) 50%, oklch(0.65 0.15 350)20 100%))",
+      }}
+    >
       {/* Sidebar */}
       <Sidebar
         isOpen={sidebarOpen}
@@ -146,8 +152,13 @@ export default function ClientsPage() {
 
               {/* Page Title and Greeting */}
               <div>
-                <h1 className="text-xl font-bold text-gray-900">Clients</h1>
-                <p className="text-sm text-gray-600">
+                <h1
+                  className="text-xl font-bold text-gray-900"
+                  data-theme-aware="true"
+                >
+                  Clients
+                </h1>
+                <p className="text-sm text-gray-600" data-theme-aware="true">
                   Manage your patient database
                 </p>
               </div>
@@ -192,7 +203,10 @@ export default function ClientsPage() {
         <main className="flex-1 p-4">
           <div className="max-w-full mx-auto">
             <div className="flex items-center justify-between mb-6">
-              <h1 className="text-3xl font-bold text-gray-900">
+              <h1
+                className="text-3xl font-bold text-gray-900"
+                data-theme-aware="true"
+              >
                 Client Management
               </h1>
             </div>

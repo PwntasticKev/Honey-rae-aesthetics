@@ -3,6 +3,28 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* PP Mori Font */
+@font-face {
+  font-family: "PP Mori";
+  src: url("/assets/PPMori-Regular.otf") format("opentype");
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "PP Mori";
+  src: url("/assets/PPMori-SemiBold.otf") format("opentype");
+  font-weight: 600;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "PP Mori";
+  src: url("/assets/PPMori-Extralight.otf") format("opentype");
+  font-weight: 200;
+  font-style: normal;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
