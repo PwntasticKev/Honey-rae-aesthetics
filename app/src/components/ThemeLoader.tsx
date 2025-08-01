@@ -105,18 +105,38 @@ export function ThemeLoader() {
           mainElement.style.background = `linear-gradient(135deg, ${theme.colors.background} 0%, ${theme.colors.background} 50%, ${theme.colors.primary}20 100%)`;
         }
 
-        // Update sidebar colors
+        // Apply font family to body
+        document.body.style.fontFamily = theme.font;
+
+        // Update sidebar colors and elements
         const sidebar = document.querySelector("[data-sidebar]") as HTMLElement;
         if (sidebar) {
-          sidebar.style.setProperty(
-            "--sidebar-background",
-            theme.colors.background,
+          // Update sidebar background
+          sidebar.style.backgroundColor = theme.colors.background;
+
+          // Update sidebar text colors
+          const sidebarTexts = sidebar.querySelectorAll("h1, span, p");
+          sidebarTexts.forEach((text) => {
+            (text as HTMLElement).style.color = theme.colors.foreground;
+          });
+
+          // Update sidebar icons
+          const sidebarIcons = sidebar.querySelectorAll("svg");
+          sidebarIcons.forEach((icon) => {
+            (icon as unknown as HTMLElement).style.color =
+              theme.colors.foreground;
+          });
+
+          // Update active sidebar items
+          const activeItems = sidebar.querySelectorAll(
+            ".bg-orange-50, .text-orange-600, .text-orange-900",
           );
-          sidebar.style.setProperty(
-            "--sidebar-foreground",
-            theme.colors.foreground,
-          );
-          sidebar.style.setProperty("--sidebar-primary", theme.colors.primary);
+          activeItems.forEach((item) => {
+            (item as HTMLElement).style.backgroundColor =
+              theme.colors.primary + "20";
+            (item as HTMLElement).style.color = theme.colors.primary;
+            (item as HTMLElement).style.borderColor = theme.colors.primary;
+          });
         }
 
         // Update theme-aware buttons only (not default UI components)
@@ -142,6 +162,46 @@ export function ThemeLoader() {
           if (header.classList.contains("text-gray-900")) {
             (header as HTMLElement).style.color = theme.colors.foreground;
           }
+        });
+
+        // Update all orange-colored elements
+        const orangeElements = document.querySelectorAll(
+          ".bg-orange-500, .text-orange-600, .text-orange-900, .border-orange-500",
+        );
+        orangeElements.forEach((element) => {
+          (element as HTMLElement).style.backgroundColor =
+            element.classList.contains("bg-orange-500")
+              ? theme.colors.primary
+              : "";
+          (element as HTMLElement).style.color =
+            element.classList.contains("text-orange-600") ||
+            element.classList.contains("text-orange-900")
+              ? theme.colors.primary
+              : "";
+          (element as HTMLElement).style.borderColor =
+            element.classList.contains("border-orange-500")
+              ? theme.colors.primary
+              : "";
+        });
+
+        // Update all pink-colored elements
+        const pinkElements = document.querySelectorAll(
+          ".bg-pink-600, .text-pink-600, .border-pink-600",
+        );
+        pinkElements.forEach((element) => {
+          (element as HTMLElement).style.backgroundColor =
+            element.classList.contains("bg-pink-600")
+              ? theme.colors.primary
+              : "";
+          (element as HTMLElement).style.color = element.classList.contains(
+            "text-pink-600",
+          )
+            ? theme.colors.primary
+            : "";
+          (element as HTMLElement).style.borderColor =
+            element.classList.contains("border-pink-600")
+              ? theme.colors.primary
+              : "";
         });
       }
     }
