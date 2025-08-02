@@ -77,7 +77,7 @@ export function NotificationDropdown({ className }: NotificationDropdownProps) {
       case "warning":
         return "border-l-yellow-500 bg-yellow-50";
       case "error":
-        return "border-l-red-500 bg-red-50";
+        return "border-l-red-400 bg-red-50";
       case "update":
         return "border-l-blue-500 bg-blue-50";
       case "message":
@@ -138,7 +138,10 @@ export function NotificationDropdown({ className }: NotificationDropdownProps) {
       </Button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-96 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+        <div
+          className="absolute right-0 mt-2 w-96 bg-white rounded-lg shadow-lg border border-gray-200 z-50"
+          data-theme-aware="true"
+        >
           <div className="p-4 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold text-gray-900">

@@ -399,9 +399,41 @@
   ):not(textarea):not(select),
 *[class*="text-red"]:not(h1):not(h2):not(h3):not(h4):not(h5):not(h6):not(
     input
+  ):not(textarea):not(select),
+*[class*="bg-orange"]:not(h1):not(h2):not(h3):not(h4):not(h5):not(h6):not(
+    input
+  ):not(textarea):not(select),
+*[class*="text-orange"]:not(h1):not(h2):not(h3):not(h4):not(h5):not(h6):not(
+    input
   ):not(textarea):not(select) {
   background-color: var(--primary) !important;
   color: var(--primary) !important;
+}
+
+/* Specific overrides for settings page tabs */
+.border-orange-500,
+.text-orange-600,
+.border-orange-600,
+.text-orange-500 {
+  border-color: var(--primary) !important;
+  color: var(--primary) !important;
+}
+
+/* Form elements theme matching */
+input[data-theme-aware="true"],
+textarea[data-theme-aware="true"],
+select[data-theme-aware="true"] {
+  border-color: var(--primary-light) !important;
+  background-color: var(--primary-light) !important;
+  color: var(--primary-dark) !important;
+}
+
+input[data-theme-aware="true"]:focus,
+textarea[data-theme-aware="true"]:focus,
+select[data-theme-aware="true"]:focus {
+  border-color: var(--primary) !important;
+  ring-color: var(--primary) !important;
+  outline-color: var(--primary) !important;
 }
 
 /* Force buttons and interactive elements with theme-aware attribute to use theme colors */
@@ -483,6 +515,99 @@ button[data-theme-aware="true"][data-variant="light"]:hover {
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1) !important;
 }
 
+/* Fix button hovers to use lighter variant instead of white */
+button[data-theme-aware="true"]:hover {
+  background-color: var(--primary-light) !important;
+  color: var(--primary-dark) !important;
+  border-color: var(--primary-light) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Settings page tabs and navigation */
+.border-orange-500,
+.text-orange-600 {
+  border-color: var(--primary) !important;
+  color: var(--primary) !important;
+}
+
+/* Input focus states */
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: var(--primary) !important;
+  ring-color: var(--primary) !important;
+  outline-color: var(--primary) !important;
+}
+
+/* Override hardcoded focus colors */
+input:focus[class*="focus:border-orange"],
+textarea:focus[class*="focus:border-orange"],
+select:focus[class*="focus:border-orange"] {
+  border-color: var(--primary) !important;
+  ring-color: var(--primary) !important;
+}
+
+input:focus[class*="focus:ring-orange"],
+textarea:focus[class*="focus:ring-orange"],
+select:focus[class*="focus:ring-orange"] {
+  ring-color: var(--primary) !important;
+}
+
+/* Tab styling overrides */
+.border-orange-500 {
+  border-color: var(--primary) !important;
+}
+
+.text-orange-600 {
+  color: var(--primary) !important;
+}
+
+.text-gray-500 {
+  color: var(--text-muted) !important;
+}
+
+.hover\:text-gray-700:hover {
+  color: var(--text) !important;
+}
+
+.hover\:border-gray-300:hover {
+  border-color: var(--border) !important;
+}
+
+/* Select dropdown styling */
+select {
+  background-color: var(--primary-light) !important;
+  color: var(--primary-dark) !important;
+  border-color: var(--primary-light) !important;
+}
+
+select:focus {
+  background-color: var(--primary-light) !important;
+  color: var(--primary-dark) !important;
+  border-color: var(--primary) !important;
+}
+
+/* Settings page tab navigation */
+nav button {
+  border-color: var(--primary) !important;
+  color: var(--primary) !important;
+}
+
+nav button:hover {
+  background-color: var(--primary-light) !important;
+  color: var(--primary-dark) !important;
+  border-color: var(--primary-light) !important;
+}
+
+/* Active tab styling */
+nav button.border-orange-500,
+nav button.text-orange-600 {
+  border-color: var(--primary) !important;
+  color: var(--primary) !important;
+  background-color: var(--primary-light) !important;
+}
+
 /* Apply theme colors to non-button elements - TEXT ONLY, NO BACKGROUNDS */
 span[data-theme-aware="true"]:not([data-slot="badge"]),
 div[data-theme-aware="true"]:not([data-slot="badge"]) {
@@ -497,11 +622,12 @@ svg[data-theme-aware="true"] {
   transition: color 0.2s ease-in-out !important;
 }
 
-/* Sidebar Navigation Hover Animations */
+/* Sidebar Navigation Hover Animations - Light Variant */
 [data-sidebar] .group:hover {
   background-color: var(--primary-light) !important;
   transform: translateX(4px) !important;
   transition: all 0.2s ease-in-out !important;
+  border-radius: 0 !important;
 }
 
 [data-sidebar] .group:hover svg,
@@ -526,6 +652,24 @@ svg[data-theme-aware="true"] {
   color: white !important;
 }
 
+/* Sidebar icon styling */
+[data-sidebar] svg[data-theme-aware="true"] {
+  color: var(--primary-dark) !important;
+}
+
+[data-sidebar] .group:hover svg[data-theme-aware="true"] {
+  color: var(--primary-dark) !important;
+}
+
+/* Remove border radius from sidebar */
+[data-sidebar] {
+  border-radius: 0 !important;
+}
+
+[data-sidebar] * {
+  border-radius: 0 !important;
+}
+
 /* Apply to all buttons regardless of data-theme-aware - but respect existing variants */
 button:not(.no-theme):not([class*="variant-"]):not([class*="bg-"]):not(
     [class*="text-"]
@@ -542,6 +686,24 @@ button:not(.no-theme):not([class*="variant-"]):not([class*="bg-"]):not(
   background-color: var(--primary-dark) !important;
   color: white !important;
   border-color: var(--primary-dark) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Force all buttons to use light variant by default */
+button[data-theme-aware="true"]:not([data-variant="solid"]) {
+  background-color: var(--primary-light) !important;
+  color: var(--primary-dark) !important;
+  border-color: var(--primary-light) !important;
+  transition: all 0.2s ease-in-out !important;
+}
+
+button[data-theme-aware="true"]:not([data-variant="solid"]):hover {
+  background-color: var(--primary-dark) !important;
+  color: white !important;
+  border-color: var(--primary-dark) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1) !important;
 }
 
 /* Force theme on buttons with default/primary variants */

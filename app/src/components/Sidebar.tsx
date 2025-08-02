@@ -215,30 +215,22 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
                 data-testid={`sidebar-item-${item.id}`}
                 onClick={() => handleNavigation(item.href)}
                 className={cn(
-                  "w-full flex items-center justify-between p-3 rounded-lg text-left transition-all duration-200 group",
-                  isActive(item.href) && "border-l-4",
+                  "w-full flex items-center justify-between p-3 text-left transition-all duration-200 group",
                 )}
                 data-active={isActive(item.href) ? "true" : "false"}
                 data-theme-aware={isActive(item.href) ? "true" : undefined}
                 data-hover-aware="true"
               >
                 <div className="flex items-center space-x-3">
-                  <div
+                  <item.icon
                     className={cn(
-                      "w-6 h-6 flex items-center justify-center transition-all duration-200",
+                      "w-5 h-5 transition-all duration-200",
                       isActive(item.href)
                         ? ""
                         : "text-gray-500 group-hover:text-gray-700",
                     )}
                     data-theme-aware={isActive(item.href) ? "true" : undefined}
-                  >
-                    <item.icon
-                      className="w-5 h-5"
-                      data-theme-aware={
-                        isActive(item.href) ? "true" : undefined
-                      }
-                    />
-                  </div>
+                  />
                   <span
                     className={cn(
                       "text-sm font-medium transition-colors",
@@ -252,14 +244,14 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
                   </span>
                 </div>
                 {item.notification && (
-                  <div
-                    className="w-5 h-5 rounded-full flex items-center justify-center"
+                  <Badge
+                    className="w-5 h-5 rounded-full p-0 flex items-center justify-center"
                     data-theme-aware="true"
                   >
                     <span className="text-xs text-white font-medium">
                       {item.notification}
                     </span>
-                  </div>
+                  </Badge>
                 )}
               </button>
             ))}

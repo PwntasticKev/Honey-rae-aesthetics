@@ -77,6 +77,7 @@ export const updateTheme = mutation({
     orgId: v.id("orgs"),
     theme: v.object({
       themeId: v.string(),
+      fontFamily: v.optional(v.string()),
       appliedAt: v.number(),
     }),
   },

@@ -240,6 +240,7 @@ export default function SettingsPage() {
                   type="text"
                   placeholder="Search anything"
                   className="pl-10 pr-4 w-64 bg-gray-50 border-gray-200 focus:border-orange-500 focus:ring-orange-500"
+                  data-theme-aware="true"
                 />
               </div>
 
@@ -290,9 +291,10 @@ export default function SettingsPage() {
                         onClick={() => setActiveTab(tab.id)}
                         className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center space-x-2 ${
                           activeTab === tab.id
-                            ? "border-orange-500 text-orange-600"
-                            : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                            ? "border-orange-500 text-orange-600 bg-transparent"
+                            : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 bg-transparent"
                         }`}
+                        data-theme-aware="true"
                       >
                         <Icon className="h-4 w-4" />
                         <span>{tab.label}</span>
@@ -320,6 +322,8 @@ export default function SettingsPage() {
                         variant={isEditing ? "outline" : "default"}
                         onClick={() => setIsEditing(!isEditing)}
                         className="flex items-center space-x-2"
+                        data-theme-aware="true"
+                        data-variant={isEditing ? "light" : "solid"}
                       >
                         {isEditing ? (
                           <X className="h-4 w-4" />
@@ -346,6 +350,7 @@ export default function SettingsPage() {
                               }))
                             }
                             disabled={!isEditing}
+                            data-theme-aware="true"
                           />
                         </div>
                         <div>
@@ -362,6 +367,7 @@ export default function SettingsPage() {
                               }))
                             }
                             disabled={!isEditing}
+                            data-theme-aware="true"
                           />
                         </div>
                         <div>
@@ -377,6 +383,7 @@ export default function SettingsPage() {
                               }))
                             }
                             disabled={!isEditing}
+                            data-theme-aware="true"
                           />
                         </div>
                         <div>
@@ -392,6 +399,7 @@ export default function SettingsPage() {
                               }))
                             }
                             disabled={!isEditing}
+                            data-theme-aware="true"
                           />
                         </div>
                       </div>
@@ -410,6 +418,7 @@ export default function SettingsPage() {
                             }
                             disabled={!isEditing}
                             rows={3}
+                            data-theme-aware="true"
                           />
                         </div>
                         <div>
@@ -426,6 +435,7 @@ export default function SettingsPage() {
                             }
                             disabled={!isEditing}
                             rows={3}
+                            data-theme-aware="true"
                           />
                         </div>
                         <div className="grid grid-cols-2 gap-4">
@@ -442,6 +452,7 @@ export default function SettingsPage() {
                                 }))
                               }
                               disabled={!isEditing}
+                              data-theme-aware="true"
                             />
                           </div>
                           <div>
@@ -457,6 +468,7 @@ export default function SettingsPage() {
                                 }))
                               }
                               disabled={!isEditing}
+                              data-theme-aware="true"
                             />
                           </div>
                         </div>
@@ -467,6 +479,8 @@ export default function SettingsPage() {
                         <Button
                           onClick={handleSaveSettings}
                           className="flex items-center space-x-2"
+                          data-theme-aware="true"
+                          data-variant="solid"
                         >
                           <Save className="h-4 w-4" />
                           <span>Save Changes</span>

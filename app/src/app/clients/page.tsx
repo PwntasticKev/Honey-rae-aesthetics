@@ -47,7 +47,7 @@ export default function ClientsPage() {
   };
 
   const handleDeleteClient = (clientId: string) => {
-    // TODO: Implement delete client functionality
+    // This is handled by the ClientList component now
   };
 
   return (
@@ -162,6 +162,7 @@ export default function ClientsPage() {
               onDeleteClient={handleDeleteClient}
               selectedClients={selectedClients}
               onSelectionChange={setSelectedClients}
+              orgId={orgId}
             />
           </div>
         </main>

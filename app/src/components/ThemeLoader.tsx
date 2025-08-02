@@ -80,13 +80,14 @@ export function ThemeLoader() {
   useEffect(() => {
     if (org?.theme && "themeId" in org.theme) {
       const themeId = (org.theme as any).themeId;
+      const fontFamily = (org.theme as any).fontFamily || "Inter";
       const theme = themes.find((t) => t.id === themeId);
       if (theme) {
         const root = document.documentElement;
         root.style.setProperty("--primary", theme.colors.primary);
         root.style.setProperty("--background", theme.colors.background);
         root.style.setProperty("--foreground", theme.colors.foreground);
-        root.style.setProperty("--font-family", theme.font);
+        root.style.setProperty("--font-family", fontFamily);
         root.style.setProperty("--hover-primary", theme.colors.primary + "20");
         root.style.setProperty("--hover-text", theme.colors.primary);
         root.style.setProperty("--primary-light", theme.colors.primary + "20");
@@ -97,7 +98,7 @@ export function ThemeLoader() {
         body.style.setProperty("--theme-primary", theme.colors.primary);
         body.style.setProperty("--theme-background", theme.colors.background);
         body.style.setProperty("--theme-foreground", theme.colors.foreground);
-        body.style.setProperty("--theme-font", theme.font);
+        body.style.setProperty("--theme-font", fontFamily);
         body.style.setProperty(
           "--theme-gradient",
           `linear-gradient(135deg, ${theme.colors.background} 0%, ${theme.colors.background} 50%, ${theme.colors.primary}20 100%)`,

@@ -368,10 +368,12 @@ export function ThemeSelector() {
 
     // Save to database immediately
     if (userData?.orgId) {
+      const selectedFontData = fonts.find((f) => f.id === selectedFont);
       await updateTheme({
         orgId: userData.orgId as any,
         theme: {
           themeId,
+          fontFamily: selectedFontData?.value || "Inter",
           appliedAt: Date.now(),
         },
       });
@@ -384,10 +386,12 @@ export function ThemeSelector() {
 
     // Save to database immediately
     if (userData?.orgId) {
+      const selectedFontData = fonts.find((f) => f.id === fontId);
       await updateTheme({
         orgId: userData.orgId as any,
         theme: {
           themeId: selectedTheme,
+          fontFamily: selectedFontData?.value || "Inter",
           appliedAt: Date.now(),
         },
       });

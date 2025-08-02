@@ -286,6 +286,25 @@ export const remove = mutation({
   },
 });
 
+// Delete multiple clients
+export const removeMultiple = mutation({
+  args: {
+    clientIds: v.array(v.id("clients")),
+    orgId: v.id("orgs"),
+  },
+  handler: async (ctx, args) => {
+    let deletedCount = 0;
+    for (const clientId of args.clientIds) {
+      const client = await ctx.db.get(clientId);
+      if (client && client.orgId === args.orgId) {
+        await ctx.db.delete(clientId);
+        deletedCount++;
+      }
+    }
+    return { deletedCount };
+  },
+});
+
 // Import clients from CSV
 export const importClients = mutation({
   args: {
@@ -295,7 +314,14 @@ export const importClients = mutation({
   },
   handler: async (ctx, args) => {
     const lines = args.csvData.split("\n").filter((line) => line.trim());
-    const headers = lines[0].split("\t");
+
+    // Try to detect delimiter - check if it's tab or comma separated
+    const firstLine = lines[0];
+    const tabCount = (firstLine.match(/\t/g) || []).length;
+    const commaCount = (firstLine.match(/,/g) || []).length;
+
+    const delimiter = tabCount > commaCount ? "\t" : ",";
+    const headers = lines[0].split(delimiter);
     const dataLines = lines.slice(1);
 
     const results = {
@@ -304,9 +330,14 @@ export const importClients = mutation({
       errors: [] as string[],
     };
 
+    console.log(
+      `Importing ${dataLines.length} lines with delimiter: ${delimiter}`,
+    );
+    console.log("Headers:", headers);
+
     for (let i = 0; i < dataLines.length; i++) {
       const line = dataLines[i];
-      const values = line.split("\t");
+      const values = line.split(delimiter);
 
       if (values.length < headers.length) {
         results.errors.push(`Line ${i + 2}: Invalid data format`);
@@ -410,7 +441,17 @@ export const importClients = mutation({
           visited: row["Visited"] === "true" || row["Visited"] === "1",
           fired: row["Fired"] === "true" || row["Fired"] === "1",
           upcomingAppointment,
-          clientPortalStatus: row["Client Portal Status"] || "active",
+          clientPortalStatus: (() => {
+            const status = row["Client Portal Status"];
+            if (
+              status === "active" ||
+              status === "inactive" ||
+              status === "pending"
+            ) {
+              return status;
+            }
+            return "active"; // Default to active if invalid status
+          })(),
           tags: [],
           externalId: row["ID"] || undefined,
           importSource: args.importSource,
@@ -422,7 +463,10 @@ export const importClients = mutation({
         await ctx.db.insert("clients", clientData);
         results.imported++;
       } catch (error) {
-        results.errors.push(`Line ${i + 2}: ${error}`);
+        console.error(`Import error on line ${i + 2}:`, error);
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        results.errors.push(`Line ${i + 2}: ${errorMessage}`);
       }
     }
 
@@ -466,7 +510,7 @@ export const exportClients = query({
       "Upcoming Appointment",
     ];
 
-    const csvLines = [headers.join("\t")];
+    const csvLines = [headers.join(",")];
 
     for (const client of clients) {
       const row = [
@@ -500,7 +544,7 @@ export const exportClients = query({
           : "",
       ];
 
-      csvLines.push(row.join("\t"));
+      csvLines.push(row.join(","));
     }
 
     return csvLines.join("\n");
@@ -574,6 +618,6 @@ export const exportSingleClient = query({
         : "",
     ];
 
-    return [headers.join("\t"), row.join("\t")].join("\n");
+    return [headers.join(","), row.join(",")].join("\n");
   },
 });

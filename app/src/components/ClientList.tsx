@@ -16,6 +16,8 @@ import {
   Trash2,
   Download,
   MoreHorizontal,
+  AlertTriangle,
+  X,
 } from "lucide-react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -40,6 +42,7 @@ interface ClientListProps {
   onDeleteClient: (clientId: string) => void;
   selectedClients?: string[];
   onSelectionChange?: (clientIds: string[]) => void;
+  orgId?: string;
 }
 
 export function ClientList({
@@ -49,6 +52,7 @@ export function ClientList({
   onDeleteClient,
   selectedClients = [],
   onSelectionChange,
+  orgId,
 }: ClientListProps) {
   console.log("ClientList received clients:", clients?.length, clients);
   const [filteredClients, setFilteredClients] = useState<Client[]>(clients);
@@ -63,8 +67,15 @@ export function ClientList({
 
   const addTag = useMutation(api.clients.addTag);
   const removeTag = useMutation(api.clients.removeTag);
+  const deleteClient = useMutation(api.clients.remove);
+  const deleteMultipleClients = useMutation(api.clients.removeMultiple);
   const [tagInputs, setTagInputs] = useState<Record<string, string>>({});
   const [tagLoading, setTagLoading] = useState<Record<string, boolean>>({});
+  const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(
+    null,
+  );
+  const [showMassDeleteConfirm, setShowMassDeleteConfirm] = useState(false);
 
   const handleSearch = (term: string) => {
     const filtered = clients.filter((client) => {
@@ -173,6 +184,61 @@ export function ClientList({
     }
   };
 
+  const handleDeleteClient = async (clientId: string) => {
+    setDeleteLoading(clientId);
+    try {
+      await deleteClient({ id: clientId as any });
+      toast({
+        title: "Client Deleted",
+        description: "Client has been deleted successfully.",
+      });
+      // Remove from selection if it was selected
+      if (onSelectionChange && selectedClients.includes(clientId)) {
+        onSelectionChange(selectedClients.filter((id) => id !== clientId));
+      }
+    } catch (error) {
+      console.error("Failed to delete client:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete client. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setDeleteLoading(null);
+      setShowDeleteConfirm(null);
+    }
+  };
+
+  const handleMassDelete = async () => {
+    if (!selectedClients.length) return;
+
+    try {
+      const result = await deleteMultipleClients({
+        clientIds: selectedClients as any[],
+        orgId: orgId as any,
+      });
+
+      toast({
+        title: "Clients Deleted",
+        description: `${result.deletedCount} clients have been deleted successfully.`,
+      });
+
+      // Clear selection
+      if (onSelectionChange) {
+        onSelectionChange([]);
+      }
+    } catch (error) {
+      console.error("Failed to delete clients:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete clients. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setShowMassDeleteConfirm(false);
+    }
+  };
+
   const getGenderIcon = (gender: string) => {
     switch (gender.toLowerCase()) {
       case "female":
@@ -190,21 +256,28 @@ export function ClientList({
       label: "",
       width: "50px",
       render: (value: any, row: Client) => (
-        <Checkbox
-          checked={selectedClients.includes(row._id)}
-          onCheckedChange={(checked) => {
-            if (onSelectionChange) {
-              if (checked) {
-                onSelectionChange([...selectedClients, row._id]);
-              } else {
-                onSelectionChange(
-                  selectedClients.filter((id) => id !== row._id),
-                );
+        <div className="flex items-center justify-center">
+          <Checkbox
+            checked={selectedClients.includes(row._id)}
+            onCheckedChange={(checked) => {
+              if (onSelectionChange) {
+                if (checked) {
+                  onSelectionChange([...selectedClients, row._id]);
+                } else {
+                  onSelectionChange(
+                    selectedClients.filter((id) => id !== row._id),
+                  );
+                }
               }
+            }}
+            onClick={(e) => e.stopPropagation()}
+            className={
+              selectedClients.includes(row._id)
+                ? "bg-primary border-primary"
+                : ""
             }
-          }}
-          onClick={(e) => e.stopPropagation()}
-        />
+          />
+        </div>
       ),
     },
     {
@@ -324,7 +397,7 @@ export function ClientList({
     {
       key: "actions",
       label: "Actions",
-      width: "80px",
+      width: "120px",
       render: (value: any, row: Client) => (
         <div className="flex items-center space-x-1">
           <Button
@@ -352,29 +425,188 @@ export function ClientList({
               <Download className="h-3 w-3" />
             )}
           </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowDeleteConfirm(row._id)}
+            className="h-7 w-7 p-0 text-red-600 hover:text-red-700"
+            title="Delete Client"
+            disabled={deleteLoading === row._id}
+            data-theme-aware="true"
+          >
+            {deleteLoading === row._id ? (
+              <div className="h-3 w-3 animate-spin rounded-full border-2 border-gray-300 border-t-red-600" />
+            ) : (
+              <Trash2 className="h-3 w-3" />
+            )}
+          </Button>
         </div>
       ),
     },
   ];
 
   return (
-    <DataTable
-      data={filteredClients}
-      columns={columns}
-      title="Clients"
-      description={`Manage your client database (${filteredClients.length} clients)`}
-      searchPlaceholder="Search clients by name, email, or phone..."
-      onSearch={handleSearch}
-      onEdit={onEditClient}
-      onDelete={onDeleteClient}
-      pageSize={50}
-      showPagination={true}
-      actions={
-        <Button onClick={onAddClient} data-theme-aware="true">
-          <Plus className="w-4 h-4 mr-2" />
-          Add Client
-        </Button>
-      }
-    />
+    <>
+      <DataTable
+        data={filteredClients}
+        columns={columns}
+        title="Clients"
+        description={`Manage your client database (${filteredClients.length} clients)`}
+        searchPlaceholder="Search clients by name, email, or phone..."
+        onSearch={handleSearch}
+        onEdit={onEditClient}
+        onDelete={onDeleteClient}
+        pageSize={50}
+        showPagination={true}
+        actions={
+          <div className="flex items-center gap-2">
+            {selectedClients.length > 0 && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => setShowMassDeleteConfirm(true)}
+                data-theme-aware="true"
+                className="flex items-center gap-2"
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete Selected ({selectedClients.length})
+              </Button>
+            )}
+            <Button onClick={onAddClient} data-theme-aware="true">
+              <Plus className="w-4 h-4 mr-2" />
+              Add Client
+            </Button>
+          </div>
+        }
+      />
+
+      {/* Individual Delete Confirmation - Right Side Panel */}
+      {showDeleteConfirm && (
+        <div
+          className="fixed right-0 top-0 h-full w-80 bg-white shadow-lg border-l border-gray-200 z-50 transform transition-transform duration-300"
+          data-theme-aware="true"
+        >
+          <div className="p-6 h-full flex flex-col">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-semibold">Delete Client</h3>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowDeleteConfirm(null)}
+                data-theme-aware="true"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <div className="flex items-center gap-3 mb-6">
+              <AlertTriangle className="h-8 w-8 text-red-600" />
+              <div>
+                <h4 className="font-medium">Confirm Deletion</h4>
+                <p className="text-sm text-gray-600">
+                  This action cannot be undone.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex-1">
+              <p className="text-gray-700 mb-4">
+                Are you sure you want to delete this client? All associated data
+                including appointments, messages, and files will be permanently
+                removed.
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-3 mt-auto">
+              <Button
+                variant="destructive"
+                onClick={() => handleDeleteClient(showDeleteConfirm)}
+                data-theme-aware="true"
+                disabled={deleteLoading === showDeleteConfirm}
+                className="w-full"
+              >
+                {deleteLoading === showDeleteConfirm
+                  ? "Deleting..."
+                  : "Delete Client"}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setShowDeleteConfirm(null)}
+                data-theme-aware="true"
+                className="w-full"
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mass Delete Confirmation - Right Side Panel */}
+      {showMassDeleteConfirm && (
+        <div
+          className="fixed right-0 top-0 h-full w-80 bg-white shadow-lg border-l border-gray-200 z-50 transform transition-transform duration-300"
+          data-theme-aware="true"
+        >
+          <div className="p-6 h-full flex flex-col">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-semibold">Delete Multiple Clients</h3>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowMassDeleteConfirm(false)}
+                data-theme-aware="true"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <div className="flex items-center gap-3 mb-6">
+              <AlertTriangle className="h-8 w-8 text-red-600" />
+              <div>
+                <h4 className="font-medium">Confirm Bulk Deletion</h4>
+                <p className="text-sm text-gray-600">
+                  This action cannot be undone.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex-1">
+              <p className="text-gray-700 mb-4">
+                Are you sure you want to delete {selectedClients.length}{" "}
+                selected clients? All associated data will be permanently
+                removed.
+              </p>
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                <p className="text-sm text-red-700 font-medium">Warning:</p>
+                <p className="text-xs text-red-600">
+                  This will delete {selectedClients.length} clients and all
+                  their associated data permanently.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-3 mt-auto">
+              <Button
+                variant="destructive"
+                onClick={handleMassDelete}
+                data-theme-aware="true"
+                className="w-full"
+              >
+                Delete {selectedClients.length} Clients
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setShowMassDeleteConfirm(false)}
+                data-theme-aware="true"
+                className="w-full"
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
