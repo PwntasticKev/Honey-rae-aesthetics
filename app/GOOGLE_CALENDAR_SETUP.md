@@ -35,10 +35,10 @@ This guide will help you set up Google Calendar integration for the Honey Rae Ae
      - `http://localhost:3000` (for development)
      - `https://yourdomain.com` (for production)
    - **Authorized redirect URIs**:
-     - `http://localhost:3000` (for development)
-     - `https://yourdomain.com` (for production)
+     - `http://localhost:3000/api/auth/google/callback` (for development)
+     - `https://yourdomain.com/api/auth/google/callback` (for production)
 5. Click "Create"
-6. **Save the Client ID** - you'll need this for the environment variables
+6. **Save the Client ID and Client Secret** - you'll need both for the environment variables
 
 ### 1.4 Create API Key
 
@@ -55,12 +55,14 @@ Create a `.env.local` file in the `app` directory with the following content:
 ```bash
 # Google Calendar Integration
 NEXT_PUBLIC_GOOGLE_CLIENT_ID=your_client_id_here
+GOOGLE_CLIENT_SECRET=your_client_secret_here
 NEXT_PUBLIC_GOOGLE_API_KEY=your_api_key_here
 ```
 
 ### 2.2 Replace Placeholder Values
 
 - Replace `your_client_id_here` with the Client ID from Step 1.3
+- Replace `your_client_secret_here` with the Client Secret from Step 1.3
 - Replace `your_api_key_here` with the API Key from Step 1.4
 
 ## Step 3: Testing the Integration

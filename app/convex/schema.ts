@@ -19,6 +19,7 @@ export default defineSchema({
         v.object({
           themeId: v.string(),
           appliedAt: v.number(),
+          fontFamily: v.optional(v.string()),
         }),
         v.object({
           primaryColor: v.string(),

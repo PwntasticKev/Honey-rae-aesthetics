@@ -116,8 +116,34 @@ export function ThemeSelector() {
   useEffect(() => {
     if (org?.theme && "themeId" in org.theme) {
       const themeId = (org.theme as any).themeId;
+      const savedFontFamily = (org.theme as any).fontFamily;
+
+      console.log("🎨 Loading saved theme:", {
+        themeId,
+        savedFontFamily,
+        orgTheme: org.theme,
+      });
+
+      // Find the font ID based on the saved font family
+      let fontId = "inter"; // default
+      if (savedFontFamily) {
+        const savedFont = fonts.find((f) => f.value === savedFontFamily);
+        if (savedFont) {
+          fontId = savedFont.id;
+          setSelectedFont(fontId);
+          console.log("🎨 Found saved font:", { savedFontFamily, fontId });
+        } else {
+          console.log(
+            "⚠️ Saved font not found in fonts array:",
+            savedFontFamily,
+          );
+        }
+      } else {
+        console.log("⚠️ No saved font family found, using default");
+      }
+
       setSelectedTheme(themeId);
-      applyTheme(themeId, selectedFont);
+      applyTheme(themeId, fontId);
     }
   }, [org]);
 
@@ -148,8 +174,9 @@ export function ThemeSelector() {
       `linear-gradient(135deg, ${theme.colors.background} 0%, ${theme.colors.background} 50%, ${theme.colors.primary}20 100%)`,
     );
 
-    // Apply font family to body
+    // Apply font family to body and document element
     document.body.style.fontFamily = font.value;
+    document.documentElement.style.fontFamily = font.value;
 
     // Update main background gradient
     const mainElement = document.querySelector("main") as HTMLElement;
@@ -381,17 +408,25 @@ export function ThemeSelector() {
   };
 
   const handleFontSelect = async (fontId: string) => {
+    console.log("🎨 Font selected:", fontId);
     setSelectedFont(fontId);
     applyTheme(selectedTheme, fontId);
 
     // Save to database immediately
     if (userData?.orgId) {
       const selectedFontData = fonts.find((f) => f.id === fontId);
+      const fontFamily = selectedFontData?.value || "Inter";
+      console.log("💾 Saving font to database:", {
+        fontId,
+        fontFamily,
+        orgId: userData.orgId,
+      });
+
       await updateTheme({
         orgId: userData.orgId as any,
         theme: {
           themeId: selectedTheme,
-          fontFamily: selectedFontData?.value || "Inter",
+          fontFamily,
           appliedAt: Date.now(),
         },
       });

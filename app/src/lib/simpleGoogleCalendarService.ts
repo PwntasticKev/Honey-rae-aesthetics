@@ -24,11 +24,13 @@ export interface GoogleCalendar {
 
 class SimpleGoogleCalendarService {
   private accessToken: string | null = null;
+  private refreshToken: string | null = null;
 
   constructor() {
-    // Load token from localStorage on initialization
+    // Load tokens from localStorage on initialization
     if (typeof window !== "undefined") {
       this.accessToken = localStorage.getItem("google_calendar_access_token");
+      this.refreshToken = localStorage.getItem("google_calendar_refresh_token");
     }
   }
 
@@ -58,8 +60,55 @@ class SimpleGoogleCalendarService {
   async isAuthenticated(): Promise<boolean> {
     if (typeof window !== "undefined") {
       this.accessToken = localStorage.getItem("google_calendar_access_token");
+      this.refreshToken = localStorage.getItem("google_calendar_refresh_token");
     }
     return !!this.accessToken;
+  }
+
+  private async refreshAccessToken(): Promise<boolean> {
+    if (!this.refreshToken) {
+      console.warn("No refresh token available");
+      return false;
+    }
+
+    try {
+      console.log("🔄 Refreshing access token via server...");
+      console.log("🔍 Refresh token length:", this.refreshToken.length);
+      console.log(
+        "🔍 Refresh token preview:",
+        this.refreshToken.substring(0, 20) + "...",
+      );
+
+      const response = await fetch("/api/auth/google/refresh", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          refreshToken: this.refreshToken,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Token refresh failed:", errorText);
+        return false;
+      }
+
+      const data = await response.json();
+      this.accessToken = data.access_token;
+
+      // Store the new access token
+      if (typeof window !== "undefined" && this.accessToken) {
+        localStorage.setItem("google_calendar_access_token", this.accessToken);
+      }
+
+      console.log("✅ Access token refreshed successfully");
+      return true;
+    } catch (error) {
+      console.error("Failed to refresh access token:", error);
+      return false;
+    }
   }
 
   async getCalendars(): Promise<GoogleCalendar[]> {
@@ -106,6 +155,68 @@ class SimpleGoogleCalendarService {
       if (!response.ok) {
         const errorText = await response.text();
         console.error("🔍 Full error response:", errorText);
+
+        // If it's a 401 error, try to refresh the token
+        if (response.status === 401) {
+          console.log("🔄 Access token expired, attempting refresh...");
+          const refreshSuccess = await this.refreshAccessToken();
+          if (refreshSuccess) {
+            // Retry the request with the new token
+            const retryResponse = await fetch(
+              "https://www.googleapis.com/calendar/v3/users/me/calendarList",
+              {
+                headers: {
+                  Authorization: `Bearer ${this.accessToken}`,
+                  "Content-Type": "application/json",
+                },
+              },
+            );
+
+            if (!retryResponse.ok) {
+              const retryErrorText = await retryResponse.text();
+              throw new Error(
+                `HTTP ${retryResponse.status}: ${retryResponse.statusText} - ${retryErrorText}`,
+              );
+            }
+
+            const data = await retryResponse.json();
+            const calendars = data.items || [];
+
+            console.log(
+              `📋 Found ${calendars.length} calendars (after refresh)`,
+            );
+
+            const mappedCalendars: GoogleCalendar[] = calendars.map(
+              (calendar: {
+                id: string;
+                summary: string;
+                backgroundColor?: string;
+              }) => ({
+                id: calendar.id,
+                name: calendar.summary,
+                color: this.getColorFromId(calendar.backgroundColor || "1"),
+                isSelected: calendar.id === "primary", // Default to primary calendar selected
+                email: calendar.id,
+              }),
+            );
+
+            console.log(
+              "📋 Mapped calendars:",
+              mappedCalendars.map((c) => ({
+                name: c.name,
+                selected: c.isSelected,
+              })),
+            );
+            return mappedCalendars;
+          } else {
+            // Refresh failed, clear tokens and throw error
+            this.logout();
+            throw new Error(
+              "Authentication failed - please reconnect your Google Calendar",
+            );
+          }
+        }
+
         throw new Error(
           `HTTP ${response.status}: ${response.statusText} - ${errorText}`,
         );
@@ -182,6 +293,70 @@ class SimpleGoogleCalendarService {
       if (!response.ok) {
         const errorText = await response.text();
         console.error("🔍 Full error response:", errorText);
+
+        // If it's a 401 error, try to refresh the token
+        if (response.status === 401) {
+          console.log("🔄 Access token expired, attempting refresh...");
+          const refreshSuccess = await this.refreshAccessToken();
+          if (refreshSuccess) {
+            // Retry the request with the new token
+            const retryResponse = await fetch(url.toString(), {
+              headers: {
+                Authorization: `Bearer ${this.accessToken}`,
+                "Content-Type": "application/json",
+              },
+            });
+
+            if (!retryResponse.ok) {
+              const retryErrorText = await retryResponse.text();
+              throw new Error(
+                `HTTP ${retryResponse.status}: ${retryResponse.statusText} - ${retryErrorText}`,
+              );
+            }
+
+            const data = await retryResponse.json();
+            const events = data.items || [];
+
+            console.log(`📅 Found ${events.length} events (after refresh)`);
+
+            const mappedEvents = events.map(
+              (event: {
+                id: string;
+                summary?: string;
+                start: { dateTime?: string; date?: string };
+                end: { dateTime?: string; date?: string };
+                description?: string;
+                location?: string;
+                attendees?: Array<{ email: string }>;
+              }) => ({
+                id: event.id,
+                title: event.summary || "Untitled Event",
+                start: new Date(
+                  event.start.dateTime || event.start.date || new Date(),
+                ),
+                end: new Date(
+                  event.end.dateTime || event.end.date || new Date(),
+                ),
+                description: event.description,
+                location: event.location,
+                attendees: event.attendees?.map((a) => a.email) || [],
+                calendarId,
+                calendarName: "Primary Calendar", // This could be enhanced to get actual calendar name
+                calendarColor: "#4285f4",
+              }),
+            );
+
+            console.log(`📅 Mapped events:`, mappedEvents.length);
+            return mappedEvents;
+          } else {
+            // Refresh failed, clear tokens and throw error
+            this.logout();
+            throw new Error(
+              "Authentication failed - please reconnect your Google Calendar",
+            );
+          }
+        }
+
         throw new Error(
           `HTTP ${response.status}: ${response.statusText} - ${errorText}`,
         );

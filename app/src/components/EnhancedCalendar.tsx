@@ -199,44 +199,97 @@ export function EnhancedCalendar({ orgId, clients }: EnhancedCalendarProps) {
   }, [currentDate, calendars, view, isAuthenticated]);
 
   const handleGoogleLogin = async () => {
+    console.log("🔐 Starting Google OAuth login process...");
     setIsLoading(true);
     try {
-      const success = await simpleGoogleCalendarService.isAuthenticated();
-      if (success) {
-        setIsAuthenticated(true);
-        console.log("✅ Authentication successful, loading calendars...");
+      // Check if we have the required environment variables
+      const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+      if (!clientId) {
+        throw new Error("Google Client ID not configured");
+      }
 
-        await loadCalendars();
-        setTimeout(async () => {
-          console.log("📋 Calendars loaded, now loading events...");
-          await loadEvents();
-        }, 100);
+      // Generate OAuth URL using our API route
+      const response = await fetch("/api/auth/google?action=login");
+      if (!response.ok) {
+        throw new Error("Failed to generate OAuth URL");
+      }
 
-        if (calendars.length > 0) {
-          const primaryCalendar = calendars[0];
+      const { authUrl } = await response.json();
+
+      // Open OAuth popup window
+      const popup = window.open(
+        authUrl,
+        "google-oauth",
+        "width=500,height=600,scrollbars=yes,resizable=yes",
+      );
+
+      if (!popup) {
+        throw new Error("Popup blocked. Please allow popups for this site.");
+      }
+
+      // Wait for the popup to close or redirect
+      const checkClosed = setInterval(async () => {
+        if (popup.closed) {
+          clearInterval(checkClosed);
+
+          // Check if we have tokens in localStorage (set by callback)
           const accessToken = localStorage.getItem(
             "google_calendar_access_token",
           );
+          const refreshToken = localStorage.getItem(
+            "google_calendar_refresh_token",
+          );
 
           if (accessToken) {
-            try {
-              await saveProvider({
-                orgId: orgId as any,
-                name: primaryCalendar.name,
-                email: primaryCalendar.email || "",
-                color: primaryCalendar.color,
-                accessToken,
-                googleCalendarId: primaryCalendar.id,
-              });
-              console.log("✅ Google Calendar provider saved to database");
-            } catch (error) {
-              console.error("Failed to save provider to database:", error);
+            console.log("✅ OAuth successful, tokens received");
+            setIsAuthenticated(true);
+
+            // Load calendars and events
+            await loadCalendars();
+            setTimeout(async () => {
+              console.log("📋 Calendars loaded, now loading events...");
+              await loadEvents();
+            }, 100);
+
+            // Save provider to database if we have calendars
+            if (calendars.length > 0) {
+              const primaryCalendar = calendars[0];
+              try {
+                await saveProvider({
+                  orgId: orgId as any,
+                  name: primaryCalendar.name,
+                  email: primaryCalendar.email || "",
+                  color: primaryCalendar.color,
+                  accessToken,
+                  googleCalendarId: primaryCalendar.id,
+                });
+                console.log("✅ Google Calendar provider saved to database");
+              } catch (error) {
+                console.error("Failed to save provider to database:", error);
+              }
             }
+          } else {
+            console.log("❌ No tokens received from OAuth");
           }
         }
-      }
+      }, 1000);
+
+      // Timeout after 5 minutes
+      setTimeout(() => {
+        clearInterval(checkClosed);
+        if (!popup.closed) {
+          popup.close();
+        }
+        if (!localStorage.getItem("google_calendar_access_token")) {
+          console.error("OAuth timeout - no tokens received");
+        }
+      }, 300000);
     } catch (error) {
-      console.error("Google login failed:", error);
+      console.error("Google OAuth login failed:", error);
+      // Show user-friendly error message
+      alert(
+        `Google Calendar connection failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
     } finally {
       setIsLoading(false);
     }
@@ -295,6 +348,20 @@ export function EnhancedCalendar({ orgId, clients }: EnhancedCalendarProps) {
       setCalendars(calendarsWithSelection);
     } catch (error) {
       console.error("Failed to load calendars:", error);
+
+      // If it's an authentication error, show a helpful message
+      if (
+        error instanceof Error &&
+        error.message.includes("Authentication failed")
+      ) {
+        console.log(
+          "🔄 Authentication failed, clearing tokens and showing login screen",
+        );
+        simpleGoogleCalendarService.logout();
+        setIsAuthenticated(false);
+        setCalendars([]);
+        setEvents([]);
+      }
     }
   };
 
@@ -337,6 +404,20 @@ export function EnhancedCalendar({ orgId, clients }: EnhancedCalendarProps) {
       setEvents(allEvents);
     } catch (error) {
       console.error("Failed to load events:", error);
+
+      // If it's an authentication error, show a helpful message
+      if (
+        error instanceof Error &&
+        error.message.includes("Authentication failed")
+      ) {
+        console.log(
+          "🔄 Authentication failed, clearing tokens and showing login screen",
+        );
+        simpleGoogleCalendarService.logout();
+        setIsAuthenticated(false);
+        setCalendars([]);
+        setEvents([]);
+      }
     } finally {
       setIsLoadingEvents(false);
     }
@@ -534,6 +615,15 @@ export function EnhancedCalendar({ orgId, clients }: EnhancedCalendarProps) {
               )}
               {isLoading ? "Connecting..." : "Connect Google Calendar"}
             </Button>
+
+            {/* Debug info */}
+            <div className="text-xs text-gray-400 text-center">
+              {!(window as any).google?.accounts?.oauth2 && (
+                <div className="text-orange-600">
+                  ⚠️ Google services not loaded. Please refresh the page.
+                </div>
+              )}
+            </div>
 
             <div className="text-xs text-gray-500 text-center">
               We'll only access your calendar data to display appointments. You
@@ -944,7 +1034,10 @@ export function EnhancedCalendar({ orgId, clients }: EnhancedCalendarProps) {
               <div className="space-y-1">
                 {calendars.length === 0 ? (
                   <div className="text-xs text-gray-500 text-center py-2">
-                    No calendars found
+                    <div className="mb-2">No calendars found</div>
+                    <div className="text-xs text-gray-400">
+                      Try refreshing or check your Google Calendar permissions
+                    </div>
                   </div>
                 ) : (
                   calendars.map((calendar) => (

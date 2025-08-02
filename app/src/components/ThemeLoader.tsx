@@ -80,8 +80,17 @@ export function ThemeLoader() {
   useEffect(() => {
     if (org?.theme && "themeId" in org.theme) {
       const themeId = (org.theme as any).themeId;
-      const fontFamily = (org.theme as any).fontFamily || "Inter";
+      const savedFontFamily = (org.theme as any).fontFamily;
+      const fontFamily = savedFontFamily || "Inter";
       const theme = themes.find((t) => t.id === themeId);
+
+      console.log("🎨 ThemeLoader applying theme:", {
+        themeId,
+        savedFontFamily,
+        fontFamily,
+        themeFound: !!theme,
+      });
+
       if (theme) {
         const root = document.documentElement;
         root.style.setProperty("--primary", theme.colors.primary);
@@ -110,8 +119,9 @@ export function ThemeLoader() {
           mainElement.style.background = `linear-gradient(135deg, ${theme.colors.background} 0%, ${theme.colors.background} 50%, ${theme.colors.primary}20 100%)`;
         }
 
-        // Apply font family to body
-        document.body.style.fontFamily = theme.font;
+        // Apply font family to body and document
+        document.body.style.fontFamily = fontFamily;
+        document.documentElement.style.fontFamily = fontFamily;
 
         // Update sidebar colors and elements
         const sidebar = document.querySelector("[data-sidebar]") as HTMLElement;

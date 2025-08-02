@@ -100,109 +100,6 @@
   --sidebar-ring: oklch(0.65 0.15 350);
 }
 
-.dark {
-  --background: oklch(0.12 0.02 300);
-  --foreground: oklch(0.95 0.01 300);
-  --card: oklch(0.18 0.02 300);
-  --card-foreground: oklch(0.95 0.01 300);
-  --popover: oklch(0.18 0.02 300);
-  --popover-foreground: oklch(0.95 0.01 300);
-  --primary: oklch(0.75 0.12 350);
-  --primary-foreground: oklch(0.12 0.02 300);
-  --secondary: oklch(0.25 0.03 300);
-  --secondary-foreground: oklch(0.95 0.01 300);
-  --muted: oklch(0.25 0.03 300);
-  --muted-foreground: oklch(0.65 0.02 300);
-  --accent: oklch(0.25 0.03 300);
-  --accent-foreground: oklch(0.95 0.01 300);
-  --destructive: oklch(0.7 0.2 25);
-  --border: oklch(0.3 0.02 300);
-  --input: oklch(0.3 0.02 300);
-  --ring: oklch(0.75 0.12 350);
-  --chart-1: oklch(0.75 0.12 350);
-  --chart-2: oklch(0.8 0.1 45);
-  --chart-3: oklch(0.75 0.08 280);
-  --chart-4: oklch(0.8 0.06 180);
-  --chart-5: oklch(0.85 0.04 120);
-  --sidebar: oklch(0.12 0.02 300);
-  --sidebar-foreground: oklch(0.95 0.01 300);
-  --sidebar-primary: oklch(0.75 0.12 350);
-  --sidebar-primary-foreground: oklch(0.12 0.02 300);
-  --sidebar-accent: oklch(0.25 0.03 300);
-  --sidebar-accent-foreground: oklch(0.95 0.01 300);
-  --sidebar-border: oklch(0.3 0.02 300);
-  --sidebar-ring: oklch(0.75 0.12 350);
-}
-
-:root {
-  --radius: 0.75rem;
-  --background: oklch(0.99 0.005 300);
-  --foreground: oklch(0.15 0.02 300);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.15 0.02 300);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.15 0.02 300);
-  --primary: oklch(0.65 0.15 350);
-  --primary-foreground: oklch(0.98 0.005 300);
-  --secondary: oklch(0.97 0.02 350);
-  --secondary-foreground: oklch(0.25 0.05 350);
-  --muted: oklch(0.96 0.01 300);
-  --muted-foreground: oklch(0.55 0.03 300);
-  --accent: oklch(0.95 0.03 350);
-  --accent-foreground: oklch(0.25 0.05 350);
-  --destructive: oklch(0.65 0.25 25);
-  --border: oklch(0.92 0.01 300);
-  --input: oklch(0.92 0.01 300);
-  --ring: oklch(0.65 0.15 350);
-  --chart-1: oklch(0.65 0.15 350);
-  --chart-2: oklch(0.75 0.12 45);
-  --chart-3: oklch(0.7 0.1 280);
-  --chart-4: oklch(0.8 0.08 180);
-  --chart-5: oklch(0.85 0.06 120);
-  --sidebar: oklch(0.98 0.005 300);
-  --sidebar-foreground: oklch(0.15 0.02 300);
-  --sidebar-primary: oklch(0.65 0.15 350);
-  --sidebar-primary-foreground: oklch(0.98 0.005 300);
-  --sidebar-accent: oklch(0.95 0.03 350);
-  --sidebar-accent-foreground: oklch(0.25 0.05 350);
-  --sidebar-border: oklch(0.92 0.01 300);
-  --sidebar-ring: oklch(0.65 0.15 350);
-}
-
-.dark {
-  --background: oklch(0.12 0.02 300);
-  --foreground: oklch(0.95 0.01 300);
-  --card: oklch(0.18 0.02 300);
-  --card-foreground: oklch(0.95 0.01 300);
-  --popover: oklch(0.18 0.02 300);
-  --popover-foreground: oklch(0.95 0.01 300);
-  --primary: oklch(0.75 0.12 350);
-  --primary-foreground: oklch(0.12 0.02 300);
-  --secondary: oklch(0.25 0.03 300);
-  --secondary-foreground: oklch(0.95 0.01 300);
-  --muted: oklch(0.25 0.03 300);
-  --muted-foreground: oklch(0.65 0.02 300);
-  --accent: oklch(0.25 0.03 300);
-  --accent-foreground: oklch(0.95 0.01 300);
-  --destructive: oklch(0.7 0.2 25);
-  --border: oklch(0.3 0.02 300);
-  --input: oklch(0.3 0.02 300);
-  --ring: oklch(0.75 0.12 350);
-  --chart-1: oklch(0.75 0.12 350);
-  --chart-2: oklch(0.8 0.1 45);
-  --chart-3: oklch(0.75 0.08 280);
-  --chart-4: oklch(0.85 0.06 180);
-  --chart-5: oklch(0.9 0.04 120);
-  --sidebar: oklch(0.18 0.02 300);
-  --sidebar-foreground: oklch(0.95 0.01 300);
-  --sidebar-primary: oklch(0.75 0.12 350);
-  --sidebar-primary-foreground: oklch(0.12 0.02 300);
-  --sidebar-accent: oklch(0.25 0.03 300);
-  --sidebar-accent-foreground: oklch(0.95 0.01 300);
-  --sidebar-border: oklch(0.3 0.02 300);
-  --sidebar-ring: oklch(0.75 0.12 350);
-}
-
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -291,21 +188,7 @@
   color: var(--hover-text) !important;
 }
 
-/* Override red/rose hover states with theme colors */
-.hover\:text-red-500:hover,
-.hover\:text-red-600:hover,
-.hover\:text-red-700:hover,
-.hover\:text-red-900:hover,
-.hover\:text-rose-500:hover,
-.hover\:text-rose-600:hover,
-.hover\:text-rose-700:hover {
-  color: var(--primary) !important;
-}
-
-.hover\:bg-red-50:hover,
-.hover\:bg-rose-50:hover {
-  background-color: var(--hover-primary) !important;
-}
+/* Override red/rose hover states with theme colors - REMOVED DUE TO CSS PARSING ERRORS */
 
 /* Override any remaining red/rose colors with theme colors */
 .text-red-500,
@@ -567,13 +450,7 @@ select:focus[class*="focus:ring-orange"] {
   color: var(--text-muted) !important;
 }
 
-.hover\:text-gray-700:hover {
-  color: var(--text) !important;
-}
-
-.hover\:border-gray-300:hover {
-  border-color: var(--border) !important;
-}
+/* Gray hover states - REMOVED DUE TO CSS PARSING ERRORS */
 
 /* Select dropdown styling */
 select {
@@ -636,6 +513,26 @@ svg[data-theme-aware="true"] {
   transition: color 0.2s ease-in-out !important;
 }
 
+/* Ensure all sidebar icons follow text color on hover */
+[data-sidebar] .group:hover svg {
+  color: var(--primary-dark) !important;
+}
+
+/* Force icon color to match text color on hover */
+[data-sidebar] .group:hover .w-5.h-5 {
+  color: var(--primary-dark) !important;
+}
+
+/* Ensure sidebar icons follow text color exactly */
+[data-sidebar] .group:hover svg[data-hover-aware="true"] {
+  color: var(--primary-dark) !important;
+}
+
+/* Override any default hover colors for sidebar icons */
+[data-sidebar] .group:hover svg {
+  color: var(--primary-dark) !important;
+}
+
 /* Active sidebar items maintain their styling */
 [data-sidebar] .group[data-active="true"] {
   background-color: var(--primary-light) !important;
@@ -652,13 +549,38 @@ svg[data-theme-aware="true"] {
   color: white !important;
 }
 
-/* Sidebar icon styling */
+/* Sidebar icon styling - no background, only color changes */
 [data-sidebar] svg[data-theme-aware="true"] {
   color: var(--primary-dark) !important;
+  background-color: transparent !important;
 }
 
 [data-sidebar] .group:hover svg[data-theme-aware="true"] {
   color: var(--primary-dark) !important;
+  background-color: transparent !important;
+}
+
+/* Ensure all sidebar icons have no background */
+[data-sidebar] svg {
+  background-color: transparent !important;
+}
+
+/* Settings page tab styling */
+[data-theme-aware="true"][data-active="true"] {
+  border-color: var(--primary-dark) !important;
+  color: var(--primary-dark) !important;
+  background-color: transparent !important;
+}
+
+[data-theme-aware="true"][data-active="false"] {
+  border-color: transparent !important;
+  color: var(--text-muted) !important;
+  background-color: transparent !important;
+}
+
+[data-theme-aware="true"][data-active="false"]:hover {
+  color: var(--primary-dark) !important;
+  border-color: var(--primary-light) !important;
 }
 
 /* Remove border radius from sidebar */
@@ -722,19 +644,18 @@ button[data-slot="button"]:hover {
   border-color: var(--primary-dark) !important;
 }
 
-/* Override any rose/pink hover states */
-.hover\:text-rose-500:hover,
-.hover\:text-rose-600:hover,
-.hover\:text-rose-700:hover,
-.hover\:text-pink-500:hover,
-.hover\:text-pink-600:hover,
-.hover\:text-pink-700:hover,
-.hover\:bg-rose-500:hover,
-.hover\:bg-rose-600:hover,
-.hover\:bg-rose-700:hover,
-.hover\:bg-pink-500:hover,
-.hover\:bg-pink-600:hover,
-.hover\:bg-pink-700:hover {
-  background-color: var(--primary) !important;
-  color: white !important;
+/* Override any rose/pink hover states - REMOVED DUE TO CSS PARSING ERRORS */
+
+/* Apply font family globally */
+body {
+  font-family: var(--font-family, "Inter");
+}
+
+html {
+  font-family: var(--font-family, "Inter");
+}
+
+/* Apply font family to all elements */
+* {
+  font-family: var(--font-family, "Inter");
 }

@@ -186,11 +186,8 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
           {/* Header with Logo */}
           <div className="flex items-center p-6 border-b border-gray-200">
             <div className="flex items-center space-x-3">
-              <div
-                className="w-8 h-8 rounded-lg flex items-center justify-center"
-                data-theme-aware="true"
-              >
-                <Sparkles className="w-5 h-5 text-white" />
+              <div className="flex items-center justify-center">
+                <Sparkles className="w-5 h-5" data-theme-aware="true" />
               </div>
               <div>
                 <h1 className="text-lg font-bold text-gray-900">Honey Rae</h1>
@@ -230,6 +227,7 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
                         : "text-gray-500 group-hover:text-gray-700",
                     )}
                     data-theme-aware={isActive(item.href) ? "true" : undefined}
+                    data-hover-aware="true"
                   />
                   <span
                     className={cn(
