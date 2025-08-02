@@ -1,6 +1,7 @@
 import { OAuthDebug } from "@/components/OAuthDebug";
 import { GoogleCalendarTest } from "@/components/GoogleCalendarTest";
 import { EnvironmentChecker } from "@/components/EnvironmentChecker";
+import { ThemeDebug } from "@/components/ThemeDebug";
 
 export default function OAuthDebugPage() {
   return (
@@ -16,6 +17,7 @@ export default function OAuthDebugPage() {
         </div>
 
         <EnvironmentChecker />
+        <ThemeDebug />
         <OAuthDebug />
         <GoogleCalendarTest />
       </div>
