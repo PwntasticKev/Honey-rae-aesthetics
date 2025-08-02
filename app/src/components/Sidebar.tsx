@@ -218,6 +218,7 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
                   "w-full flex items-center justify-between p-3 rounded-lg text-left transition-all duration-200 group",
                   isActive(item.href) && "border-l-4",
                 )}
+                data-active={isActive(item.href) ? "true" : "false"}
                 data-theme-aware={isActive(item.href) ? "true" : undefined}
                 data-hover-aware="true"
               >

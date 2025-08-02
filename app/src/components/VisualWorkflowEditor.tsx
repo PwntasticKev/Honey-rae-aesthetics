@@ -1302,7 +1302,8 @@ function WorkflowEditor({
           <Button
             onClick={saveWorkflow}
             disabled={isSaving}
-            className="bg-purple-600 hover:bg-purple-700"
+            data-theme-aware="true"
+            data-variant="solid"
           >
             <Save className="w-4 h-4 mr-2" />
             {isSaving ? "Saving..." : "Save Workflow"}

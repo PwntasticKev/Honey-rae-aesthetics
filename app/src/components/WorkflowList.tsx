@@ -360,6 +360,7 @@ export function WorkflowList({
           size="sm"
           onClick={() => onToggleWorkflow(workflow._id, !isActive)}
           data-theme-aware="true"
+          data-variant={isActive ? "light" : "solid"}
         >
           {isActive ? (
             <Pause className="w-4 h-4" />

@@ -447,22 +447,114 @@ h6[data-theme-aware="true"] {
   color: inherit !important;
 }
 
-/* Only apply theme colors to specific interactive elements */
-button[data-theme-aware="true"],
-span[data-theme-aware="true"],
-div[data-theme-aware="true"] {
+/* Button Variant System - Two types: solid and light */
+
+/* Solid Button Variant (data-variant="solid") */
+button[data-theme-aware="true"][data-variant="solid"],
+button[data-theme-aware="true"]:not([data-variant]) {
+  background-color: var(--primary-dark) !important;
+  color: white !important;
+  border-color: var(--primary-dark) !important;
+  transition: all 0.2s ease-in-out !important;
+}
+
+button[data-theme-aware="true"][data-variant="solid"]:hover,
+button[data-theme-aware="true"]:not([data-variant]):hover {
   background-color: var(--primary-light) !important;
   color: var(--primary-dark) !important;
   border-color: var(--primary-light) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1) !important;
 }
 
-/* Apply theme colors to SVG icons as well */
+/* Light Button Variant (data-variant="light") */
+button[data-theme-aware="true"][data-variant="light"] {
+  background-color: var(--primary-light) !important;
+  color: var(--primary-dark) !important;
+  border-color: var(--primary-light) !important;
+  transition: all 0.2s ease-in-out !important;
+}
+
+button[data-theme-aware="true"][data-variant="light"]:hover {
+  background-color: var(--primary-dark) !important;
+  color: white !important;
+  border-color: var(--primary-dark) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Apply theme colors to non-button elements - TEXT ONLY, NO BACKGROUNDS */
+span[data-theme-aware="true"]:not([data-slot="badge"]),
+div[data-theme-aware="true"]:not([data-slot="badge"]) {
+  color: var(--primary-dark) !important;
+  background-color: transparent !important;
+  transition: color 0.2s ease-in-out !important;
+}
+
+/* Apply theme colors to SVG icons */
 svg[data-theme-aware="true"] {
   color: var(--primary-dark) !important;
+  transition: color 0.2s ease-in-out !important;
 }
 
-/* Fix hover states to use darker theme colors - but exclude inputs */
-[data-theme-aware="true"]:hover:not(input):not(textarea):not(select) {
+/* Sidebar Navigation Hover Animations */
+[data-sidebar] .group:hover {
+  background-color: var(--primary-light) !important;
+  transform: translateX(4px) !important;
+  transition: all 0.2s ease-in-out !important;
+}
+
+[data-sidebar] .group:hover svg,
+[data-sidebar] .group:hover span {
+  color: var(--primary-dark) !important;
+  transition: color 0.2s ease-in-out !important;
+}
+
+/* Active sidebar items maintain their styling */
+[data-sidebar] .group[data-active="true"] {
+  background-color: var(--primary-light) !important;
+  border-right: 3px solid var(--primary-dark) !important;
+}
+
+[data-sidebar] .group[data-active="true"]:hover {
+  transform: translateX(2px) !important;
+  background-color: var(--primary-dark) !important;
+}
+
+[data-sidebar] .group[data-active="true"]:hover svg,
+[data-sidebar] .group[data-active="true"]:hover span {
+  color: white !important;
+}
+
+/* Apply to all buttons regardless of data-theme-aware - but respect existing variants */
+button:not(.no-theme):not([class*="variant-"]):not([class*="bg-"]):not(
+    [class*="text-"]
+  ) {
+  background-color: var(--primary-light) !important;
+  color: var(--primary-dark) !important;
+  border-color: var(--primary-light) !important;
+  transition: all 0.2s ease-in-out !important;
+}
+
+button:not(.no-theme):not([class*="variant-"]):not([class*="bg-"]):not(
+    [class*="text-"]
+  ):hover:not(input):not(textarea):not(select) {
+  background-color: var(--primary-dark) !important;
+  color: white !important;
+  border-color: var(--primary-dark) !important;
+}
+
+/* Force theme on buttons with default/primary variants */
+button[class*="bg-primary"],
+button[data-slot="button"] {
+  background-color: var(--primary-light) !important;
+  color: var(--primary-dark) !important;
+  border-color: var(--primary-light) !important;
+  transition: all 0.2s ease-in-out !important;
+}
+
+button[class*="bg-primary"]:hover,
+button[data-slot="button"]:hover {
   background-color: var(--primary-dark) !important;
   color: white !important;
   border-color: var(--primary-dark) !important;

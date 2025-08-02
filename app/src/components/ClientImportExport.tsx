@@ -197,6 +197,8 @@ export function ClientImportExport({ orgId }: ClientImportExportProps) {
           onClick={() => setImportDialogOpen(true)}
           variant="outline"
           className="flex items-center gap-2"
+          data-theme-aware="true"
+          data-variant="light"
         >
           <Upload className="h-4 w-4" />
           Import Clients
@@ -206,6 +208,8 @@ export function ClientImportExport({ orgId }: ClientImportExportProps) {
           onClick={() => setExportDialogOpen(true)}
           variant="outline"
           className="flex items-center gap-2"
+          data-theme-aware="true"
+          data-variant="light"
         >
           <Download className="h-4 w-4" />
           Export Clients
@@ -215,6 +219,8 @@ export function ClientImportExport({ orgId }: ClientImportExportProps) {
           onClick={() => setSyncDialogOpen(true)}
           variant="outline"
           className="flex items-center gap-2"
+          data-theme-aware="true"
+          data-variant="light"
         >
           <RefreshCw className="h-4 w-4" />
           Sync
