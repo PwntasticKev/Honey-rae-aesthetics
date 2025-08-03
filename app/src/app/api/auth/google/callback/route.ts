@@ -107,20 +107,41 @@ export async function GET(request: NextRequest) {
     console.log("- Client Secret exists:", !!GOOGLE_CLIENT_SECRET);
     console.log("- Authorization code length:", code?.length);
     console.log("- Redirect URI:", REDIRECT_URI);
+    console.log("- Authorization code:", code);
+    console.log(
+      "- Client ID preview:",
+      GOOGLE_CLIENT_ID?.substring(0, 20) + "...",
+    );
+    console.log(
+      "- Client Secret preview:",
+      GOOGLE_CLIENT_SECRET?.substring(0, 20) + "...",
+    );
 
     // Exchange authorization code for access token
+    const tokenParams = {
+      client_id: GOOGLE_CLIENT_ID!,
+      client_secret: GOOGLE_CLIENT_SECRET!,
+      code: code,
+      grant_type: "authorization_code",
+      redirect_uri: REDIRECT_URI,
+    };
+
+    console.log("📤 Sending token request with parameters:");
+    console.log("- client_id:", tokenParams.client_id);
+    console.log(
+      "- client_secret:",
+      tokenParams.client_secret.substring(0, 10) + "...",
+    );
+    console.log("- code:", tokenParams.code);
+    console.log("- grant_type:", tokenParams.grant_type);
+    console.log("- redirect_uri:", tokenParams.redirect_uri);
+
     const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
       },
-      body: new URLSearchParams({
-        client_id: GOOGLE_CLIENT_ID!,
-        client_secret: GOOGLE_CLIENT_SECRET!,
-        code: code,
-        grant_type: "authorization_code",
-        redirect_uri: REDIRECT_URI,
-      }),
+      body: new URLSearchParams(tokenParams),
     });
 
     if (!tokenResponse.ok) {

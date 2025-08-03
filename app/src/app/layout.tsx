@@ -27,9 +27,11 @@ export default function RootLayout({
       <body>
         <ConvexProviderWrapper>
           <EnvironmentProvider>
-            <ThemeLoader />
-            {children}
-            <Toaster />
+            <div data-testid="app-layout">
+              <ThemeLoader />
+              {children}
+              <Toaster />
+            </div>
           </EnvironmentProvider>
         </ConvexProviderWrapper>
       </body>

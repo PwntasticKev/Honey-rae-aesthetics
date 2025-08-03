@@ -23,7 +23,7 @@ export function OAuthDebug() {
 
   const checkServerEnvironment = async () => {
     try {
-      const response = await fetch("/api/debug/env");
+      const response = await fetch("/api/debug/oauth");
       if (response.ok) {
         const data = await response.json();
         setServerEnvInfo(data);
@@ -225,7 +225,7 @@ export function OAuthDebug() {
         {serverEnvInfo && (
           <div className="bg-green-50 p-4 rounded-lg">
             <h3 className="text-lg font-semibold mb-3 text-green-900">
-              Server Environment
+              OAuth Configuration
             </h3>
             <div className="text-sm text-green-800 space-y-2">
               {Object.entries(serverEnvInfo.environment).map(
@@ -233,7 +233,9 @@ export function OAuthDebug() {
                   <div key={key} className="flex items-center justify-between">
                     <span className="font-medium">{key}:</span>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs">{info.value}</span>
+                      <span className="text-xs">
+                        {info.preview || info.value}
+                      </span>
                       {info.valid ? (
                         <CheckCircle className="h-4 w-4 text-green-500" />
                       ) : (
@@ -243,6 +245,20 @@ export function OAuthDebug() {
                   </div>
                 ),
               )}
+            </div>
+
+            {/* Troubleshooting Section */}
+            <div className="mt-4 p-3 bg-yellow-50 rounded-lg">
+              <h4 className="text-sm font-semibold text-yellow-900 mb-2">
+                Troubleshooting "invalid_client" Error:
+              </h4>
+              <div className="text-xs text-yellow-800 space-y-1">
+                {serverEnvInfo.troubleshooting?.invalidClient?.steps.map(
+                  (step: string, index: number) => (
+                    <div key={index}>{step}</div>
+                  ),
+                )}
+              </div>
             </div>
           </div>
         )}
