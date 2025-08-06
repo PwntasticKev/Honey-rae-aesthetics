@@ -120,6 +120,11 @@ export const createDemoOrg = mutation({
       name: "Dr. Kevin Rae",
       email: "demo@honeyrae.com",
       role: "admin",
+      twoFactorEnabled: false,
+      preferredOtpMethod: "email",
+      isActive: true,
+      emailVerified: true,
+      phoneVerified: false,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });
@@ -204,6 +209,9 @@ export const createDemoOrg = mutation({
       name: "Welcome New Client",
       description: "Automatically welcome new clients with SMS and email",
       trigger: "new_client",
+      status: "active",
+      preventDuplicates: true,
+      duplicatePreventionDays: 30,
       conditions: [],
       actions: [
         {
@@ -229,6 +237,9 @@ export const createDemoOrg = mutation({
           order: 3,
         },
       ],
+      totalRuns: 0,
+      successfulRuns: 0,
+      failedRuns: 0,
       isActive: true,
       createdAt: Date.now(),
       updatedAt: Date.now(),

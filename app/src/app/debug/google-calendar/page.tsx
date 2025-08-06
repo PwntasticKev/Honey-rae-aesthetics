@@ -9,6 +9,10 @@ import { OAuthConfigTest } from "@/components/OAuthConfigTest";
 import { QuickOAuthTest } from "@/components/QuickOAuthTest";
 import { OAuthSuccessHandler } from "@/components/OAuthSuccessHandler";
 import { TokenDebug } from "@/components/TokenDebug";
+import { Suspense } from "react";
+
+// Force this page to be client-side only to avoid SSR issues with window access
+export const dynamic = 'force-dynamic';
 
 export default function GoogleCalendarDebugPage() {
   return (
@@ -23,12 +27,16 @@ export default function GoogleCalendarDebugPage() {
 
         <div className="space-y-6">
           <TokenDebug />
-          <OAuthSuccessHandler />
+          <Suspense fallback={<div>Loading OAuth handler...</div>}>
+            <OAuthSuccessHandler />
+          </Suspense>
           <EnvironmentTest />
           <QuickOAuthTest />
           <OAuthConfigTest />
           <OAuthTest />
-          <ServerOAuthButton />
+          <Suspense fallback={<div>Loading server OAuth button...</div>}>
+            <ServerOAuthButton />
+          </Suspense>
           <GoogleOAuthButton />
           <GoogleApiTest />
           <GoogleCalendarDebug />

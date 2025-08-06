@@ -1,38 +1,27 @@
-import type { Metadata } from "next";
-import "./globals.css";
+"use client";
+
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ConvexProviderWrapper } from "@/components/ConvexProvider";
 import { EnvironmentProvider } from "@/contexts/EnvironmentContext";
-import { ThemeLoader } from "@/components/ThemeLoader";
-import { Toaster } from "@/components/ui/toaster";
+import { OptimizedThemeLoader } from "@/components/OptimizedThemeLoader";
+import { AuthProvider } from "@/hooks/useAuth";
+import "./globals.css";
 
-export const metadata: Metadata = {
-  title: "Honey Rae Aesthetics",
-  description: "Complete aesthetics practice management platform",
-};
-
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <head>
-        <script
-          src="https://accounts.google.com/gsi/client"
-          async
-          defer
-        ></script>
-      </head>
       <body>
         <ConvexProviderWrapper>
-          <EnvironmentProvider>
-            <div data-testid="app-layout">
-              <ThemeLoader />
-              {children}
-              <Toaster />
-            </div>
-          </EnvironmentProvider>
+          <AuthProvider>
+            <EnvironmentProvider>
+              <OptimizedThemeLoader />
+              <ErrorBoundary>
+                <div className="app-layout" data-testid="app-layout">
+                  {children}
+                </div>
+              </ErrorBoundary>
+            </EnvironmentProvider>
+          </AuthProvider>
         </ConvexProviderWrapper>
       </body>
     </html>

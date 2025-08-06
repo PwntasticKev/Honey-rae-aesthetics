@@ -94,7 +94,7 @@ export function OAuthDebug() {
       clientId: !!clientId,
       apiKey: !!apiKey,
       appUrl: !!appUrl,
-      currentUrl: window.location.origin,
+      currentUrl: typeof window !== "undefined" ? window.location.origin : "SSR",
     };
   };
 

@@ -104,9 +104,13 @@ test.describe("Complete User Journey", () => {
 
     // 4. Mock popup window interaction
     await page.evaluate(() => {
-      // Simulate successful OAuth
-      localStorage.setItem("google_calendar_access_token", "mock_token");
-      window.dispatchEvent(new Event("storage"));
+      try {
+        // Simulate successful OAuth
+        localStorage.setItem("google_calendar_access_token", "mock_token");
+        window.dispatchEvent(new Event("storage"));
+      } catch (e) {
+        console.log("Storage access denied, skipping OAuth simulation");
+      }
     });
 
     // 5. Verify calendar is connected

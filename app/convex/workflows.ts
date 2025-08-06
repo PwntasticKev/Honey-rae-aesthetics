@@ -68,6 +68,12 @@ export const create = mutation({
     const now = Date.now();
     const workflowId = await ctx.db.insert("workflows", {
       ...args,
+      status: "draft",
+      preventDuplicates: true,
+      duplicatePreventionDays: 30,
+      totalRuns: 0,
+      successfulRuns: 0,
+      failedRuns: 0,
       isActive: args.isActive ?? true,
       createdAt: now,
       updatedAt: now,

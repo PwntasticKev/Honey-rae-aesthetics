@@ -42,13 +42,28 @@ export default defineSchema({
     name: v.string(),
     email: v.string(),
     role: v.union(v.literal("admin"), v.literal("manager"), v.literal("staff")),
+    // Authentication fields
+    passwordHash: v.optional(v.string()), // For email/password login
+    googleId: v.optional(v.string()), // For Google OAuth
+    profileImageUrl: v.optional(v.string()),
+    // Phone and preferences
+    phone: v.optional(v.string()),
+    twoFactorEnabled: v.optional(v.boolean()), // Optional for backward compatibility
+    preferredOtpMethod: v.optional(v.union(v.literal("sms"), v.literal("email"))), // Optional for backward compatibility
+    // Session management
     lastLogin: v.optional(v.number()),
+    isActive: v.optional(v.boolean()), // Optional for backward compatibility
+    emailVerified: v.optional(v.boolean()), // Optional for backward compatibility
+    phoneVerified: v.optional(v.boolean()), // Optional for backward compatibility
+    // Audit fields
     invited_by: v.optional(v.id("users")),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_org", ["orgId"])
-    .index("by_email", ["email"]),
+    .index("by_email", ["email"])
+    .index("by_google_id", ["googleId"])
+    .index("by_phone", ["phone"]),
 
   // Clients - aesthetic customers
   clients: defineTable({
@@ -163,17 +178,45 @@ export default defineSchema({
     .index("by_client", ["clientId"])
     .index("by_tag", ["tag"]),
 
+  // Workflow Directories - organize workflows in folders
+  workflowDirectories: defineTable({
+    orgId: v.id("orgs"),
+    name: v.string(),
+    parentId: v.optional(v.id("workflowDirectories")), // For nested directories
+    description: v.optional(v.string()),
+    color: v.optional(v.string()), // Visual organization
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_parent", ["parentId"]),
+
   // Workflows - automation logic
   workflows: defineTable({
     orgId: v.id("orgs"),
+    directoryId: v.optional(v.id("workflowDirectories")), // Directory organization
     name: v.string(),
     description: v.optional(v.string()),
+    status: v.optional(v.union(
+      v.literal("active"),
+      v.literal("inactive"),
+      v.literal("draft"),
+      v.literal("archived"),
+    )),
     trigger: v.union(
       v.literal("new_client"),
       v.literal("appointment_completed"),
       v.literal("appointment_scheduled"),
       v.literal("manual"),
+      v.literal("morpheus8"), // Appointment-based triggers
+      v.literal("toxins"),
+      v.literal("filler"),
+      v.literal("consultation"),
     ),
+    // Duplicate prevention settings
+    preventDuplicates: v.optional(v.boolean()),
+    duplicatePreventionDays: v.optional(v.number()), // Default 30 days
+    // Enhanced conditions with more operators
     conditions: v.array(
       v.object({
         field: v.string(),
@@ -181,6 +224,17 @@ export default defineSchema({
           v.literal("equals"),
           v.literal("contains"),
           v.literal("greater_than"),
+          v.literal("less_than"),
+          v.literal("greater_than_or_equal"),
+          v.literal("less_than_or_equal"),
+          v.literal("not_equals"),
+          v.literal("is_empty"),
+          v.literal("is_not_empty"),
+          v.literal("date_before"),
+          v.literal("date_after"),
+          v.literal("days_ago"),
+          v.literal("has_tag"),
+          v.literal("not_has_tag"),
         ),
         value: v.string(),
       }),
@@ -193,6 +247,8 @@ export default defineSchema({
           v.literal("delay"),
           v.literal("tag"),
           v.literal("conditional"),
+          v.literal("create_appointment"),
+          v.literal("add_note"),
         ),
         config: v.any(),
         order: v.number(),
@@ -211,6 +267,7 @@ export default defineSchema({
           width: v.number(),
           height: v.number(),
           config: v.any(),
+          comments: v.optional(v.string()), // Comments on nodes
         }),
       ),
     ),
@@ -225,12 +282,20 @@ export default defineSchema({
         }),
       ),
     ),
+    // Execution statistics
+    totalRuns: v.optional(v.number()),
+    successfulRuns: v.optional(v.number()),
+    failedRuns: v.optional(v.number()),
+    lastRun: v.optional(v.number()),
+    averageExecutionTime: v.optional(v.number()), // in milliseconds
     isActive: v.boolean(),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_org", ["orgId"])
-    .index("by_trigger", ["trigger"]),
+    .index("by_directory", ["directoryId"])
+    .index("by_trigger", ["trigger"])
+    .index("by_status", ["status"]),
 
   // Message Templates - reusable content
   messageTemplates: defineTable({
@@ -292,7 +357,79 @@ export default defineSchema({
     .index("by_client", ["clientId"])
     .index("by_status", ["status"]),
 
-  // Workflow Executions - track workflow runs
+  // Workflow Enrollments - clients enrolled in workflows
+  workflowEnrollments: defineTable({
+    orgId: v.id("orgs"),
+    workflowId: v.id("workflows"),
+    clientId: v.id("clients"),
+    enrollmentReason: v.string(), // "appointment_completed", "manual", etc.
+    currentStatus: v.union(
+      v.literal("active"),
+      v.literal("paused"),
+      v.literal("completed"),
+      v.literal("cancelled"),
+      v.literal("failed"),
+    ),
+    currentStep: v.optional(v.string()), // Current node/step ID
+    nextExecutionAt: v.optional(v.number()), // When next step should run
+    enrolledAt: v.number(),
+    completedAt: v.optional(v.number()),
+    pausedAt: v.optional(v.number()),
+    resumedAt: v.optional(v.number()),
+    metadata: v.optional(v.any()), // Additional context data
+  })
+    .index("by_org", ["orgId"])
+    .index("by_workflow", ["workflowId"])
+    .index("by_client", ["clientId"])
+    .index("by_status", ["currentStatus"])
+    .index("by_next_execution", ["nextExecutionAt"]),
+
+  // Execution Logs - detailed step-by-step execution tracking
+  executionLogs: defineTable({
+    orgId: v.id("orgs"),
+    workflowId: v.id("workflows"),
+    enrollmentId: v.id("workflowEnrollments"),
+    clientId: v.id("clients"),
+    stepId: v.string(), // Node/step identifier
+    action: v.string(), // "send_sms", "send_email", "delay", etc.
+    status: v.union(
+      v.literal("executed"),
+      v.literal("failed"),
+      v.literal("skipped"),
+      v.literal("retrying"),
+    ),
+    executedAt: v.number(),
+    executionTimeMs: v.optional(v.number()), // How long the step took
+    message: v.optional(v.string()), // Success/error message
+    error: v.optional(v.string()), // Detailed error info
+    metadata: v.optional(v.any()), // Step-specific data
+  })
+    .index("by_org", ["orgId"])
+    .index("by_workflow", ["workflowId"])
+    .index("by_enrollment", ["enrollmentId"])
+    .index("by_client", ["clientId"])
+    .index("by_status", ["status"])
+    .index("by_executed_at", ["executedAt"]),
+
+  // Appointment Workflow Triggers - track appointment-based enrollments
+  appointmentTriggers: defineTable({
+    orgId: v.id("orgs"),
+    appointmentId: v.id("appointments"),
+    clientId: v.id("clients"),
+    appointmentType: v.string(), // "morpheus8", "toxins", etc.
+    triggeredWorkflows: v.array(v.id("workflows")), // Workflows triggered
+    enrollmentIds: v.array(v.id("workflowEnrollments")), // Created enrollments
+    triggeredAt: v.number(),
+    appointmentEndTime: v.number(),
+    metadata: v.optional(v.any()),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_appointment", ["appointmentId"])
+    .index("by_client", ["clientId"])
+    .index("by_type", ["appointmentType"])
+    .index("by_triggered_at", ["triggeredAt"]),
+
+  // Workflow Executions - track workflow runs (keeping for backward compatibility)
   workflowExecutions: defineTable({
     orgId: v.id("orgs"),
     workflowId: v.id("workflows"),
@@ -318,62 +455,213 @@ export default defineSchema({
     platform: v.union(
       v.literal("instagram"),
       v.literal("facebook"),
-      v.literal("twitter"),
+      v.literal("youtube"),
+      v.literal("google_business"),
       v.literal("tiktok"),
+      v.literal("linkedin"),
+      v.literal("apple_business"),
     ),
     accountName: v.string(),
+    accountId: v.optional(v.string()), // Platform-specific account ID
     accessToken: v.optional(v.string()),
     refreshToken: v.optional(v.string()),
+    tokenExpiresAt: v.optional(v.number()),
     isConnected: v.boolean(),
     lastSync: v.optional(v.number()),
+    profileImageUrl: v.optional(v.string()),
+    followerCount: v.optional(v.number()),
+    connectionError: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_org", ["orgId"])
-    .index("by_platform", ["platform"]),
+    .index("by_platform", ["platform"])
+    .index("by_connected", ["isConnected"]),
 
-  // Social Media Posts - published content
+  // Social Media Posts - comprehensive post management
   socialPosts: defineTable({
     orgId: v.id("orgs"),
-    platformId: v.id("socialPlatforms"),
+    title: v.string(),
     content: v.string(),
-    mediaUrls: v.array(v.string()),
+    hashtags: v.array(v.string()),
+    // Media handling
+    mediaFiles: v.array(v.object({
+      url: v.string(),
+      type: v.union(v.literal("image"), v.literal("video")),
+      fileName: v.string(),
+      fileSize: v.number(),
+      mimeType: v.string(),
+      // Platform-specific versions for auto-resizing
+      versions: v.optional(v.array(v.object({
+        platform: v.string(),
+        url: v.string(),
+        width: v.number(),
+        height: v.number(),
+        aspectRatio: v.string(), // "1:1", "16:9", "9:16", etc.
+      }))),
+    })),
+    // Platform targeting
+    targetPlatforms: v.array(v.string()), // ["instagram", "facebook", etc.]
+    platformSpecificContent: v.optional(v.array(v.object({
+      platform: v.string(),
+      content: v.string(),
+      hashtags: v.array(v.string()),
+    }))),
+    // Scheduling
     status: v.union(
       v.literal("draft"),
       v.literal("scheduled"),
+      v.literal("publishing"),
       v.literal("published"),
       v.literal("failed"),
+      v.literal("cancelled"),
     ),
     scheduledFor: v.optional(v.number()),
-    publishedAt: v.optional(v.number()),
-    externalPostId: v.optional(v.string()),
+    timezone: v.optional(v.string()),
+    // Publishing tracking
+    publishingResults: v.optional(v.array(v.object({
+      platform: v.string(),
+      status: v.union(v.literal("success"), v.literal("failed")),
+      externalPostId: v.optional(v.string()),
+      error: v.optional(v.string()),
+      publishedAt: v.optional(v.number()),
+    }))),
+    // AI assistance
+    aiSuggestedCaption: v.optional(v.string()),
+    aiSuggestedHashtags: v.optional(v.array(v.string())),
+    aiAnalysisResults: v.optional(v.object({
+      imageDescription: v.optional(v.string()),
+      suggestedTiming: v.optional(v.string()),
+      estimatedEngagement: v.optional(v.number()),
+    })),
+    // Bulk/CSV import tracking
+    bulkImportId: v.optional(v.string()),
+    // User context
+    createdBy: v.id("users"),
+    lastEditedBy: v.optional(v.id("users")),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_org", ["orgId"])
-    .index("by_platform", ["platformId"])
-    .index("by_status", ["status"]),
+    .index("by_status", ["status"])
+    .index("by_scheduled", ["scheduledFor"])
+    .index("by_created_by", ["createdBy"])
+    .index("by_bulk_import", ["bulkImportId"]),
 
-  // Social Media Analytics - engagement metrics
+  // Social Media Analytics - comprehensive engagement metrics
   socialAnalytics: defineTable({
     orgId: v.id("orgs"),
     postId: v.id("socialPosts"),
     platform: v.union(
       v.literal("instagram"),
       v.literal("facebook"),
-      v.literal("twitter"),
+      v.literal("youtube"),
+      v.literal("google_business"),
       v.literal("tiktok"),
+      v.literal("linkedin"),
+      v.literal("apple_business"),
     ),
+    externalPostId: v.string(), // Platform's post ID
+    // Basic metrics
     likes: v.number(),
     comments: v.number(),
     shares: v.number(),
     views: v.number(),
-    date: v.number(),
+    // Advanced metrics
+    impressions: v.optional(v.number()),
+    reach: v.optional(v.number()),
+    clicks: v.optional(v.number()),
+    saves: v.optional(v.number()),
+    engagement_rate: v.optional(v.number()),
+    // Platform-specific metrics
+    platform_specific: v.optional(v.object({
+      // Instagram: story_views, profile_visits, website_clicks
+      // TikTok: video_duration_watched, profile_views
+      // LinkedIn: company_page_clicks, follow_clicks
+      // YouTube: watch_time, subscribers_gained, average_view_duration
+      metrics: v.any(),
+    })),
+    // Demographics (if available)
+    demographics: v.optional(v.object({
+      age_groups: v.optional(v.any()),
+      genders: v.optional(v.any()),
+      locations: v.optional(v.any()),
+      devices: v.optional(v.any()),
+    })),
+    // Time-series data
+    hourly_data: v.optional(v.array(v.object({
+      hour: v.number(),
+      views: v.number(),
+      likes: v.number(),
+      comments: v.number(),
+    }))),
+    // Data collection metadata
+    lastUpdated: v.number(),
+    nextUpdate: v.optional(v.number()),
+    isRealTime: v.boolean(), // Was this fetched real-time or from cache?
     createdAt: v.number(),
   })
     .index("by_org", ["orgId"])
     .index("by_post", ["postId"])
-    .index("by_platform", ["platform"]),
+    .index("by_platform", ["platform"])
+    .index("by_external_post", ["externalPostId"])
+    .index("by_last_updated", ["lastUpdated"]),
+
+  // Bulk Import Jobs - track CSV/bulk post imports
+  bulkImportJobs: defineTable({
+    orgId: v.id("orgs"),
+    userId: v.id("users"),
+    jobId: v.string(), // Unique identifier
+    fileName: v.string(),
+    totalRows: v.number(),
+    processedRows: v.number(),
+    successfulRows: v.number(),
+    failedRows: v.number(),
+    status: v.union(
+      v.literal("processing"),
+      v.literal("completed"),
+      v.literal("failed"),
+      v.literal("cancelled"),
+    ),
+    errors: v.array(v.object({
+      row: v.number(),
+      column: v.optional(v.string()),
+      error: v.string(),
+    })),
+    createdPostIds: v.array(v.id("socialPosts")),
+    createdAt: v.number(),
+    completedAt: v.optional(v.number()),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_user", ["userId"])
+    .index("by_job_id", ["jobId"])
+    .index("by_status", ["status"]),
+
+  // Content Templates - reusable post templates
+  contentTemplates: defineTable({
+    orgId: v.id("orgs"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    category: v.optional(v.string()), // "promotion", "before-after", "educational", etc.
+    content: v.string(),
+    hashtags: v.array(v.string()),
+    defaultPlatforms: v.array(v.string()),
+    // Template variables like {{client_name}}, {{service_name}}
+    variables: v.array(v.object({
+      name: v.string(),
+      description: v.string(),
+      required: v.boolean(),
+      defaultValue: v.optional(v.string()),
+    })),
+    usageCount: v.number(),
+    lastUsed: v.optional(v.number()),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_category", ["category"])
+    .index("by_created_by", ["createdBy"]),
 
   // Notifications - in-app notifications
   notifications: defineTable({
@@ -465,4 +753,94 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index("by_org", ["orgId"]),
+
+  // Scheduled Actions - cron-like task scheduling
+  scheduledActions: defineTable({
+    orgId: v.id("orgs"),
+    action: v.string(), // "processAppointmentCompletion", "syncCalendar", etc.
+    args: v.any(), // Action arguments
+    scheduledFor: v.number(), // When to execute
+    status: v.union(
+      v.literal("pending"),
+      v.literal("running"),
+      v.literal("completed"),
+      v.literal("failed"),
+    ),
+    attempts: v.number(),
+    maxAttempts: v.optional(v.number()),
+    lastAttempt: v.optional(v.number()),
+    error: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_status", ["status"])
+    .index("by_scheduled_for", ["scheduledFor"]),
+
+  // OTP Codes - for two-factor authentication
+  otpCodes: defineTable({
+    userId: v.id("users"),
+    code: v.string(), // 6-digit code
+    type: v.union(v.literal("login"), v.literal("verification"), v.literal("password_reset")),
+    deliveryMethod: v.union(v.literal("sms"), v.literal("email")),
+    deliveryTarget: v.string(), // Phone number or email address
+    isUsed: v.boolean(),
+    attempts: v.number(), // Number of verification attempts
+    maxAttempts: v.number(), // Maximum allowed attempts (default 3)
+    expiresAt: v.number(), // 10 minutes from creation
+    createdAt: v.number(),
+    usedAt: v.optional(v.number()),
+  })
+    .index("by_user", ["userId"])
+    .index("by_code", ["code"])
+    .index("by_expiry", ["expiresAt"])
+    .index("by_user_type", ["userId", "type"]),
+
+  // User Sessions - for session management
+  userSessions: defineTable({
+    userId: v.id("users"),
+    sessionToken: v.string(), // JWT or random token
+    refreshToken: v.optional(v.string()),
+    deviceInfo: v.optional(v.object({
+      userAgent: v.string(),
+      ip: v.string(),
+      deviceName: v.optional(v.string()),
+    })),
+    isActive: v.boolean(),
+    expiresAt: v.number(),
+    lastUsedAt: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_token", ["sessionToken"])
+    .index("by_refresh_token", ["refreshToken"])
+    .index("by_expiry", ["expiresAt"]),
+
+  // Authentication Events - audit log for security
+  authEvents: defineTable({
+    userId: v.optional(v.id("users")), // Optional because failed logins won't have userId
+    email: v.string(),
+    eventType: v.union(
+      v.literal("login_success"),
+      v.literal("login_failed"),
+      v.literal("otp_sent"),
+      v.literal("otp_verified"),
+      v.literal("otp_failed"),
+      v.literal("password_reset"),
+      v.literal("account_created"),
+      v.literal("logout"),
+    ),
+    method: v.union(v.literal("email"), v.literal("google"), v.literal("otp")),
+    deviceInfo: v.optional(v.object({
+      userAgent: v.string(),
+      ip: v.string(),
+      deviceName: v.optional(v.string()),
+    })),
+    metadata: v.optional(v.any()), // Additional event-specific data
+    createdAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_email", ["email"])
+    .index("by_event_type", ["eventType"])
+    .index("by_created_at", ["createdAt"]),
 });

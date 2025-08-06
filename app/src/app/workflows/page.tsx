@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { WorkflowList } from "@/components/WorkflowList";
+import { EnhancedWorkflowList } from "@/components/EnhancedWorkflowList";
 import { useWorkflows } from "@/hooks/useWorkflows";
 import { useEnvironment } from "@/contexts/EnvironmentContext";
 import { EnvironmentToggle } from "@/components/EnvironmentToggle";
@@ -18,7 +19,7 @@ export default function WorkflowsPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const workflows = useWorkflows(null); // Pass null for all workflows
   const { environment } = useEnvironment();
-  const { user, logout } = useAuth();
+  const { user, orgId, logout } = useAuth();
 
   // Transform real workflow data to match the list format
   const transformedWorkflows =
@@ -247,19 +248,22 @@ export default function WorkflowsPage() {
               </div>
             </div>
 
-            <WorkflowList
-              workflows={filteredWorkflows}
-              onAddWorkflow={handleAddWorkflow}
-              onEditWorkflow={(id: string) => {
-                window.location.href = `/workflow-editor?id=${id}`;
-              }}
-              onDeleteWorkflow={() => {
-                // TODO: Implement delete functionality
-              }}
-              onToggleWorkflow={() => {
-                // TODO: Implement toggle functionality
-              }}
-            />
+            {orgId ? (
+              <EnhancedWorkflowList orgId={orgId} />
+            ) : (
+              <div className="text-center py-12">
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  Authentication Required
+                </h3>
+                <p className="text-gray-600 mb-4">
+                  Please log in to view your workflows.
+                </p>
+                <Button onClick={() => window.location.href = "/login"}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Login
+                </Button>
+              </div>
+            )}
           </div>
         </main>
       </div>

@@ -40,6 +40,11 @@ export const setupDemo = mutation({
         name: "Kevin Rae",
         email: "admin@honeyrae.com",
         role: "admin",
+        twoFactorEnabled: false,
+        preferredOtpMethod: "email",
+        isActive: true,
+        emailVerified: true,
+        phoneVerified: false,
         createdAt: now,
         updatedAt: now,
       });
@@ -191,6 +196,9 @@ export const setupDemo = mutation({
       description:
         "Automatically welcome new clients with a series of messages",
       trigger: "new_client",
+      status: "active",
+      preventDuplicates: true,
+      duplicatePreventionDays: 30,
       conditions: [],
       actions: [
         {
@@ -216,6 +224,9 @@ export const setupDemo = mutation({
           order: 3,
         },
       ],
+      totalRuns: 0,
+      successfulRuns: 0,
+      failedRuns: 0,
       isActive: true,
       createdAt: now,
       updatedAt: now,

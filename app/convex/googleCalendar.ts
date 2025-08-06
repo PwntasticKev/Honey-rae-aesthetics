@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, action } from "./_generated/server";
 import { Doc } from "./_generated/dataModel";
 
 // Google Calendar Provider Management
@@ -205,3 +205,306 @@ function extractClientName(summary: string, email: string): string {
   // Fallback to email prefix
   return email.split("@")[0];
 }
+
+// Google Calendar webhook handler for real-time appointment updates
+export const handleCalendarWebhook = mutation({
+  args: {
+    orgId: v.id("orgs"),
+    providerId: v.id("googleCalendarProviders"),
+    eventId: v.string(),
+    eventData: v.object({
+      summary: v.string(),
+      description: v.optional(v.string()),
+      startDateTime: v.string(),
+      endDateTime: v.string(),
+      attendees: v.optional(v.array(v.object({
+        email: v.string(),
+        displayName: v.optional(v.string()),
+      }))),
+      location: v.optional(v.string()),
+      status: v.optional(v.string()),
+    }),
+    changeType: v.union(v.literal("created"), v.literal("updated"), v.literal("deleted")),
+  },
+  handler: async (ctx, args) => {
+    const provider = await ctx.db.get(args.providerId);
+    if (!provider) {
+      throw new Error("Google Calendar provider not found");
+    }
+
+    // Handle different event changes
+    switch (args.changeType) {
+      case "created":
+        return await handleAppointmentCreated(ctx, args);
+      case "updated":
+        return await handleAppointmentUpdated(ctx, args);
+      case "deleted":
+        return await handleAppointmentDeleted(ctx, args);
+      default:
+        console.log(`Unknown change type: ${args.changeType}`);
+        return null;
+    }
+  },
+});
+
+// Handle new appointment creation from Google Calendar
+async function handleAppointmentCreated(ctx: any, args: any) {
+  const startDate = new Date(args.eventData.startDateTime);
+  const endDate = new Date(args.eventData.endDateTime);
+
+  // Try to find existing client by email from attendees
+  let clientId = null;
+  if (args.eventData.attendees && args.eventData.attendees.length > 0) {
+    for (const attendee of args.eventData.attendees) {
+      // Skip the provider's own email
+      const provider = await ctx.db.get(args.providerId);
+      if (attendee.email === provider.email) continue;
+      
+      const existingClient = await ctx.db
+        .query("clients")
+        .withIndex("by_email", (q: any) => q.eq("email", attendee.email))
+        .filter((q: any) => q.eq(q.field("orgId"), args.orgId))
+        .first();
+
+      if (existingClient) {
+        clientId = existingClient._id;
+        break;
+      }
+    }
+
+    // If no existing client found, create a new one from the first attendee
+    if (!clientId && args.eventData.attendees.length > 0) {
+      const provider = await ctx.db.get(args.providerId);
+      const primaryAttendee = args.eventData.attendees.find((a: any) => a.email !== provider.email);
+      if (primaryAttendee) {
+        const [firstName, ...lastNameParts] = (primaryAttendee.displayName || primaryAttendee.email.split('@')[0]).split(' ');
+        const lastName = lastNameParts.join(' ');
+
+        clientId = await ctx.db.insert("clients", {
+          orgId: args.orgId,
+          fullName: primaryAttendee.displayName || firstName,
+          firstName: firstName,
+          lastName: lastName || undefined,
+          email: primaryAttendee.email,
+          phones: [],
+          gender: "other", // Default since we don't know
+          clientPortalStatus: "pending",
+          tags: ["google_calendar_import"],
+          importSource: "google_calendar",
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        });
+
+        console.log(`Created new client ${clientId} from Google Calendar appointment`);
+      }
+    }
+  }
+
+  // Create appointment record if we have a client
+  if (clientId) {
+    const provider = await ctx.db.get(args.providerId);
+    const appointmentId = await ctx.db.insert("appointments", {
+      orgId: args.orgId,
+      clientId,
+      dateTime: startDate.getTime(),
+      type: args.eventData.summary,
+      provider: provider.name,
+      notes: args.eventData.description,
+      googleEventId: args.eventId,
+      status: "scheduled",
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+
+    // Update provider's last sync time
+    await ctx.db.patch(args.providerId, {
+      lastSync: Date.now(),
+      updatedAt: Date.now(),
+    });
+
+    console.log(`Created appointment ${appointmentId} for client ${clientId} from Google Calendar event ${args.eventId}`);
+    return appointmentId;
+  }
+
+  console.log(`Skipped appointment creation - no valid client found for event ${args.eventId}`);
+  return null;
+}
+
+// Handle appointment updates from Google Calendar
+async function handleAppointmentUpdated(ctx: any, args: any) {
+  // Find existing appointment by Google Event ID
+  const appointment = await ctx.db
+    .query("appointments")
+    .filter((q: any) => 
+      q.and(
+        q.eq(q.field("orgId"), args.orgId),
+        q.eq(q.field("googleEventId"), args.eventId)
+      )
+    )
+    .first();
+
+  if (!appointment) {
+    console.log(`No appointment found for Google Event ID: ${args.eventId}, creating new one`);
+    return await handleAppointmentCreated(ctx, args);
+  }
+
+  const startDate = new Date(args.eventData.startDateTime);
+  const updates: any = {
+    dateTime: startDate.getTime(),
+    type: args.eventData.summary,
+    notes: args.eventData.description,
+    updatedAt: Date.now(),
+  };
+
+  // Handle status updates
+  if (args.eventData.status === "cancelled") {
+    updates.status = "cancelled";
+  }
+
+  await ctx.db.patch(appointment._id, updates);
+
+  console.log(`Updated appointment ${appointment._id} from Google Calendar event ${args.eventId}`);
+  return appointment._id;
+}
+
+// Handle appointment deletion from Google Calendar
+async function handleAppointmentDeleted(ctx: any, args: any) {
+  const appointment = await ctx.db
+    .query("appointments")
+    .filter((q: any) => 
+      q.and(
+        q.eq(q.field("orgId"), args.orgId),
+        q.eq(q.field("googleEventId"), args.eventId)
+      )
+    )
+    .first();
+
+  if (appointment) {
+    await ctx.db.delete(appointment._id);
+    console.log(`Deleted appointment ${appointment._id} for Google Event ID: ${args.eventId}`);
+    return appointment._id;
+  }
+
+  return null;
+}
+
+// Enhanced polling-based sync with workflow triggers
+export const syncCalendarAppointments = action({
+  args: {
+    orgId: v.id("orgs"),
+    providerId: v.id("googleCalendarProviders"),
+  },
+  handler: async (ctx, args) => {
+    // For now, we'll implement a simple placeholder sync result
+    // This would be replaced with actual Google Calendar API integration
+    const syncResult = {
+      syncedEvents: 0,
+      createdAppointments: 0,
+      updatedAppointments: 0,
+      completedAppointments: 0,
+      triggeredWorkflows: 0,
+      errors: [] as string[],
+      lastSync: Date.now(),
+    };
+
+    // This would integrate with Google Calendar API to:
+    // 1. Fetch recent calendar events
+    // 2. Create/update appointments in the database
+    // 3. Check for completed appointments
+    // 4. Trigger workflows for completed appointments
+    
+    console.log(`Calendar sync completed for provider ${args.providerId}:`, syncResult);
+    return syncResult;
+  },
+});
+
+// Get calendar sync status and statistics
+export const getSyncStatus = query({
+  args: {
+    orgId: v.id("orgs"),
+  },
+  handler: async (ctx, args) => {
+    const providers = await ctx.db
+      .query("googleCalendarProviders")
+      .withIndex("by_org", (q) => q.eq("orgId", args.orgId))
+      .collect();
+
+    const providerStats = await Promise.all(
+      providers.map(async (provider) => {
+        // Get recent appointments from this provider
+        const recentAppointments = await ctx.db
+          .query("appointments")
+          .withIndex("by_org", (q) => q.eq("orgId", args.orgId))
+          .filter((q) => q.eq(q.field("provider"), provider.name))
+          .take(10);
+
+        // Get appointment counts by status
+        const scheduledCount = recentAppointments.filter(a => a.status === "scheduled").length;
+        const completedCount = recentAppointments.filter(a => a.status === "completed").length;
+        const cancelledCount = recentAppointments.filter(a => a.status === "cancelled").length;
+
+        return {
+          providerId: provider._id,
+          name: provider.name,
+          email: provider.email,
+          isConnected: provider.isConnected,
+          lastSync: provider.lastSync,
+          status: provider.isConnected ? "connected" : "disconnected",
+          stats: {
+            totalAppointments: recentAppointments.length,
+            scheduled: scheduledCount,
+            completed: completedCount,
+            cancelled: cancelledCount,
+          },
+        };
+      })
+    );
+
+    return providerStats;
+  },
+});
+
+// Get recent calendar appointments with workflow trigger information
+export const getRecentCalendarAppointments = query({
+  args: {
+    orgId: v.id("orgs"),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const query = ctx.db
+      .query("appointments")
+      .withIndex("by_org", (q) => q.eq("orgId", args.orgId))
+      .filter((q) => q.neq(q.field("googleEventId"), undefined))
+      .order("desc");
+
+    const appointments = args.limit 
+      ? await query.take(args.limit)
+      : await query.collect();
+
+    // Enrich with client details and workflow trigger information
+    const enrichedAppointments = await Promise.all(
+      appointments.map(async (appointment) => {
+        const client = await ctx.db.get(appointment.clientId);
+        
+        // Check for related workflow triggers
+        const trigger = await ctx.db
+          .query("appointmentTriggers")
+          .withIndex("by_appointment", (q) => q.eq("appointmentId", appointment._id))
+          .first();
+
+        return {
+          ...appointment,
+          client,
+          trigger: trigger ? {
+            appointmentType: trigger.appointmentType,
+            triggeredWorkflows: trigger.triggeredWorkflows.length,
+            enrollments: trigger.enrollmentIds.length,
+            triggeredAt: trigger.triggeredAt,
+          } : null,
+        };
+      })
+    );
+
+    return enrichedAppointments;
+  },
+});

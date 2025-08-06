@@ -52,8 +52,12 @@ test.describe("Google OAuth Authentication", () => {
           <html>
             <body>
               <script>
-                localStorage.setItem('google_calendar_access_token', 'mock_access_token');
-                localStorage.setItem('google_calendar_refresh_token', 'mock_refresh_token');
+                try {
+                  localStorage.setItem('google_calendar_access_token', 'mock_access_token');
+                  localStorage.setItem('google_calendar_refresh_token', 'mock_refresh_token');
+                } catch (e) {
+                  console.log('Storage access denied');
+                }
                 window.close();
               </script>
             </body>

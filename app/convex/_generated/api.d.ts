@@ -13,20 +13,32 @@ import type {
   FilterApi,
   FunctionReference,
 } from "convex/server";
+import type * as aiSuggestions from "../aiSuggestions.js";
+import type * as appointmentTriggers from "../appointmentTriggers.js";
 import type * as appointments from "../appointments.js";
+import type * as auth from "../auth.js";
 import type * as awsConfig from "../awsConfig.js";
+import type * as bulkImport from "../bulkImport.js";
 import type * as bulkMessages from "../bulkMessages.js";
 import type * as clients from "../clients.js";
 import type * as debug from "../debug.js";
 import type * as demo from "../demo.js";
+import type * as enhancedWorkflows from "../enhancedWorkflows.js";
 import type * as files from "../files.js";
 import type * as googleCalendar from "../googleCalendar.js";
 import type * as googleCalendarProviders from "../googleCalendarProviders.js";
+import type * as internalBulkImport from "../internalBulkImport.js";
+import type * as internalSocialMedia from "../internalSocialMedia.js";
 import type * as messageTemplates from "../messageTemplates.js";
 import type * as messages from "../messages.js";
 import type * as notes from "../notes.js";
+import type * as notifications from "../notifications.js";
 import type * as orgs from "../orgs.js";
+import type * as scheduledActions from "../scheduledActions.js";
+import type * as search from "../search.js";
+import type * as socialMedia from "../socialMedia.js";
 import type * as users from "../users.js";
+import type * as workflowDirectories from "../workflowDirectories.js";
 import type * as workflowExecutions from "../workflowExecutions.js";
 import type * as workflows from "../workflows.js";
 
@@ -39,20 +51,32 @@ import type * as workflows from "../workflows.js";
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  aiSuggestions: typeof aiSuggestions;
+  appointmentTriggers: typeof appointmentTriggers;
   appointments: typeof appointments;
+  auth: typeof auth;
   awsConfig: typeof awsConfig;
+  bulkImport: typeof bulkImport;
   bulkMessages: typeof bulkMessages;
   clients: typeof clients;
   debug: typeof debug;
   demo: typeof demo;
+  enhancedWorkflows: typeof enhancedWorkflows;
   files: typeof files;
   googleCalendar: typeof googleCalendar;
   googleCalendarProviders: typeof googleCalendarProviders;
+  internalBulkImport: typeof internalBulkImport;
+  internalSocialMedia: typeof internalSocialMedia;
   messageTemplates: typeof messageTemplates;
   messages: typeof messages;
   notes: typeof notes;
+  notifications: typeof notifications;
   orgs: typeof orgs;
+  scheduledActions: typeof scheduledActions;
+  search: typeof search;
+  socialMedia: typeof socialMedia;
   users: typeof users;
+  workflowDirectories: typeof workflowDirectories;
   workflowExecutions: typeof workflowExecutions;
   workflows: typeof workflows;
 }>;

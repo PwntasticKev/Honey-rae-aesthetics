@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Sidebar } from "@/components/Sidebar";
 import { useAuth } from "@/hooks/useAuth";
@@ -21,7 +21,7 @@ import { GlobalSearch } from "@/components/GlobalSearch";
 import { searchService, type SearchResult } from "@/lib/searchService";
 import { useRouter } from "next/navigation";
 
-export default function SearchPage() {
+function SearchContent() {
   const { user, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -351,5 +351,18 @@ export default function SearchPage() {
         </main>
       </div>
     </div>
+  );
+}
+
+export default function SearchPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-rose-50 flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mx-auto"></div>
+        <p className="text-gray-500 mt-2">Loading search...</p>
+      </div>
+    </div>}>
+      <SearchContent />
+    </Suspense>
   );
 }

@@ -25,7 +25,7 @@ export function GoogleOAuthButton() {
       console.log("🔐 Starting Google OAuth login...");
 
       // Check if Google Identity Services is available
-      if (!(window as any).google?.accounts?.oauth2) {
+      if (typeof window === "undefined" || !(window as any).google?.accounts?.oauth2) {
         console.error("❌ Google Identity Services not loaded");
         throw new Error(
           "Google Identity Services not loaded. Please refresh the page and try again.",
@@ -153,7 +153,7 @@ export function GoogleOAuthButton() {
             <Button
               onClick={handleLogin}
               disabled={
-                status.isLoading || !(window as any).google?.accounts?.oauth2
+                status.isLoading || (typeof window !== "undefined" && !(window as any).google?.accounts?.oauth2)
               }
               className="flex items-center gap-2"
             >
@@ -176,7 +176,7 @@ export function GoogleOAuthButton() {
           )}
         </div>
 
-        {!(window as any).google?.accounts?.oauth2 && (
+        {typeof window !== "undefined" && !(window as any).google?.accounts?.oauth2 && (
           <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
             <h4 className="font-semibold text-yellow-800">
               Google Services Not Loaded

@@ -3,6 +3,9 @@ import { GoogleCalendarTest } from "@/components/GoogleCalendarTest";
 import { EnvironmentChecker } from "@/components/EnvironmentChecker";
 import { ThemeDebug } from "@/components/ThemeDebug";
 
+// Force this page to be client-side only to avoid SSR issues with window access
+export const dynamic = 'force-dynamic';
+
 export default function OAuthDebugPage() {
   return (
     <div className="min-h-screen bg-gray-50 p-6">
