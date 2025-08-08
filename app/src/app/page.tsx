@@ -257,30 +257,6 @@ export default function Dashboard() {
           <main className="flex-1 p-6 space-y-6">
             {/* Dashboard */}
             <div className="space-y-6">
-              {/* Welcome Section */}
-              <div className="glass rounded-2xl p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-2xl font-bold gradient-text mb-2">
-                      Welcome back, Dr. Rae! ✨
-                    </h2>
-                    <p className="text-muted-foreground">
-                      Here's what's happening with your practice today.
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm text-muted-foreground">Today</p>
-                    <p className="text-2xl font-bold text-foreground">
-                      {new Date().toLocaleDateString("en-US", {
-                        weekday: "long",
-                        month: "long",
-                        day: "numeric",
-                      })}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
               {/* Quick Stats */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <Card className="glass border-pink-200/50 hover:shadow-lg transition-all duration-300">

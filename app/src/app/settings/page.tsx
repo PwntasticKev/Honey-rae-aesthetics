@@ -81,7 +81,7 @@ interface ApiIntegration {
 }
 
 export default function SettingsPage() {
-  const { user, logout } = useAuth();
+  const { user, orgId, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState("profile");
@@ -96,18 +96,7 @@ export default function SettingsPage() {
     const message = urlParams.get('message');
 
     if (oauthSuccess === 'true' && platform && account) {
-      // Update the integration status to connected
-      setApiIntegrations((prev) =>
-        prev.map((integration) =>
-          integration.id === platform
-            ? {
-                ...integration,
-                status: "connected" as const,
-                lastSync: new Date(),
-              }
-            : integration,
-        ),
-      );
+      // Integration will be automatically updated via the database
       alert(`Successfully connected to ${platform}! Account: ${account}`);
       // Clear URL parameters
       window.history.replaceState({}, document.title, window.location.pathname);
@@ -134,9 +123,9 @@ export default function SettingsPage() {
 
   // Get real integration data from database
   const userIntegrations = useQuery(api.integrations.getUserIntegrations, 
-    user?.id && user?.orgId ? {
-      userId: user.id as any,
-      orgId: user.orgId as any
+    user?.userId && orgId ? {
+      userId: user.userId as any,
+      orgId: orgId as any
     } : "skip"
   );
 
@@ -145,7 +134,7 @@ export default function SettingsPage() {
 
   // Team management queries
   const teamMembers = useQuery(api.teamManagement.getTeamMembers,
-    user?.orgId ? { orgId: user.orgId as any } : "skip"
+    orgId ? { orgId: orgId as any } : "skip"
   );
   
   const inviteTeamMember = useMutation(api.teamManagement.inviteTeamMember);
@@ -156,15 +145,15 @@ export default function SettingsPage() {
   const handleInviteTeamMember = () => {
     const email = prompt("Enter team member's email:");
     const name = prompt("Enter team member's name:");
-    const role = prompt("Enter role (admin, editor, or viewer):") as "admin" | "editor" | "viewer";
+    const role = prompt("Enter role (admin, manager, or staff):") as "admin" | "manager" | "staff";
     
-    if (email && name && role && user?.id && user?.orgId) {
+    if (email && name && role && user?.userId && orgId) {
       inviteTeamMember({
-        orgId: user.orgId as any,
+        orgId: orgId as any,
         email,
         name,
         role,
-        invitedBy: user.id as any,
+        invitedBy: user.userId as any,
       }).then(() => {
         alert(`Invitation sent to ${email}!`);
       }).catch((error) => {
@@ -173,12 +162,12 @@ export default function SettingsPage() {
     }
   };
 
-  const handleUpdateRole = (teamMemberId: any, newRole: "admin" | "editor" | "viewer") => {
-    if (user?.id) {
+  const handleUpdateRole = (teamMemberId: any, newRole: "admin" | "manager" | "staff") => {
+    if (user?.userId) {
       updateTeamMemberRole({
         teamMemberId,
         newRole,
-        updatedBy: user.id as any,
+        updatedBy: user.userId as any,
       }).then(() => {
         alert("Role updated successfully!");
       }).catch((error) => {
@@ -188,10 +177,10 @@ export default function SettingsPage() {
   };
 
   const handleRemoveMember = (teamMemberId: any) => {
-    if (confirm("Are you sure you want to remove this team member?") && user?.id) {
+    if (confirm("Are you sure you want to remove this team member?") && user?.userId) {
       removeTeamMember({
         teamMemberId,
-        removedBy: user.id as any,
+        removedBy: user.userId as any,
       }).then(() => {
         alert("Team member removed successfully!");
       }).catch((error) => {
@@ -287,7 +276,7 @@ export default function SettingsPage() {
   };
 
   const handleConnectIntegration = async (integrationId: string) => {
-    if (!user?.id || !user?.orgId) {
+    if (!user?.userId || !orgId) {
       alert('Please log in to connect integrations');
       return;
     }
@@ -332,9 +321,9 @@ export default function SettingsPage() {
       if (apiKey) {
         try {
           await upsertIntegration({
-            userId: user.id as any,
-            orgId: user.orgId as any,
-            platform: integrationId,
+            userId: user.userId as any,
+            orgId: orgId as any,
+            platform: integrationId as any,
             accessToken: apiKey,
             accountName: `${platformDefinitions[integrationId as keyof typeof platformDefinitions]?.name} Account`,
           });
@@ -347,14 +336,14 @@ export default function SettingsPage() {
   };
 
   const handleDisconnectIntegration = async (integrationId: string) => {
-    if (!user?.id) {
+    if (!user?.userId) {
       return;
     }
 
     try {
       await disconnectIntegration({
-        userId: user.id as any,
-        platform: integrationId,
+        userId: user.userId as any,
+        platform: integrationId as any,
       });
     } catch (error) {
       console.error(`Failed to disconnect ${integrationId}:`, error);
@@ -949,7 +938,7 @@ export default function SettingsPage() {
                               <div className="flex items-center space-x-2 mt-1">
                                 <Badge className={
                                   member.role === "admin" ? "bg-blue-100 text-blue-800" :
-                                  member.role === "editor" ? "bg-green-100 text-green-800" :
+                                  member.role === "manager" ? "bg-green-100 text-green-800" :
                                   "bg-gray-100 text-gray-800"
                                 }>
                                   {member.role.charAt(0).toUpperCase() + member.role.slice(1)}
@@ -961,12 +950,12 @@ export default function SettingsPage() {
                           <div className="flex items-center space-x-2">
                             <select
                               value={member.role}
-                              onChange={(e) => handleUpdateRole(member._id, e.target.value as "admin" | "editor" | "viewer")}
+                              onChange={(e) => handleUpdateRole(member._id, e.target.value as "admin" | "manager" | "staff")}
                               className="text-sm border rounded px-2 py-1"
                               disabled={member.status !== "active"}
                             >
-                              <option value="viewer">Viewer</option>
-                              <option value="editor">Editor</option>
+                              <option value="staff">Staff</option>
+                              <option value="manager">Manager</option>
                               <option value="admin">Admin</option>
                             </select>
                             <Button
@@ -1022,10 +1011,10 @@ export default function SettingsPage() {
                         </ul>
                       </div>
 
-                      {/* Editor Role */}
+                      {/* Manager Role */}
                       <div className="border rounded-lg p-4">
                         <div className="flex items-center space-x-2 mb-3">
-                          <Badge className="bg-green-100 text-green-800">Editor</Badge>
+                          <Badge className="bg-green-100 text-green-800">Manager</Badge>
                           <span className="text-sm text-gray-600">Create & Edit</span>
                         </div>
                         <ul className="text-sm space-y-1 text-gray-600">
@@ -1038,10 +1027,10 @@ export default function SettingsPage() {
                         </ul>
                       </div>
 
-                      {/* Viewer Role */}
+                      {/* Staff Role */}
                       <div className="border rounded-lg p-4">
                         <div className="flex items-center space-x-2 mb-3">
-                          <Badge className="bg-gray-100 text-gray-800">Viewer</Badge>
+                          <Badge className="bg-gray-100 text-gray-800">Staff</Badge>
                           <span className="text-sm text-gray-600">Read Only</span>
                         </div>
                         <ul className="text-sm space-y-1 text-gray-600">

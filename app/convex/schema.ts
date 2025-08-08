@@ -894,8 +894,8 @@ export default defineSchema({
     userId: v.id("users"),
     role: v.union(
       v.literal("admin"),
-      v.literal("editor"), 
-      v.literal("viewer"),
+      v.literal("manager"), 
+      v.literal("staff"),
     ),
     status: v.union(
       v.literal("active"),

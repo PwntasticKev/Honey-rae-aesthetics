@@ -236,10 +236,10 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
                 </div>
                 {item.notification && (
                   <Badge
-                    className="w-5 h-5 rounded-full p-0 flex items-center justify-center bg-red-500 hover:bg-red-600 text-white border-0"
-                    data-theme-aware="true"
+                    className="w-5 h-5 rounded-full p-0 flex items-center justify-center bg-red-500 hover:bg-red-600 border-0"
+                    data-theme-aware="false"
                   >
-                    <span className="text-xs font-medium">
+                    <span className="text-xs font-medium text-white">
                       {item.notification}
                     </span>
                   </Badge>

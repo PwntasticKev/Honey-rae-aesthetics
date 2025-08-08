@@ -602,9 +602,9 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
           </Select>
         </div>
 
-        {/* Workflow Grid */}
+        {/* Workflow List */}
         <div
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+          className="space-y-3"
           data-testid="workflow-list"
         >
           {filteredWorkflows.map((workflow) => (
@@ -615,104 +615,116 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
               className="bg-white rounded-lg border shadow-sm hover:shadow-md transition-shadow cursor-move hover:cursor-pointer"
               data-testid="workflow-item"
             >
-              <div className="p-6">
-                {/* Header */}
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-gray-900 mb-1">
-                      {workflow.name}
-                    </h3>
-                    <p className="text-sm text-gray-600 mb-2">
+              <div className="p-4">
+                {/* Single Row Layout */}
+                <div className="flex items-center justify-between">
+                  {/* Left Section: Name, Description, and Badges */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center space-x-3">
+                      <h3 className="font-semibold text-gray-900 truncate">
+                        {workflow.name}
+                      </h3>
+                      <div className="flex items-center space-x-2">
+                        {getStatusBadge(workflow.status)}
+                        <Badge variant="outline" className="text-xs">
+                          {formatTrigger(workflow.trigger)}
+                        </Badge>
+                      </div>
+                    </div>
+                    <p className="text-sm text-gray-600 mt-1 truncate">
                       {workflow.description || "No description"}
                     </p>
-                    <div className="flex items-center space-x-2">
-                      {getStatusBadge(workflow.status)}
-                      <Badge variant="outline" className="text-xs">
-                        {formatTrigger(workflow.trigger)}
-                      </Badge>
-                    </div>
                   </div>
 
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                      <DropdownMenuItem
-                        onClick={() =>
-                          router.push(`/workflow-editor?id=${workflow._id}`)
-                        }
-                      >
-                        <Edit3 className="h-4 w-4 mr-2" />
-                        Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => setViewingStepTracker(workflow._id)}
-                      >
-                        <BarChart3 className="h-4 w-4 mr-2" />
-                        View Step Tracking
-                      </DropdownMenuItem>
-                      <DropdownMenuItem>
-                        <Send className="h-4 w-4 mr-2" />
-                        Test
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-
-                {/* Stats */}
-                <div className="grid grid-cols-2 gap-4 mb-4">
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-blue-600">
-                      {workflow.activeEnrollmentCount}
+                  {/* Center Section: Stats */}
+                  <div className="flex items-center space-x-6 mx-8">
+                    <div className="text-center">
+                      <div className="text-lg font-bold text-blue-600">
+                        {workflow.activeEnrollmentCount}
+                      </div>
+                      <div className="text-xs text-gray-500">Active</div>
                     </div>
-                    <div className="text-xs text-gray-500">Active</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-green-600">
-                      {workflow.totalRuns}
+                    <div className="text-center">
+                      <div className="text-lg font-bold text-green-600">
+                        {workflow.totalRuns}
+                      </div>
+                      <div className="text-xs text-gray-500">Total Runs</div>
                     </div>
-                    <div className="text-xs text-gray-500">Total Runs</div>
-                  </div>
-                </div>
-
-                {/* Actions */}
-                <div className="flex items-center justify-between">
-                  <Button
-                    variant={
-                      workflow.status === "active" ? "outline" : "default"
-                    }
-                    size="sm"
-                    onClick={() =>
-                      handleToggleWorkflow(workflow._id, workflow.status)
-                    }
-                    data-testid={
-                      workflow.status === "active"
-                        ? "pause-workflow"
-                        : "play-workflow"
-                    }
-                  >
-                    {workflow.status === "active" ? (
-                      <>
-                        <Pause className="h-4 w-4 mr-1" />
-                        Pause
-                      </>
-                    ) : (
-                      <>
-                        <Play className="h-4 w-4 mr-1" />
-                        Activate
-                      </>
+                    {workflow.lastRun && (
+                      <div className="text-center">
+                        <div className="text-xs text-gray-500">Last run</div>
+                        <div className="text-xs text-gray-700">
+                          {new Date(workflow.lastRun).toLocaleDateString()}
+                        </div>
+                      </div>
                     )}
-                  </Button>
+                  </div>
 
-                  {workflow.lastRun && (
-                    <span className="text-xs text-gray-500">
-                      Last run:{" "}
-                      {new Date(workflow.lastRun).toLocaleDateString()}
-                    </span>
-                  )}
+                  {/* Right Section: Actions */}
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      variant={
+                        workflow.status === "active" ? "outline" : "default"
+                      }
+                      size="sm"
+                      onClick={() =>
+                        handleToggleWorkflow(workflow._id, workflow.status)
+                      }
+                      data-testid={
+                        workflow.status === "active"
+                          ? "pause-workflow"
+                          : "play-workflow"
+                      }
+                    >
+                      {workflow.status === "active" ? (
+                        <>
+                          <Pause className="h-4 w-4 mr-1" />
+                          Pause
+                        </>
+                      ) : (
+                        <>
+                          <Play className="h-4 w-4 mr-1" />
+                          Activate
+                        </>
+                      )}
+                    </Button>
+
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        <DropdownMenuItem
+                          onClick={() =>
+                            router.push(`/workflow-editor?id=${workflow._id}`)
+                          }
+                        >
+                          <Edit3 className="h-4 w-4 mr-2" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => setViewingStepTracker(workflow._id)}
+                        >
+                          <BarChart3 className="h-4 w-4 mr-2" />
+                          View Step Tracking
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => {
+                            const email = prompt('Enter test email address:');
+                            const phone = prompt('Enter test phone number:');
+                            if (email || phone) {
+                              alert(`Test workflow would be sent to:\nEmail: ${email || 'Not provided'}\nPhone: ${phone || 'Not provided'}`);
+                            }
+                          }}
+                        >
+                          <Send className="h-4 w-4 mr-2" />
+                          Test
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 </div>
               </div>
             </div>

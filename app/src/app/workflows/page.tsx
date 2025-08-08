@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { WorkflowList } from "@/components/WorkflowList";
 import { EnhancedWorkflowList } from "@/components/EnhancedWorkflowList";
 import { useWorkflows } from "@/hooks/useWorkflows";
@@ -51,7 +52,7 @@ export default function WorkflowsPage() {
 
   if (!workflows) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-rose-50">
+      <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-rose-50 flex">
         {/* Sidebar */}
         <Sidebar
           isOpen={sidebarOpen}
@@ -78,7 +79,7 @@ export default function WorkflowsPage() {
                 <div>
                   <h1 className="text-xl font-bold text-gray-900">Workflows</h1>
                   <p className="text-sm text-gray-600">
-                    Manage automation workflows ({environment} environment)
+                    Manage automation workflows
                   </p>
                 </div>
               </div>
@@ -87,9 +88,11 @@ export default function WorkflowsPage() {
                 {/* Environment Toggle */}
                 <EnvironmentToggle />
 
-                {/* Search */}
+                {/* Environment Display */}
                 <div className="hidden md:block">
-                  <GlobalSearch />
+                  <Badge variant="outline" className="px-3 py-1">
+                    {environment}
+                  </Badge>
                 </div>
 
                 {/* Notifications */}
@@ -133,15 +136,11 @@ export default function WorkflowsPage() {
                     Workflows
                   </h1>
                   <p className="text-gray-600">
-                    Manage your automation workflows ({environment} environment)
+                    Manage your automation workflows
                   </p>
                 </div>
                 <div className="flex items-center gap-4">
                   <EnvironmentToggle />
-                  <Button onClick={handleAddWorkflow} data-theme-aware="true">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Workflow
-                  </Button>
                 </div>
               </div>
               <div className="text-center py-8">
@@ -156,7 +155,7 @@ export default function WorkflowsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-rose-50">
+    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-rose-50 flex">
       {/* Sidebar */}
       <Sidebar
         isOpen={sidebarOpen}
@@ -183,7 +182,7 @@ export default function WorkflowsPage() {
               <div>
                 <h1 className="text-xl font-bold text-gray-900">Workflows</h1>
                 <p className="text-sm text-gray-600">
-                  Manage automation workflows ({environment} environment)
+                  Manage automation workflows
                 </p>
               </div>
             </div>
@@ -192,9 +191,11 @@ export default function WorkflowsPage() {
               {/* Environment Toggle */}
               <EnvironmentToggle />
 
-              {/* Search */}
+              {/* Environment Display */}
               <div className="hidden md:block">
-                <GlobalSearch />
+                <Badge variant="outline" className="px-3 py-1">
+                  {environment}
+                </Badge>
               </div>
 
               {/* Notifications */}
@@ -232,22 +233,6 @@ export default function WorkflowsPage() {
         {/* Page Content - Remove padding and max-width for full height */}
         <main className="flex-1 p-2">
           <div className="h-full">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">Workflows</h1>
-                <p className="text-gray-600">
-                  Manage your automation workflows ({environment} environment)
-                </p>
-              </div>
-              <div className="flex items-center gap-4">
-                <EnvironmentToggle />
-                <Button onClick={handleAddWorkflow} data-theme-aware="true">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Workflow
-                </Button>
-              </div>
-            </div>
-
             {orgId ? (
               <EnhancedWorkflowList orgId={orgId} />
             ) : (
@@ -258,7 +243,7 @@ export default function WorkflowsPage() {
                 <p className="text-gray-600 mb-4">
                   Please log in to view your workflows.
                 </p>
-                <Button onClick={() => window.location.href = "/login"}>
+                <Button onClick={() => (window.location.href = "/login")}>
                   <Plus className="w-4 h-4 mr-2" />
                   Login
                 </Button>

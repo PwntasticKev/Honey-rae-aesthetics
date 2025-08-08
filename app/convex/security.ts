@@ -13,7 +13,7 @@ const auditActionValidator = v.union(
   v.literal("user_updated"),
   v.literal("user_deactivated"),
   v.literal("user_invited"),
-  v.literal("user_role_changed"),
+  v.literal("role_changed"),
   v.literal("permission_granted"),
   v.literal("permission_revoked"),
   v.literal("integration_connected"),

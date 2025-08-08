@@ -172,7 +172,7 @@ export const updateTeamMemberRole = mutation({
     await ctx.db.insert("auditLogs", {
       orgId: teamMember.orgId,
       userId: args.updatedBy,
-      action: "user_role_changed",
+      action: "role_changed",
       target: teamMember.userId.toString(),
       details: { oldRole, newRole: args.newRole },
       riskLevel: "medium",

@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { api } from "./_generated/api";
 
 export const list = query({
   args: {},
@@ -30,6 +31,10 @@ export const create = mutation({
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });
+
+    // Create default workflow templates
+    await ctx.runMutation(api.workflows.createDefaultTemplates, { orgId });
+
     return orgId;
   },
 });

@@ -174,7 +174,7 @@ export function WorkflowStepTracker({ workflowId, orgId }: WorkflowStepTrackerPr
               <div className="text-sm text-gray-500">Completed</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-orange-600">
+              <div className="text-2xl font-bold text-emerald-600">
                 {Math.round(workflowStats?.successRate || 0)}%
               </div>
               <div className="text-sm text-gray-500">Success Rate</div>
@@ -197,70 +197,74 @@ export function WorkflowStepTracker({ workflowId, orgId }: WorkflowStepTrackerPr
               No workflow steps configured. Create steps in the workflow editor.
             </div>
           ) : (
-            <div className="space-y-4">
-              {workflowSteps.map((step, index) => (
-                <div key={step.id} className="flex items-center space-x-4">
-                  {/* Step Card */}
-                  <Card className={`flex-1 cursor-pointer transition-colors ${getStepColor(step)}`}
-                        onClick={() => setSelectedStep(step.id)}>
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                          <div className="p-2 rounded-lg bg-white">
-                            {getStepIcon(step.type)}
-                          </div>
-                          <div>
-                            <h4 className="font-medium">{step.title}</h4>
-                            <p className="text-sm text-gray-600">{step.description}</p>
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center space-x-4">
-                          {/* Client Counts */}
-                          <div className="text-center">
-                            <div className="text-lg font-bold text-blue-600">
-                              {step.clientCount}
+            <div className="bg-gray-50 rounded-lg p-4">
+              <div className="space-y-6">
+                {workflowSteps.map((step, index) => (
+                  <div key={step.id} className="relative">
+                    {/* Step Card */}
+                    <Card className={`cursor-pointer transition-colors ${getStepColor(step)}`}
+                          onClick={() => setSelectedStep(step.id)}>
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <div className="p-2 rounded-lg bg-white">
+                              {getStepIcon(step.type)}
                             </div>
-                            <div className="text-xs text-gray-500">Clients</div>
+                            <div>
+                              <h4 className="font-medium">{step.title}</h4>
+                              <p className="text-sm text-gray-600">{step.description}</p>
+                            </div>
                           </div>
                           
-                          {/* Status Indicators */}
-                          <div className="flex space-x-1">
-                            {step.completedCount > 0 && (
-                              <Badge className="bg-green-100 text-green-800 text-xs">
-                                ✓ {step.completedCount}
-                              </Badge>
-                            )}
-                            {step.failedCount > 0 && (
-                              <Badge className="bg-red-100 text-red-800 text-xs">
-                                ✗ {step.failedCount}
-                              </Badge>
-                            )}
-                            {step.pendingCount > 0 && (
-                              <Badge className="bg-yellow-100 text-yellow-800 text-xs">
-                                ⏳ {step.pendingCount}
-                              </Badge>
-                            )}
+                          <div className="flex items-center space-x-4">
+                            {/* Client Counts */}
+                            <div className="text-center">
+                              <div className="text-lg font-bold text-blue-600">
+                                {step.clientCount}
+                              </div>
+                              <div className="text-xs text-gray-500">Clients</div>
+                            </div>
+                            
+                            {/* Status Indicators */}
+                            <div className="flex space-x-1">
+                              {step.completedCount > 0 && (
+                                <Badge className="bg-green-100 text-green-800 text-xs">
+                                  ✓ {step.completedCount}
+                                </Badge>
+                              )}
+                              {step.failedCount > 0 && (
+                                <Badge className="bg-red-100 text-red-800 text-xs">
+                                  ✗ {step.failedCount}
+                                </Badge>
+                              )}
+                              {step.pendingCount > 0 && (
+                                <Badge className="bg-yellow-100 text-yellow-800 text-xs">
+                                  ⏳ {step.pendingCount}
+                                </Badge>
+                              )}
+                            </div>
+
+                            <Sheet open={selectedStep === step.id} onOpenChange={(open) => !open && setSelectedStep(null)}>
+                              <SheetTrigger asChild>
+                                <Button variant="ghost" size="sm">
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                              </SheetTrigger>
+                            </Sheet>
                           </div>
-
-                          <Sheet open={selectedStep === step.id} onOpenChange={(open) => !open && setSelectedStep(null)}>
-                            <SheetTrigger asChild>
-                              <Button variant="ghost" size="sm">
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                            </SheetTrigger>
-                          </Sheet>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+                      </CardContent>
+                    </Card>
 
-                  {/* Arrow connector */}
-                  {index < workflowSteps.length - 1 && (
-                    <ArrowRight className="h-5 w-5 text-gray-400 flex-shrink-0" />
-                  )}
-                </div>
-              ))}
+                    {/* Arrow connector - positioned inside the container */}
+                    {index < workflowSteps.length - 1 && (
+                      <div className="flex justify-center my-2">
+                        <ArrowRight className="h-6 w-6 text-gray-400" />
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </CardContent>

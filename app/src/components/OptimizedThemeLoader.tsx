@@ -87,6 +87,19 @@ export function OptimizedThemeLoader() {
     userData?.orgId ? { id: userData.orgId as any } : "skip",
   );
 
+  // Apply default theme immediately on mount to prevent flash
+  useEffect(() => {
+    if (!document.getElementById('default-theme-applied')) {
+      const defaultTheme = themes.find((t) => t.id === "default") || themes[0];
+      applyThemeToCSS(defaultTheme, "Inter", true);
+      
+      // Mark default theme as applied
+      const marker = document.createElement('meta');
+      marker.id = 'default-theme-applied';
+      document.head.appendChild(marker);
+    }
+  }, []);
+
   useEffect(() => {
     let themeId = "default";
     let fontFamily = "Inter";
@@ -98,10 +111,10 @@ export function OptimizedThemeLoader() {
     }
 
     const theme = themes.find((t) => t.id === themeId) || themes[0];
-    applyThemeToCSS(theme, fontFamily);
+    applyThemeToCSS(theme, fontFamily, false);
   }, [org]);
 
-  const applyThemeToCSS = (theme: any, fontFamily: string) => {
+  const applyThemeToCSS = (theme: any, fontFamily: string, isDefault: boolean = false) => {
     const root = document.documentElement;
     
     // Update CSS custom properties - these will automatically apply to all elements using them
