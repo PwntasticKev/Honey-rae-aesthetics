@@ -185,11 +185,16 @@ export default defineSchema({
     parentId: v.optional(v.id("workflowDirectories")), // For nested directories
     description: v.optional(v.string()),
     color: v.optional(v.string()), // Visual organization
+    isArchived: v.optional(v.boolean()), // Archive instead of delete
+    archivedAt: v.optional(v.number()), // When archived
+    archivedBy: v.optional(v.id("users")), // Who archived it
+    originalParentId: v.optional(v.id("workflowDirectories")), // Parent before archiving
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_org", ["orgId"])
-    .index("by_parent", ["parentId"]),
+    .index("by_parent", ["parentId"])
+    .index("by_archived", ["orgId", "isArchived"]),
 
   // Workflows - automation logic
   workflows: defineTable({
@@ -843,4 +848,204 @@ export default defineSchema({
     .index("by_email", ["email"])
     .index("by_event_type", ["eventType"])
     .index("by_created_at", ["createdAt"]),
+
+  // User Integrations - store OAuth tokens for external services
+  userIntegrations: defineTable({
+    userId: v.id("users"),
+    orgId: v.id("orgs"),
+    platform: v.union(
+      v.literal("instagram"),
+      v.literal("facebook"),
+      v.literal("youtube"),
+      v.literal("linkedin"),
+      v.literal("tiktok"),
+      v.literal("google_business"),
+      v.literal("apple_business"),
+      v.literal("google_calendar"),
+      v.literal("stripe"),
+      v.literal("twilio"),
+      v.literal("mailchimp"),
+      v.literal("aws_s3"),
+    ),
+    accountId: v.optional(v.string()), // Platform-specific account ID
+    accountName: v.optional(v.string()), // Display name
+    accountEmail: v.optional(v.string()),
+    accessToken: v.string(),
+    refreshToken: v.optional(v.string()),
+    tokenType: v.optional(v.string()), // "Bearer", etc.
+    scopes: v.optional(v.array(v.string())), // OAuth scopes granted
+    expiresAt: v.optional(v.number()),
+    isActive: v.boolean(),
+    lastSync: v.optional(v.number()),
+    syncError: v.optional(v.string()),
+    profileData: v.optional(v.any()), // Platform-specific profile info
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_org", ["orgId"])
+    .index("by_platform", ["platform"])
+    .index("by_user_platform", ["userId", "platform"])
+    .index("by_active", ["isActive"]),
+
+  // Team Members - manage organization team with roles
+  teamMembers: defineTable({
+    orgId: v.id("orgs"),
+    userId: v.id("users"),
+    role: v.union(
+      v.literal("admin"),
+      v.literal("editor"), 
+      v.literal("viewer"),
+    ),
+    status: v.union(
+      v.literal("active"),
+      v.literal("invited"),
+      v.literal("suspended"),
+      v.literal("deactivated"),
+    ),
+    invitedBy: v.optional(v.id("users")),
+    invitedAt: v.optional(v.number()),
+    joinedAt: v.optional(v.number()),
+    lastAccessAt: v.optional(v.number()),
+    inviteToken: v.optional(v.string()), // For email invitations
+    inviteExpiresAt: v.optional(v.number()),
+    // Custom permissions override (if different from role defaults)
+    customPermissions: v.optional(v.array(v.string())),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_user", ["userId"])
+    .index("by_role", ["role"])
+    .index("by_status", ["status"])
+    .index("by_invite_token", ["inviteToken"]),
+
+  // Permissions - define granular permissions system
+  permissions: defineTable({
+    orgId: v.id("orgs"),
+    userId: v.id("users"),
+    resource: v.union(
+      // Page-level permissions
+      v.literal("dashboard"),
+      v.literal("workflows"), 
+      v.literal("clients"),
+      v.literal("appointments"),
+      v.literal("gallery"),
+      v.literal("messages"),
+      v.literal("templates"),
+      v.literal("social_media"),
+      v.literal("analytics"),
+      v.literal("team"),
+      v.literal("inventory"),
+      v.literal("reviews"),
+      v.literal("settings"),
+      // Feature-level permissions  
+      v.literal("create_workflow"),
+      v.literal("edit_workflow"),
+      v.literal("delete_workflow"),
+      v.literal("create_client"),
+      v.literal("edit_client"),
+      v.literal("delete_client"),
+      v.literal("create_appointment"),
+      v.literal("edit_appointment"),
+      v.literal("delete_appointment"),
+      v.literal("send_messages"),
+      v.literal("view_analytics"),
+      v.literal("manage_team"),
+      v.literal("manage_integrations"),
+      v.literal("manage_billing"),
+      v.literal("export_data"),
+    ),
+    action: v.union(
+      v.literal("read"),
+      v.literal("create"),
+      v.literal("update"),
+      v.literal("delete"),
+      v.literal("execute"),
+      v.literal("manage"),
+    ),
+    granted: v.boolean(),
+    grantedBy: v.optional(v.id("users")), // Who granted this permission
+    reason: v.optional(v.string()), // Why this permission was granted/denied
+    expiresAt: v.optional(v.number()), // For temporary permissions
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_user", ["userId"])
+    .index("by_resource", ["resource"])
+    .index("by_user_resource", ["userId", "resource"])
+    .index("by_granted", ["granted"]),
+
+  // Audit Logs - comprehensive security and activity logging
+  auditLogs: defineTable({
+    orgId: v.id("orgs"),
+    userId: v.optional(v.id("users")), // Optional for system events
+    action: v.union(
+      // Authentication
+      v.literal("login"),
+      v.literal("logout"), 
+      v.literal("login_failed"),
+      v.literal("password_reset"),
+      v.literal("two_factor_enabled"),
+      v.literal("two_factor_disabled"),
+      // User management
+      v.literal("user_created"),
+      v.literal("user_updated"),
+      v.literal("user_deactivated"),
+      v.literal("user_invited"),
+      // Permissions
+      v.literal("permission_granted"),
+      v.literal("permission_revoked"),
+      v.literal("role_changed"),
+      // Data operations
+      v.literal("client_created"),
+      v.literal("client_updated"),
+      v.literal("client_deleted"),
+      v.literal("workflow_created"),
+      v.literal("workflow_updated"),
+      v.literal("workflow_deleted"),
+      v.literal("workflow_executed"),
+      // Settings changes
+      v.literal("settings_updated"),
+      v.literal("integration_connected"),
+      v.literal("integration_disconnected"),
+      // Security events
+      v.literal("suspicious_activity"),
+      v.literal("vpn_detected"),
+      v.literal("multiple_failed_logins"),
+      v.literal("data_export"),
+    ),
+    target: v.optional(v.string()), // Resource that was affected (client ID, workflow ID, etc.)
+    details: v.optional(v.any()), // Additional details about the action
+    ipAddress: v.optional(v.string()),
+    userAgent: v.optional(v.string()),
+    deviceInfo: v.optional(v.object({
+      browser: v.optional(v.string()),
+      os: v.optional(v.string()),
+      device: v.optional(v.string()),
+    })),
+    location: v.optional(v.object({
+      country: v.optional(v.string()),
+      region: v.optional(v.string()),
+      city: v.optional(v.string()),
+      timezone: v.optional(v.string()),
+    })),
+    riskLevel: v.union(
+      v.literal("low"),
+      v.literal("medium"),
+      v.literal("high"),
+      v.literal("critical"),
+    ),
+    isVpnDetected: v.optional(v.boolean()),
+    sessionId: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_user", ["userId"])
+    .index("by_action", ["action"])
+    .index("by_risk_level", ["riskLevel"])
+    .index("by_created_at", ["createdAt"])
+    .index("by_ip", ["ipAddress"])
+    .index("by_vpn", ["isVpnDetected"]),
 });

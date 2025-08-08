@@ -68,6 +68,26 @@ export function SocialMediaDashboard() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [platformFilter, setPlatformFilter] = useState<string>('all');
 
+  // Handle OAuth success/error from URL params
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const oauthSuccess = urlParams.get('oauth_success');
+    const oauthError = urlParams.get('error');
+    const platform = urlParams.get('platform');
+    const account = urlParams.get('account');
+    const message = urlParams.get('message');
+
+    if (oauthSuccess === 'true' && platform && account) {
+      alert(`Successfully connected to ${platform}! Account: ${account}`);
+      // Clear URL parameters
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (oauthError && platform) {
+      alert(`Failed to connect to ${platform}: ${message || 'Unknown error'}`);
+      // Clear URL parameters
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
+
   // Form state for creating/editing posts
   const [postForm, setPostForm] = useState({
     title: '',
@@ -155,6 +175,32 @@ export function SocialMediaDashboard() {
       mediaFiles: [...prev.mediaFiles, ...newFiles]
     }));
   }, [postForm.targetPlatforms]);
+
+  // Handle platform connection
+  const handleConnectPlatform = useCallback(async (platform: string) => {
+    try {
+      // Call the OAuth API route to get the authorization URL
+      const response = await fetch(`/api/oauth/${platform}`, {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to initiate ${platform} OAuth`);
+      }
+
+      const data = await response.json();
+      
+      if (data.authUrl) {
+        // Redirect to OAuth provider
+        window.location.href = data.authUrl;
+      } else {
+        throw new Error('No authorization URL returned');
+      }
+    } catch (error) {
+      console.error(`${platform} OAuth error:`, error);
+      alert(`Failed to connect to ${platform}. Please ensure your API credentials are configured.`);
+    }
+  }, []);
 
   // Handle AI suggestions
   const handleAISuggestions = useCallback(async () => {
@@ -321,7 +367,12 @@ export function SocialMediaDashboard() {
                         </div>
                       )}
                       {!connected?.isConnected && (
-                        <Button size="sm" variant="outline" className="w-full mt-2">
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="w-full mt-2"
+                          onClick={() => handleConnectPlatform(platform)}
+                        >
                           Connect {config?.name}
                         </Button>
                       )}

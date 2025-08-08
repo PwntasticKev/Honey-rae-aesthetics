@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,11 +15,9 @@ import {
   ArrowDown,
   Command,
 } from "lucide-react";
-import {
-  useGlobalSearch,
-  useSearchSuggestions,
-  type SearchResult,
-} from "@/lib/convexSearchService";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { type SearchResult } from "@/lib/convexSearchService";
 import { useAuth } from "@/hooks/useAuth";
 
 interface GlobalSearchProps {
@@ -40,9 +38,84 @@ export function GlobalSearch({
   const { user } = useAuth();
 
   // Get search results and suggestions from Convex
-  // Temporarily disabled until Convex functions are deployed
-  const results: SearchResult[] = [];
-  const suggestions: string[] = [];
+  const searchResults = useQuery(api.search.global, 
+    user?.orgId && query.trim().length > 2 ? { 
+      orgId: user.orgId as any, 
+      query: query.trim(),
+      limit: 10
+    } : "skip"
+  );
+  
+  const suggestionResults = useQuery(api.search.getSearchSuggestions,
+    user?.orgId && query.trim().length > 0 ? {
+      orgId: user.orgId as any,
+      query: query.trim(),
+      limit: 5
+    } : "skip"
+  );
+  
+  // Transform search results into the expected format
+  const results: SearchResult[] = useMemo(() => {
+    if (!searchResults) return [];
+    
+    const transformedResults: SearchResult[] = [];
+    
+    // Add clients
+    searchResults.clients?.forEach((client: any) => {
+      transformedResults.push({
+        id: client._id,
+        title: client.fullName,
+        description: client.email || client.phones[0] || 'No contact info',
+        type: 'client',
+        url: `/clients/${client._id}`,
+        icon: '👤',
+        metadata: {
+          email: client.email,
+          phone: client.phones[0],
+        },
+        score: 1
+      });
+    });
+    
+    // Add appointments
+    searchResults.appointments?.forEach((appointment: any) => {
+      transformedResults.push({
+        id: appointment._id,
+        title: `${appointment.type} Appointment`,
+        description: `${appointment.provider} - ${new Date(appointment.date).toLocaleDateString()}`,
+        type: 'appointment',
+        url: `/appointments?id=${appointment._id}`,
+        icon: '📅',
+        metadata: {
+          date: new Date(appointment.date).toLocaleDateString(),
+          provider: appointment.provider,
+          status: appointment.status
+        },
+        score: 1
+      });
+    });
+    
+    // Add workflows
+    searchResults.workflows?.forEach((workflow: any) => {
+      transformedResults.push({
+        id: workflow._id,
+        title: workflow.name,
+        description: workflow.description || 'No description',
+        type: 'workflow',
+        url: `/workflow-editor?id=${workflow._id}`,
+        icon: '⚡',
+        metadata: {
+          trigger: workflow.trigger,
+          status: workflow.enabled ? 'active' : 'inactive'
+        },
+        score: 1
+      });
+    });
+    
+    return transformedResults;
+  }, [searchResults]);
+  
+  const suggestions = suggestionResults || [];
 
   // Show suggestions when query is empty
   const shouldShowSuggestions = !query.trim() && showSuggestions;

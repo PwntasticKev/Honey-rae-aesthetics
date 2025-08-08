@@ -124,9 +124,9 @@ export default function WorkflowsPage() {
             </div>
           </header>
 
-          {/* Page Content */}
-          <main className="flex-1 p-6">
-            <div className="max-w-7xl mx-auto">
+          {/* Page Content - Remove padding and max-width for full height */}
+          <main className="flex-1 p-2">
+            <div className="h-full">
               <div className="flex items-center justify-between mb-6">
                 <div>
                   <h1 className="text-2xl font-bold text-gray-900">
@@ -229,9 +229,9 @@ export default function WorkflowsPage() {
           </div>
         </header>
 
-        {/* Page Content */}
-        <main className="flex-1 p-6">
-          <div className="max-w-7xl mx-auto">
+        {/* Page Content - Remove padding and max-width for full height */}
+        <main className="flex-1 p-2">
+          <div className="h-full">
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">Workflows</h1>

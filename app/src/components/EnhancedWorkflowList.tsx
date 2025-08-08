@@ -49,6 +49,7 @@ import {
   ChevronDown,
   BarChart3,
   Eye,
+  Trash2,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { WorkflowStepTracker } from "./WorkflowStepTracker";
@@ -96,10 +97,24 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
   const [newDirectoryName, setNewDirectoryName] = useState("");
   const [newDirectoryDescription, setNewDirectoryDescription] = useState("");
   const [draggedWorkflow, setDraggedWorkflow] = useState<string | null>(null);
+  const [draggedDirectory, setDraggedDirectory] = useState<string | null>(null);
   const [viewingStepTracker, setViewingStepTracker] = useState<string | null>(null);
+  const [sidebarWidth, setSidebarWidth] = useState(240); // Smaller default width
+  const [isResizing, setIsResizing] = useState(false);
+  const [contextMenuDirectory, setContextMenuDirectory] = useState<string | null>(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [directoryToDelete, setDirectoryToDelete] = useState<string | null>(null);
+  const [showRenameDialog, setShowRenameDialog] = useState(false);
+  const [directoryToRename, setDirectoryToRename] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const [showArchiveDialog, setShowArchiveDialog] = useState(false);
+  const [dragOverDirectory, setDragOverDirectory] = useState<string | null>(null);
 
   // Queries
   const directories = useQuery(api.workflowDirectories.getDirectories, {
+    orgId: orgId as any,
+  });
+  const archivedDirectories = useQuery(api.workflowDirectories.getArchivedDirectories, {
     orgId: orgId as any,
   });
   const workflows = useQuery(api.enhancedWorkflows.getWorkflows, {
@@ -116,6 +131,11 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
   const moveWorkflowToDirectory = useMutation(
     api.workflowDirectories.moveWorkflowToDirectory,
   );
+  const moveDirectory = useMutation(api.workflowDirectories.moveDirectory);
+  const renameDirectory = useMutation(api.workflowDirectories.renameDirectory);
+  const deleteDirectory = useMutation(api.workflowDirectories.deleteDirectory);
+  const restoreDirectory = useMutation(api.workflowDirectories.restoreDirectory);
+  const permanentlyDeleteDirectory = useMutation(api.workflowDirectories.permanentlyDeleteDirectory);
 
   // Filter workflows by search query
   const filteredWorkflows =
@@ -133,7 +153,7 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
         orgId: orgId as any,
         name: newDirectoryName,
         description: newDirectoryDescription || undefined,
-        parentId: selectedDirectory ? (selectedDirectory as any) : undefined,
+        parentId: undefined, // Always create at root level initially
       });
       setShowNewDirectoryDialog(false);
       setNewDirectoryName("");
@@ -162,8 +182,24 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
     setDraggedWorkflow(workflowId);
   };
 
-  const handleDragOver = (e: React.DragEvent) => {
+  const handleDirectoryDragStart = (directoryId: string) => {
+    setDraggedDirectory(directoryId);
+  };
+
+  const handleDragOver = (e: React.DragEvent, directoryId?: string) => {
     e.preventDefault();
+    const targetId = directoryId === 'root' ? null : directoryId;
+    if (dragOverDirectory !== targetId) {
+      setDragOverDirectory(targetId);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    // Only clear if we're leaving the component entirely
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setDragOverDirectory(null);
+    }
   };
 
   const handleDrop = async (
@@ -171,16 +207,28 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
     targetDirectoryId: string | null,
   ) => {
     e.preventDefault();
-    if (!draggedWorkflow) return;
-
-    try {
-      await moveWorkflowToDirectory({
-        workflowId: draggedWorkflow as any,
-        directoryId: targetDirectoryId as any,
-      });
-      setDraggedWorkflow(null);
-    } catch (error) {
-      console.error("Failed to move workflow:", error);
+    setDragOverDirectory(null);
+    
+    if (draggedWorkflow) {
+      try {
+        await moveWorkflowToDirectory({
+          workflowId: draggedWorkflow as any,
+          directoryId: targetDirectoryId as any,
+        });
+        setDraggedWorkflow(null);
+      } catch (error) {
+        console.error("Failed to move workflow:", error);
+      }
+    } else if (draggedDirectory && draggedDirectory !== targetDirectoryId) {
+      try {
+        await moveDirectory({
+          directoryId: draggedDirectory as any,
+          newParentId: targetDirectoryId as any,
+        });
+        setDraggedDirectory(null);
+      } catch (error) {
+        console.error("Failed to move directory:", error);
+      }
     }
   };
 
@@ -194,6 +242,49 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
     setExpandedDirectories(newExpanded);
   };
 
+  const handleRenameDirectory = async () => {
+    if (!directoryToRename || !renameValue.trim()) return;
+
+    try {
+      await renameDirectory({
+        directoryId: directoryToRename as any,
+        name: renameValue.trim(),
+      });
+      setShowRenameDialog(false);
+      setDirectoryToRename(null);
+      setRenameValue("");
+    } catch (error) {
+      console.error("Failed to rename directory:", error);
+      alert("Failed to rename directory");
+    }
+  };
+
+  const handleDeleteDirectory = async () => {
+    if (!directoryToDelete) return;
+
+    try {
+      await deleteDirectory({
+        directoryId: directoryToDelete as any,
+        userId: user?.userId as any,
+      });
+      setShowDeleteDialog(false);
+      setDirectoryToDelete(null);
+    } catch (error) {
+      console.error("Failed to archive directory:", error);
+      alert("Failed to archive directory");
+    }
+  };
+
+  // Utility function to find a directory by ID in the tree
+  const findDirectoryById = (dir: Directory, id: string): Directory | null => {
+    if (dir._id === id) return dir;
+    for (const child of dir.children) {
+      const found = findDirectoryById(child, id);
+      if (found) return found;
+    }
+    return null;
+  };
+
   const renderDirectory = (directory: Directory, level: number = 0) => {
     const isExpanded = expandedDirectories.has(directory._id);
     const hasChildren = directory.children.length > 0;
@@ -204,11 +295,16 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
         <div
           className={`flex items-center p-2 rounded-lg cursor-pointer hover:bg-gray-50 ${
             isSelected ? "bg-blue-50 border border-blue-200" : ""
+          } ${draggedDirectory === directory._id ? "opacity-50" : ""} ${
+            dragOverDirectory === directory._id ? "bg-blue-100 border-2 border-blue-300 border-dashed" : ""
           }`}
           style={{ paddingLeft: `${level * 20 + 8}px` }}
           onClick={() => setSelectedDirectory(directory._id)}
-          onDragOver={handleDragOver}
+          onDragOver={(e) => handleDragOver(e, directory._id)}
+          onDragLeave={handleDragLeave}
           onDrop={(e) => handleDrop(e, directory._id)}
+          draggable
+          onDragStart={() => handleDirectoryDragStart(directory._id)}
         >
           {hasChildren && (
             <button
@@ -216,7 +312,7 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
                 e.stopPropagation();
                 toggleDirectory(directory._id);
               }}
-              className="mr-1 p-0.5 hover:bg-gray-200 rounded"
+              className="mr-1 p-0.5 hover:bg-gray-200 rounded cursor-pointer"
             >
               {isExpanded ? (
                 <ChevronDown className="h-4 w-4" />
@@ -232,13 +328,53 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
             <Folder className="h-4 w-4 mr-2 text-blue-500" />
           )}
 
-          <span className="text-sm font-medium">{directory.name}</span>
+          <span className="text-sm font-medium flex-1">{directory.name}</span>
 
           {directory.description && (
             <span className="text-xs text-gray-500 ml-2">
               {directory.description}
             </span>
           )}
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-6 w-6 p-0 ml-2 hover:bg-gray-200"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <MoreHorizontal className="h-3 w-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const dir = directories?.find(d => findDirectoryById(d, directory._id));
+                  if (dir) {
+                    setDirectoryToRename(directory._id);
+                    setRenameValue(directory.name);
+                    setShowRenameDialog(true);
+                  }
+                }}
+              >
+                <Edit3 className="h-4 w-4 mr-2" />
+                Rename
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDirectoryToDelete(directory._id);
+                  setShowDeleteDialog(true);
+                }}
+                className="text-red-600"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         {isExpanded && hasChildren && (
@@ -296,26 +432,58 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
     );
   }
 
+  // Handle sidebar resize
+  const handleMouseDown = (e: React.MouseEvent) => {
+    setIsResizing(true);
+    const startX = e.clientX;
+    const startWidth = sidebarWidth;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const newWidth = Math.max(180, Math.min(400, startWidth + (e.clientX - startX)));
+      setSidebarWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
+
   return (
-    <div className="flex h-full">
+    <div className="flex h-[calc(100vh-12rem)]">
       {/* Directory Sidebar */}
-      <div className="w-80 border-r bg-gray-50 p-4">
+      <div 
+        className="border-r bg-gray-50 p-2 relative" 
+        style={{ width: `${sidebarWidth}px` }}
+      >
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-semibold text-gray-900">Directories</h3>
-          <Dialog
-            open={showNewDirectoryDialog}
-            onOpenChange={setShowNewDirectoryDialog}
-          >
-            <DialogTrigger asChild>
-              <Button variant="outline" size="sm">
-                <Plus className="h-4 w-4 mr-1" />
-                New Folder
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Create New Directory</DialogTitle>
-              </DialogHeader>
+          <div className="flex gap-1">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setShowArchiveDialog(true)}
+              title="View Archive"
+            >
+              <Archive className="h-4 w-4" />
+            </Button>
+            <Dialog
+              open={showNewDirectoryDialog}
+              onOpenChange={setShowNewDirectoryDialog}
+            >
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm" title="New Folder">
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Create New Directory</DialogTitle>
+                </DialogHeader>
               <div className="space-y-4">
                 <div>
                   <Label htmlFor="directory-name">Directory Name</Label>
@@ -350,8 +518,9 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
                   </Button>
                 </div>
               </div>
-            </DialogContent>
-          </Dialog>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
 
         {/* Root Level */}
@@ -360,9 +529,12 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
             selectedDirectory === null
               ? "bg-blue-50 border border-blue-200"
               : ""
+          } ${
+            dragOverDirectory === null && (draggedDirectory || draggedWorkflow) ? "bg-green-100 border-2 border-green-300 border-dashed" : ""
           }`}
           onClick={() => setSelectedDirectory(null)}
-          onDragOver={handleDragOver}
+          onDragOver={(e) => handleDragOver(e, 'root')}
+          onDragLeave={handleDragLeave}
           onDrop={(e) => handleDrop(e, null)}
         >
           <Folder className="h-4 w-4 mr-2 text-gray-500" />
@@ -373,10 +545,16 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
         <div className="space-y-1">
           {directories?.map((directory) => renderDirectory(directory))}
         </div>
+
+        {/* Resize Handle */}
+        <div
+          className="absolute top-0 right-0 w-1 h-full cursor-col-resize bg-gray-300 hover:bg-gray-400 transition-colors"
+          onMouseDown={handleMouseDown}
+        />
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 p-6">
+      <div className="flex-1 p-2">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -434,7 +612,7 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
               key={workflow._id}
               draggable
               onDragStart={() => handleDragStart(workflow._id)}
-              className="bg-white rounded-lg border shadow-sm hover:shadow-md transition-shadow cursor-move"
+              className="bg-white rounded-lg border shadow-sm hover:shadow-md transition-shadow cursor-move hover:cursor-pointer"
               data-testid="workflow-item"
             >
               <div className="p-6">
@@ -562,6 +740,149 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
           </div>
         )}
       </div>
+
+      {/* Rename Directory Dialog */}
+      <Dialog open={showRenameDialog} onOpenChange={setShowRenameDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rename Directory</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="rename-input">Directory Name</Label>
+              <Input
+                id="rename-input"
+                value={renameValue}
+                onChange={(e) => setRenameValue(e.target.value)}
+                placeholder="Enter new directory name"
+              />
+            </div>
+            <div className="flex justify-end space-x-2">
+              <Button
+                variant="outline"
+                onClick={() => setShowRenameDialog(false)}
+              >
+                Cancel
+              </Button>
+              <Button onClick={handleRenameDirectory}>
+                Rename
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Directory Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Directory</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="text-sm text-gray-600">
+              <p className="mb-2">
+                Are you sure you want to delete this directory? This action cannot be undone.
+              </p>
+              <div className="bg-yellow-50 border border-yellow-200 rounded p-3">
+                <p className="text-yellow-800">
+                  <strong>Warning:</strong> All workflows in this directory will be moved to the root level.
+                  The directory will be archived and can be restored from the archive if needed.
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end space-x-2">
+              <Button
+                variant="outline"
+                onClick={() => setShowDeleteDialog(false)}
+              >
+                Cancel
+              </Button>
+              <Button variant="destructive" onClick={handleDeleteDirectory} className="text-white">
+                Delete Directory
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Archive Dialog */}
+      <Dialog open={showArchiveDialog} onOpenChange={setShowArchiveDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Archived Directories</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {archivedDirectories && archivedDirectories.length > 0 ? (
+              <div className="space-y-2 max-h-96 overflow-y-auto">
+                {archivedDirectories.map((dir) => (
+                  <div key={dir._id} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <Folder className="h-4 w-4 text-gray-400" />
+                        <span className="font-medium">{dir.name}</span>
+                      </div>
+                      {dir.description && (
+                        <p className="text-sm text-gray-600 ml-6">{dir.description}</p>
+                      )}
+                      <p className="text-xs text-gray-500 ml-6">
+                        Archived {new Date(dir.archivedAt!).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={async () => {
+                          try {
+                            await restoreDirectory({
+                              directoryId: dir._id as any,
+                            });
+                            alert(`Directory "${dir.name}" has been restored!`);
+                          } catch (error) {
+                            console.error("Failed to restore directory:", error);
+                            alert("Failed to restore directory");
+                          }
+                        }}
+                      >
+                        Restore
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={async () => {
+                          if (confirm(`Permanently delete "${dir.name}"? This cannot be undone.`)) {
+                            try {
+                              await permanentlyDeleteDirectory({
+                                directoryId: dir._id as any,
+                              });
+                              alert(`Directory "${dir.name}" has been permanently deleted.`);
+                            } catch (error) {
+                              console.error("Failed to permanently delete directory:", error);
+                              alert("Failed to permanently delete directory");
+                            }
+                          }
+                        }}
+                      >
+                        Delete Forever
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <Archive className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+                <p>No archived directories</p>
+              </div>
+            )}
+            <div className="flex justify-end">
+              <Button variant="outline" onClick={() => setShowArchiveDialog(false)}>
+                Close
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

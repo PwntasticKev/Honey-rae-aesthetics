@@ -135,13 +135,6 @@ const menuItems = [
     href: "/settings",
     notification: null,
   },
-  {
-    id: "org-profile",
-    label: "Organization",
-    icon: Building,
-    href: "/org-profile",
-    notification: null,
-  },
 ];
 
 export function Sidebar({ isOpen, onToggle }: SidebarProps) {
@@ -212,7 +205,7 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
                 data-testid={`sidebar-item-${item.id}`}
                 onClick={() => handleNavigation(item.href)}
                 className={cn(
-                  "w-full flex items-center justify-between p-3 text-left transition-all duration-200 group",
+                  "w-full flex items-center justify-between p-3 text-left transition-all duration-200 group cursor-pointer rounded-lg hover:bg-gray-50",
                 )}
                 data-active={isActive(item.href) ? "true" : "false"}
                 data-theme-aware={isActive(item.href) ? "true" : undefined}
@@ -243,10 +236,10 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
                 </div>
                 {item.notification && (
                   <Badge
-                    className="w-5 h-5 rounded-full p-0 flex items-center justify-center"
+                    className="w-5 h-5 rounded-full p-0 flex items-center justify-center bg-red-500 hover:bg-red-600 text-white border-0"
                     data-theme-aware="true"
                   >
-                    <span className="text-xs text-white font-medium">
+                    <span className="text-xs font-medium">
                       {item.notification}
                     </span>
                   </Badge>

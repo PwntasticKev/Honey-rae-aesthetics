@@ -109,7 +109,7 @@ export function EnhancedWorkflowEditor({
     api.enhancedWorkflows.getWorkflowStats,
     workflowId ? { workflowId: workflowId as any } : "skip",
   );
-  const messageTemplates = useQuery(api.messageTemplates.getByOrg, { orgId: orgId as any });
+  const messageTemplates = useQuery(api.messageTemplates.getByOrg, orgId ? { orgId: orgId as any } : "skip");
 
   // Mutations
   const createWorkflow = useMutation(api.enhancedWorkflows.createWorkflow);
