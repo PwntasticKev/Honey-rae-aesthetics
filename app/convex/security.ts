@@ -3,26 +3,39 @@ import { mutation, query } from "./_generated/server";
 import { Doc } from "./_generated/dataModel";
 
 const auditActionValidator = v.union(
+  // Authentication
   v.literal("login"),
-  v.literal("password_reset"),
-  v.literal("login_failed"),
   v.literal("logout"),
+  v.literal("login_failed"),
+  v.literal("password_reset"),
   v.literal("two_factor_enabled"),
   v.literal("two_factor_disabled"),
+  // User management
   v.literal("user_created"),
   v.literal("user_updated"),
   v.literal("user_deactivated"),
   v.literal("user_invited"),
-  v.literal("role_changed"),
+  // Permissions
   v.literal("permission_granted"),
   v.literal("permission_revoked"),
+  v.literal("role_changed"),
+  v.literal("user_role_changed"),
+  // Data operations
+  v.literal("client_created"),
+  v.literal("client_updated"),
+  v.literal("client_deleted"),
+  v.literal("workflow_created"),
+  v.literal("workflow_updated"),
+  v.literal("workflow_deleted"),
+  v.literal("workflow_executed"),
+  // Settings changes
+  v.literal("settings_updated"),
   v.literal("integration_connected"),
   v.literal("integration_disconnected"),
   v.literal("billing_updated"),
-  v.literal("plan_changed"),
-  v.literal("api_key_created"),
-  v.literal("api_key_revoked"),
+  // Security events
   v.literal("suspicious_activity"),
+  v.literal("vpn_detected"),
   v.literal("multiple_failed_logins"),
   v.literal("data_export"),
 );

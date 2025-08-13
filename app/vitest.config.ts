@@ -47,6 +47,7 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src'),
       '@/convex': path.resolve(__dirname, './convex'),
+      '@/convex/_generated/api': path.resolve(__dirname, './src/test/mocks/convex-api.ts'),
     },
   },
 })

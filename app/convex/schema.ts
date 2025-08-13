@@ -49,7 +49,9 @@ export default defineSchema({
     // Phone and preferences
     phone: v.optional(v.string()),
     twoFactorEnabled: v.optional(v.boolean()), // Optional for backward compatibility
-    preferredOtpMethod: v.optional(v.union(v.literal("sms"), v.literal("email"))), // Optional for backward compatibility
+    preferredOtpMethod: v.optional(
+      v.union(v.literal("sms"), v.literal("email")),
+    ), // Optional for backward compatibility
     // Session management
     lastLogin: v.optional(v.number()),
     isActive: v.optional(v.boolean()), // Optional for backward compatibility
@@ -202,12 +204,14 @@ export default defineSchema({
     directoryId: v.optional(v.id("workflowDirectories")), // Directory organization
     name: v.string(),
     description: v.optional(v.string()),
-    status: v.optional(v.union(
-      v.literal("active"),
-      v.literal("inactive"),
-      v.literal("draft"),
-      v.literal("archived"),
-    )),
+    status: v.optional(
+      v.union(
+        v.literal("active"),
+        v.literal("inactive"),
+        v.literal("draft"),
+        v.literal("archived"),
+      ),
+    ),
     trigger: v.union(
       v.literal("new_client"),
       v.literal("appointment_completed"),
@@ -416,6 +420,13 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_executed_at", ["executedAt"]),
 
+  workflowRuns: defineTable({
+    workflowId: v.id("workflows"),
+    clientId: v.id("clients"),
+    currentNodeId: v.string(),
+    status: v.string(),
+  }).index("by_workflow", ["workflowId"]),
+
   // Appointment Workflow Triggers - track appointment-based enrollments
   appointmentTriggers: defineTable({
     orgId: v.id("orgs"),
@@ -490,28 +501,38 @@ export default defineSchema({
     content: v.string(),
     hashtags: v.array(v.string()),
     // Media handling
-    mediaFiles: v.array(v.object({
-      url: v.string(),
-      type: v.union(v.literal("image"), v.literal("video")),
-      fileName: v.string(),
-      fileSize: v.number(),
-      mimeType: v.string(),
-      // Platform-specific versions for auto-resizing
-      versions: v.optional(v.array(v.object({
-        platform: v.string(),
+    mediaFiles: v.array(
+      v.object({
         url: v.string(),
-        width: v.number(),
-        height: v.number(),
-        aspectRatio: v.string(), // "1:1", "16:9", "9:16", etc.
-      }))),
-    })),
+        type: v.union(v.literal("image"), v.literal("video")),
+        fileName: v.string(),
+        fileSize: v.number(),
+        mimeType: v.string(),
+        // Platform-specific versions for auto-resizing
+        versions: v.optional(
+          v.array(
+            v.object({
+              platform: v.string(),
+              url: v.string(),
+              width: v.number(),
+              height: v.number(),
+              aspectRatio: v.string(), // "1:1", "16:9", "9:16", etc.
+            }),
+          ),
+        ),
+      }),
+    ),
     // Platform targeting
     targetPlatforms: v.array(v.string()), // ["instagram", "facebook", etc.]
-    platformSpecificContent: v.optional(v.array(v.object({
-      platform: v.string(),
-      content: v.string(),
-      hashtags: v.array(v.string()),
-    }))),
+    platformSpecificContent: v.optional(
+      v.array(
+        v.object({
+          platform: v.string(),
+          content: v.string(),
+          hashtags: v.array(v.string()),
+        }),
+      ),
+    ),
     // Scheduling
     status: v.union(
       v.literal("draft"),
@@ -524,21 +545,27 @@ export default defineSchema({
     scheduledFor: v.optional(v.number()),
     timezone: v.optional(v.string()),
     // Publishing tracking
-    publishingResults: v.optional(v.array(v.object({
-      platform: v.string(),
-      status: v.union(v.literal("success"), v.literal("failed")),
-      externalPostId: v.optional(v.string()),
-      error: v.optional(v.string()),
-      publishedAt: v.optional(v.number()),
-    }))),
+    publishingResults: v.optional(
+      v.array(
+        v.object({
+          platform: v.string(),
+          status: v.union(v.literal("success"), v.literal("failed")),
+          externalPostId: v.optional(v.string()),
+          error: v.optional(v.string()),
+          publishedAt: v.optional(v.number()),
+        }),
+      ),
+    ),
     // AI assistance
     aiSuggestedCaption: v.optional(v.string()),
     aiSuggestedHashtags: v.optional(v.array(v.string())),
-    aiAnalysisResults: v.optional(v.object({
-      imageDescription: v.optional(v.string()),
-      suggestedTiming: v.optional(v.string()),
-      estimatedEngagement: v.optional(v.number()),
-    })),
+    aiAnalysisResults: v.optional(
+      v.object({
+        imageDescription: v.optional(v.string()),
+        suggestedTiming: v.optional(v.string()),
+        estimatedEngagement: v.optional(v.number()),
+      }),
+    ),
     // Bulk/CSV import tracking
     bulkImportId: v.optional(v.string()),
     // User context
@@ -579,27 +606,35 @@ export default defineSchema({
     saves: v.optional(v.number()),
     engagement_rate: v.optional(v.number()),
     // Platform-specific metrics
-    platform_specific: v.optional(v.object({
-      // Instagram: story_views, profile_visits, website_clicks
-      // TikTok: video_duration_watched, profile_views
-      // LinkedIn: company_page_clicks, follow_clicks
-      // YouTube: watch_time, subscribers_gained, average_view_duration
-      metrics: v.any(),
-    })),
+    platform_specific: v.optional(
+      v.object({
+        // Instagram: story_views, profile_visits, website_clicks
+        // TikTok: video_duration_watched, profile_views
+        // LinkedIn: company_page_clicks, follow_clicks
+        // YouTube: watch_time, subscribers_gained, average_view_duration
+        metrics: v.any(),
+      }),
+    ),
     // Demographics (if available)
-    demographics: v.optional(v.object({
-      age_groups: v.optional(v.any()),
-      genders: v.optional(v.any()),
-      locations: v.optional(v.any()),
-      devices: v.optional(v.any()),
-    })),
+    demographics: v.optional(
+      v.object({
+        age_groups: v.optional(v.any()),
+        genders: v.optional(v.any()),
+        locations: v.optional(v.any()),
+        devices: v.optional(v.any()),
+      }),
+    ),
     // Time-series data
-    hourly_data: v.optional(v.array(v.object({
-      hour: v.number(),
-      views: v.number(),
-      likes: v.number(),
-      comments: v.number(),
-    }))),
+    hourly_data: v.optional(
+      v.array(
+        v.object({
+          hour: v.number(),
+          views: v.number(),
+          likes: v.number(),
+          comments: v.number(),
+        }),
+      ),
+    ),
     // Data collection metadata
     lastUpdated: v.number(),
     nextUpdate: v.optional(v.number()),
@@ -628,11 +663,13 @@ export default defineSchema({
       v.literal("failed"),
       v.literal("cancelled"),
     ),
-    errors: v.array(v.object({
-      row: v.number(),
-      column: v.optional(v.string()),
-      error: v.string(),
-    })),
+    errors: v.array(
+      v.object({
+        row: v.number(),
+        column: v.optional(v.string()),
+        error: v.string(),
+      }),
+    ),
     createdPostIds: v.array(v.id("socialPosts")),
     createdAt: v.number(),
     completedAt: v.optional(v.number()),
@@ -652,12 +689,14 @@ export default defineSchema({
     hashtags: v.array(v.string()),
     defaultPlatforms: v.array(v.string()),
     // Template variables like {{client_name}}, {{service_name}}
-    variables: v.array(v.object({
-      name: v.string(),
-      description: v.string(),
-      required: v.boolean(),
-      defaultValue: v.optional(v.string()),
-    })),
+    variables: v.array(
+      v.object({
+        name: v.string(),
+        description: v.string(),
+        required: v.boolean(),
+        defaultValue: v.optional(v.string()),
+      }),
+    ),
     usageCount: v.number(),
     lastUsed: v.optional(v.number()),
     createdBy: v.id("users"),
@@ -786,7 +825,11 @@ export default defineSchema({
   otpCodes: defineTable({
     userId: v.id("users"),
     code: v.string(), // 6-digit code
-    type: v.union(v.literal("login"), v.literal("verification"), v.literal("password_reset")),
+    type: v.union(
+      v.literal("login"),
+      v.literal("verification"),
+      v.literal("password_reset"),
+    ),
     deliveryMethod: v.union(v.literal("sms"), v.literal("email")),
     deliveryTarget: v.string(), // Phone number or email address
     isUsed: v.boolean(),
@@ -806,11 +849,13 @@ export default defineSchema({
     userId: v.id("users"),
     sessionToken: v.string(), // JWT or random token
     refreshToken: v.optional(v.string()),
-    deviceInfo: v.optional(v.object({
-      userAgent: v.string(),
-      ip: v.string(),
-      deviceName: v.optional(v.string()),
-    })),
+    deviceInfo: v.optional(
+      v.object({
+        userAgent: v.string(),
+        ip: v.string(),
+        deviceName: v.optional(v.string()),
+      }),
+    ),
     isActive: v.boolean(),
     expiresAt: v.number(),
     lastUsedAt: v.number(),
@@ -836,11 +881,13 @@ export default defineSchema({
       v.literal("logout"),
     ),
     method: v.union(v.literal("email"), v.literal("google"), v.literal("otp")),
-    deviceInfo: v.optional(v.object({
-      userAgent: v.string(),
-      ip: v.string(),
-      deviceName: v.optional(v.string()),
-    })),
+    deviceInfo: v.optional(
+      v.object({
+        userAgent: v.string(),
+        ip: v.string(),
+        deviceName: v.optional(v.string()),
+      }),
+    ),
     metadata: v.optional(v.any()), // Additional event-specific data
     createdAt: v.number(),
   })
@@ -892,11 +939,7 @@ export default defineSchema({
   teamMembers: defineTable({
     orgId: v.id("orgs"),
     userId: v.id("users"),
-    role: v.union(
-      v.literal("admin"),
-      v.literal("manager"), 
-      v.literal("staff"),
-    ),
+    role: v.union(v.literal("admin"), v.literal("manager"), v.literal("staff")),
     status: v.union(
       v.literal("active"),
       v.literal("invited"),
@@ -927,7 +970,7 @@ export default defineSchema({
     resource: v.union(
       // Page-level permissions
       v.literal("dashboard"),
-      v.literal("workflows"), 
+      v.literal("workflows"),
       v.literal("clients"),
       v.literal("appointments"),
       v.literal("gallery"),
@@ -939,7 +982,7 @@ export default defineSchema({
       v.literal("inventory"),
       v.literal("reviews"),
       v.literal("settings"),
-      // Feature-level permissions  
+      // Feature-level permissions
       v.literal("create_workflow"),
       v.literal("edit_workflow"),
       v.literal("delete_workflow"),
@@ -984,7 +1027,7 @@ export default defineSchema({
     action: v.union(
       // Authentication
       v.literal("login"),
-      v.literal("logout"), 
+      v.literal("logout"),
       v.literal("login_failed"),
       v.literal("password_reset"),
       v.literal("two_factor_enabled"),
@@ -998,6 +1041,7 @@ export default defineSchema({
       v.literal("permission_granted"),
       v.literal("permission_revoked"),
       v.literal("role_changed"),
+      v.literal("user_role_changed"),
       // Data operations
       v.literal("client_created"),
       v.literal("client_updated"),
@@ -1010,6 +1054,7 @@ export default defineSchema({
       v.literal("settings_updated"),
       v.literal("integration_connected"),
       v.literal("integration_disconnected"),
+      v.literal("billing_updated"),
       // Security events
       v.literal("suspicious_activity"),
       v.literal("vpn_detected"),
@@ -1020,17 +1065,21 @@ export default defineSchema({
     details: v.optional(v.any()), // Additional details about the action
     ipAddress: v.optional(v.string()),
     userAgent: v.optional(v.string()),
-    deviceInfo: v.optional(v.object({
-      browser: v.optional(v.string()),
-      os: v.optional(v.string()),
-      device: v.optional(v.string()),
-    })),
-    location: v.optional(v.object({
-      country: v.optional(v.string()),
-      region: v.optional(v.string()),
-      city: v.optional(v.string()),
-      timezone: v.optional(v.string()),
-    })),
+    deviceInfo: v.optional(
+      v.object({
+        browser: v.optional(v.string()),
+        os: v.optional(v.string()),
+        device: v.optional(v.string()),
+      }),
+    ),
+    location: v.optional(
+      v.object({
+        country: v.optional(v.string()),
+        region: v.optional(v.string()),
+        city: v.optional(v.string()),
+        timezone: v.optional(v.string()),
+      }),
+    ),
     riskLevel: v.union(
       v.literal("low"),
       v.literal("medium"),

@@ -24,8 +24,10 @@
     "test:theme": "playwright test tests/theme",
     "test:workflows": "playwright test tests/e2e",
     "test:regression": "playwright test tests/regression",
+    "test:types": "vitest run src/test/type-errors.test.ts",
+    "test:stability": "vitest run src/test/infinite-loop-prevention-simple.test.tsx",
     "test:all": "npm run test:run && npm run test:e2e",
-    "validate": "npm run type-check && npm run lint && npm run test:run",
+    "validate": "npm run type-check && npm run lint && npm run test:run && npm run test:types && npm run test:stability",
     "prepare": "husky install"
   },
   "dependencies": {

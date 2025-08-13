@@ -260,7 +260,8 @@ export function ClientForm({ onSubmit, onCancel, initialData }: ClientFormProps)
 									<button
 										type="button"
 										onClick={() => removeTag(tag)}
-										className="ml-1 hover:text-red-500"
+										className="ml-1"
+										data-theme-aware="true"
 									>
 										<X className="h-3 w-3" />
 									</button>

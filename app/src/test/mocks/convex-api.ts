@@ -18,6 +18,7 @@ export const api = {
     create: 'workflows:create',
     update: 'workflows:update',
     delete: 'workflows:delete',
+    getWorkflowUserTracking: 'workflows:getWorkflowUserTracking',
   },
   enhancedWorkflows: {
     getWorkflows: 'enhancedWorkflows:getWorkflows',
@@ -25,10 +26,19 @@ export const api = {
     getExecutionLogs: 'enhancedWorkflows:getExecutionLogs',
     getWorkflowStats: 'enhancedWorkflows:getWorkflowStats',
     createWorkflow: 'enhancedWorkflows:createWorkflow',
+    updateWorkflowStatus: 'enhancedWorkflows:updateWorkflowStatus',
   },
   workflowDirectories: {
     getDirectories: 'workflowDirectories:getDirectories',
+    getArchivedDirectories: 'workflowDirectories:getArchivedDirectories',
     createDirectory: 'workflowDirectories:createDirectory',
+    updateDirectory: 'workflowDirectories:updateDirectory',
+    deleteDirectory: 'workflowDirectories:deleteDirectory',
+    restoreDirectory: 'workflowDirectories:restoreDirectory',
+    permanentlyDeleteDirectory: 'workflowDirectories:permanentlyDeleteDirectory',
+    renameDirectory: 'workflowDirectories:renameDirectory',
+    moveDirectory: 'workflowDirectories:moveDirectory',
+    moveWorkflowToDirectory: 'workflowDirectories:moveWorkflowToDirectory',
   },
   messageTemplates: {
     getByOrg: 'messageTemplates:getByOrg',
@@ -39,6 +49,8 @@ export const api = {
     get: 'clients:get',
     create: 'clients:create',
     update: 'clients:update',
+    importClients: 'clients:importClients',
+    exportClients: 'clients:exportClients',
   },
   appointments: {
     list: 'appointments:list',

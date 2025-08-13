@@ -98,30 +98,49 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
   const [newDirectoryDescription, setNewDirectoryDescription] = useState("");
   const [draggedWorkflow, setDraggedWorkflow] = useState<string | null>(null);
   const [draggedDirectory, setDraggedDirectory] = useState<string | null>(null);
-  const [viewingStepTracker, setViewingStepTracker] = useState<string | null>(null);
+  const [viewingStepTracker, setViewingStepTracker] = useState<string | null>(
+    null,
+  );
   const [sidebarWidth, setSidebarWidth] = useState(240); // Smaller default width
   const [isResizing, setIsResizing] = useState(false);
-  const [contextMenuDirectory, setContextMenuDirectory] = useState<string | null>(null);
+  const [contextMenuDirectory, setContextMenuDirectory] = useState<
+    string | null
+  >(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [directoryToDelete, setDirectoryToDelete] = useState<string | null>(null);
+  const [directoryToDelete, setDirectoryToDelete] = useState<string | null>(
+    null,
+  );
   const [showRenameDialog, setShowRenameDialog] = useState(false);
-  const [directoryToRename, setDirectoryToRename] = useState<string | null>(null);
+  const [directoryToRename, setDirectoryToRename] = useState<string | null>(
+    null,
+  );
   const [renameValue, setRenameValue] = useState("");
   const [showArchiveDialog, setShowArchiveDialog] = useState(false);
-  const [dragOverDirectory, setDragOverDirectory] = useState<string | null>(null);
+  const [dragOverDirectory, setDragOverDirectory] = useState<string | null>(
+    null,
+  );
 
   // Queries
-  const directories = useQuery(api.workflowDirectories.getDirectories, {
-    orgId: orgId as any,
-  });
-  const archivedDirectories = useQuery(api.workflowDirectories.getArchivedDirectories, {
-    orgId: orgId as any,
-  });
-  const workflows = useQuery(api.enhancedWorkflows.getWorkflows, {
-    orgId: orgId as any,
-    status: statusFilter === "all" ? undefined : (statusFilter as any),
-    directoryId: selectedDirectory ? (selectedDirectory as any) : undefined,
-  });
+  const directories = useQuery(
+    api.workflowDirectories.getDirectories,
+    orgId ? { orgId: orgId as any } : "skip",
+  );
+  const archivedDirectories = useQuery(
+    api.workflowDirectories.getArchivedDirectories,
+    orgId ? { orgId: orgId as any } : "skip",
+  );
+  const workflows = useQuery(
+    api.enhancedWorkflows.getWorkflows,
+    orgId
+      ? {
+          orgId: orgId as any,
+          status: statusFilter === "all" ? undefined : (statusFilter as any),
+          directoryId: selectedDirectory
+            ? (selectedDirectory as any)
+            : undefined,
+        }
+      : "skip",
+  );
 
   // Mutations
   const createDirectory = useMutation(api.workflowDirectories.createDirectory);
@@ -134,8 +153,12 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
   const moveDirectory = useMutation(api.workflowDirectories.moveDirectory);
   const renameDirectory = useMutation(api.workflowDirectories.renameDirectory);
   const deleteDirectory = useMutation(api.workflowDirectories.deleteDirectory);
-  const restoreDirectory = useMutation(api.workflowDirectories.restoreDirectory);
-  const permanentlyDeleteDirectory = useMutation(api.workflowDirectories.permanentlyDeleteDirectory);
+  const restoreDirectory = useMutation(
+    api.workflowDirectories.restoreDirectory,
+  );
+  const permanentlyDeleteDirectory = useMutation(
+    api.workflowDirectories.permanentlyDeleteDirectory,
+  );
 
   // Filter workflows by search query
   const filteredWorkflows =
@@ -188,7 +211,7 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
 
   const handleDragOver = (e: React.DragEvent, directoryId?: string) => {
     e.preventDefault();
-    const targetId = directoryId === 'root' ? null : directoryId;
+    const targetId = directoryId === "root" ? null : directoryId;
     if (dragOverDirectory !== targetId) {
       setDragOverDirectory(targetId);
     }
@@ -208,7 +231,7 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
   ) => {
     e.preventDefault();
     setDragOverDirectory(null);
-    
+
     if (draggedWorkflow) {
       try {
         await moveWorkflowToDirectory({
@@ -293,11 +316,15 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
     return (
       <div key={directory._id} className="mb-1">
         <div
-          className={`flex items-center p-2 rounded-lg cursor-pointer hover:bg-gray-50 ${
+          className={`flex items-center p-2 rounded-lg cursor-pointer ${
             isSelected ? "bg-blue-50 border border-blue-200" : ""
           } ${draggedDirectory === directory._id ? "opacity-50" : ""} ${
-            dragOverDirectory === directory._id ? "bg-blue-100 border-2 border-blue-300 border-dashed" : ""
+            dragOverDirectory === directory._id
+              ? "bg-blue-100 border-2 border-blue-300 border-dashed"
+              : ""
           }`}
+          data-theme-aware="true"
+          data-variant="light"
           style={{ paddingLeft: `${level * 20 + 8}px` }}
           onClick={() => setSelectedDirectory(directory._id)}
           onDragOver={(e) => handleDragOver(e, directory._id)}
@@ -312,7 +339,9 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
                 e.stopPropagation();
                 toggleDirectory(directory._id);
               }}
-              className="mr-1 p-0.5 hover:bg-gray-200 rounded cursor-pointer"
+              className="mr-1 p-0.5 rounded cursor-pointer"
+              data-theme-aware="true"
+              data-variant="light"
             >
               {isExpanded ? (
                 <ChevronDown className="h-4 w-4" />
@@ -338,11 +367,13 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="h-6 w-6 p-0 ml-2 hover:bg-gray-200"
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0 ml-2"
                 onClick={(e) => e.stopPropagation()}
+                data-theme-aware="true"
+                data-variant="light"
               >
                 <MoreHorizontal className="h-3 w-3" />
               </Button>
@@ -351,7 +382,9 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
               <DropdownMenuItem
                 onClick={(e) => {
                   e.stopPropagation();
-                  const dir = directories?.find(d => findDirectoryById(d, directory._id));
+                  const dir = directories?.find((d) =>
+                    findDirectoryById(d, directory._id),
+                  );
                   if (dir) {
                     setDirectoryToRename(directory._id);
                     setRenameValue(directory.name);
@@ -390,15 +423,15 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
-      active: { color: "bg-green-100 text-green-800", label: "Active" },
-      inactive: { color: "bg-gray-100 text-gray-800", label: "Inactive" },
-      draft: { color: "bg-yellow-100 text-yellow-800", label: "Draft" },
-      archived: { color: "bg-red-100 text-red-800", label: "Archived" },
+      active: { color: "bg-gray-50 text-gray-600 border-gray-200", label: "Active" },
+      inactive: { color: "bg-gray-50 text-gray-500 border-gray-200", label: "Inactive" },
+      draft: { color: "bg-gray-50 text-gray-500 border-gray-200", label: "Draft" },
+      archived: { color: "bg-gray-50 text-gray-400 border-gray-200", label: "Archived" },
     };
 
     const config =
       statusConfig[status as keyof typeof statusConfig] || statusConfig.draft;
-    return <Badge className={config.color}>{config.label}</Badge>;
+    return <Badge variant="outline" className={config.color}>{config.label}</Badge>;
   };
 
   const formatTrigger = (trigger: string) => {
@@ -407,7 +440,9 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
 
   // If viewing step tracker, show that instead
   if (viewingStepTracker) {
-    const selectedWorkflow = filteredWorkflows.find(w => w._id === viewingStepTracker);
+    const selectedWorkflow = filteredWorkflows.find(
+      (w) => w._id === viewingStepTracker,
+    );
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
@@ -424,10 +459,7 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
             </div>
           </div>
         </div>
-        <WorkflowStepTracker 
-          workflowId={viewingStepTracker} 
-          orgId={orgId} 
-        />
+        <WorkflowStepTracker workflowId={viewingStepTracker} orgId={orgId} />
       </div>
     );
   }
@@ -439,33 +471,36 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
     const startWidth = sidebarWidth;
 
     const handleMouseMove = (e: MouseEvent) => {
-      const newWidth = Math.max(180, Math.min(400, startWidth + (e.clientX - startX)));
+      const newWidth = Math.max(
+        180,
+        Math.min(400, startWidth + (e.clientX - startX)),
+      );
       setSidebarWidth(newWidth);
     };
 
     const handleMouseUp = () => {
       setIsResizing(false);
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
     };
 
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
   };
 
   return (
     <div className="flex h-[calc(100vh-12rem)]">
       {/* Directory Sidebar */}
-      <div 
-        className="border-r bg-gray-50 p-2 relative" 
+      <div
+        className="border-r bg-gray-50 p-2 relative"
         style={{ width: `${sidebarWidth}px` }}
       >
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-semibold text-gray-900">Directories</h3>
           <div className="flex gap-1">
-            <Button 
-              variant="ghost" 
-              size="sm" 
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => setShowArchiveDialog(true)}
               title="View Archive"
             >
@@ -484,40 +519,42 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
                 <DialogHeader>
                   <DialogTitle>Create New Directory</DialogTitle>
                 </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="directory-name">Directory Name</Label>
-                  <Input
-                    id="directory-name"
-                    value={newDirectoryName}
-                    onChange={(e) => setNewDirectoryName(e.target.value)}
-                    placeholder="Enter directory name"
-                  />
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="directory-name">Directory Name</Label>
+                    <Input
+                      id="directory-name"
+                      value={newDirectoryName}
+                      onChange={(e) => setNewDirectoryName(e.target.value)}
+                      placeholder="Enter directory name"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="directory-description">
+                      Description (Optional)
+                    </Label>
+                    <Textarea
+                      id="directory-description"
+                      value={newDirectoryDescription}
+                      onChange={(e) =>
+                        setNewDirectoryDescription(e.target.value)
+                      }
+                      placeholder="Enter directory description"
+                      rows={3}
+                    />
+                  </div>
+                  <div className="flex justify-end space-x-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowNewDirectoryDialog(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button onClick={handleCreateDirectory}>
+                      Create Directory
+                    </Button>
+                  </div>
                 </div>
-                <div>
-                  <Label htmlFor="directory-description">
-                    Description (Optional)
-                  </Label>
-                  <Textarea
-                    id="directory-description"
-                    value={newDirectoryDescription}
-                    onChange={(e) => setNewDirectoryDescription(e.target.value)}
-                    placeholder="Enter directory description"
-                    rows={3}
-                  />
-                </div>
-                <div className="flex justify-end space-x-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowNewDirectoryDialog(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button onClick={handleCreateDirectory}>
-                    Create Directory
-                  </Button>
-                </div>
-              </div>
               </DialogContent>
             </Dialog>
           </div>
@@ -525,15 +562,19 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
 
         {/* Root Level */}
         <div
-          className={`flex items-center p-2 rounded-lg cursor-pointer hover:bg-gray-50 mb-2 ${
+          className={`flex items-center p-2 rounded-lg cursor-pointer mb-2 ${
             selectedDirectory === null
               ? "bg-blue-50 border border-blue-200"
               : ""
           } ${
-            dragOverDirectory === null && (draggedDirectory || draggedWorkflow) ? "bg-green-100 border-2 border-green-300 border-dashed" : ""
+            dragOverDirectory === null && (draggedDirectory || draggedWorkflow)
+              ? "bg-green-100 border-2 border-green-300 border-dashed"
+              : ""
           }`}
+          data-theme-aware="true"
+          data-variant="light"
           onClick={() => setSelectedDirectory(null)}
-          onDragOver={(e) => handleDragOver(e, 'root')}
+          onDragOver={(e) => handleDragOver(e, "root")}
           onDragLeave={handleDragLeave}
           onDrop={(e) => handleDrop(e, null)}
         >
@@ -603,35 +644,39 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
         </div>
 
         {/* Workflow List */}
-        <div
-          className="space-y-3"
-          data-testid="workflow-list"
-        >
+        <div className="space-y-2" data-testid="workflow-list">
           {filteredWorkflows.map((workflow) => (
             <div
               key={workflow._id}
               draggable
               onDragStart={() => handleDragStart(workflow._id)}
-              className="bg-white rounded-lg border shadow-sm hover:shadow-md transition-shadow cursor-move hover:cursor-pointer"
+              className="bg-gray-50/50 hover:bg-white rounded-md border border-gray-100 hover:border-gray-200 transition-all cursor-move workflow-item"
+              data-theme-aware="true"
+              data-variant="light"
               data-testid="workflow-item"
             >
-              <div className="p-4">
+              <div className="p-3">
                 {/* Single Row Layout */}
                 <div className="flex items-center justify-between">
                   {/* Left Section: Name, Description, and Badges */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center space-x-3">
-                      <h3 className="font-semibold text-gray-900 truncate">
+                      <h3
+                        className="font-medium text-gray-800 truncate cursor-pointer hover:text-gray-900 transition-colors"
+                        onClick={() =>
+                          router.push(`/workflow-editor?id=${workflow._id}`)
+                        }
+                      >
                         {workflow.name}
                       </h3>
                       <div className="flex items-center space-x-2">
                         {getStatusBadge(workflow.status)}
-                        <Badge variant="outline" className="text-xs">
+                        <Badge variant="outline" className="text-xs bg-gray-50 text-gray-500 border-gray-200">
                           {formatTrigger(workflow.trigger)}
                         </Badge>
                       </div>
                     </div>
-                    <p className="text-sm text-gray-600 mt-1 truncate">
+                    <p className="text-sm text-gray-500 mt-1 truncate">
                       {workflow.description || "No description"}
                     </p>
                   </div>
@@ -639,21 +684,21 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
                   {/* Center Section: Stats */}
                   <div className="flex items-center space-x-6 mx-8">
                     <div className="text-center">
-                      <div className="text-lg font-bold text-blue-600">
+                      <div className="text-sm font-medium text-gray-700">
                         {workflow.activeEnrollmentCount}
                       </div>
-                      <div className="text-xs text-gray-500">Active</div>
+                      <div className="text-xs text-gray-400">Active</div>
                     </div>
                     <div className="text-center">
-                      <div className="text-lg font-bold text-green-600">
+                      <div className="text-sm font-medium text-gray-700">
                         {workflow.totalRuns}
                       </div>
-                      <div className="text-xs text-gray-500">Total Runs</div>
+                      <div className="text-xs text-gray-400">Total Runs</div>
                     </div>
                     {workflow.lastRun && (
                       <div className="text-center">
-                        <div className="text-xs text-gray-500">Last run</div>
-                        <div className="text-xs text-gray-700">
+                        <div className="text-xs text-gray-400">Last run</div>
+                        <div className="text-xs text-gray-500">
                           {new Date(workflow.lastRun).toLocaleDateString()}
                         </div>
                       </div>
@@ -663,10 +708,9 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
                   {/* Right Section: Actions */}
                   <div className="flex items-center space-x-2">
                     <Button
-                      variant={
-                        workflow.status === "active" ? "outline" : "default"
-                      }
+                      variant="ghost"
                       size="sm"
+                      className="text-gray-500 hover:text-gray-700 hover:bg-gray-100"
                       onClick={() =>
                         handleToggleWorkflow(workflow._id, workflow.status)
                       }
@@ -691,7 +735,7 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
 
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm">
+                        <Button variant="ghost" size="sm" className="text-gray-400 hover:text-gray-600 hover:bg-gray-100">
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
@@ -710,12 +754,14 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
                           <BarChart3 className="h-4 w-4 mr-2" />
                           View Step Tracking
                         </DropdownMenuItem>
-                        <DropdownMenuItem 
+                        <DropdownMenuItem
                           onClick={() => {
-                            const email = prompt('Enter test email address:');
-                            const phone = prompt('Enter test phone number:');
+                            const email = prompt("Enter test email address:");
+                            const phone = prompt("Enter test phone number:");
                             if (email || phone) {
-                              alert(`Test workflow would be sent to:\nEmail: ${email || 'Not provided'}\nPhone: ${phone || 'Not provided'}`);
+                              alert(
+                                `Test workflow would be sent to:\nEmail: ${email || "Not provided"}\nPhone: ${phone || "Not provided"}`,
+                              );
                             }
                           }}
                         >
@@ -776,9 +822,7 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
               >
                 Cancel
               </Button>
-              <Button onClick={handleRenameDirectory}>
-                Rename
-              </Button>
+              <Button onClick={handleRenameDirectory}>Rename</Button>
             </div>
           </div>
         </DialogContent>
@@ -793,12 +837,14 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
           <div className="space-y-4">
             <div className="text-sm text-gray-600">
               <p className="mb-2">
-                Are you sure you want to delete this directory? This action cannot be undone.
+                Are you sure you want to delete this directory? This action
+                cannot be undone.
               </p>
               <div className="bg-yellow-50 border border-yellow-200 rounded p-3">
                 <p className="text-yellow-800">
-                  <strong>Warning:</strong> All workflows in this directory will be moved to the root level.
-                  The directory will be archived and can be restored from the archive if needed.
+                  <strong>Warning:</strong> All workflows in this directory will
+                  be moved to the root level. The directory will be archived and
+                  can be restored from the archive if needed.
                 </p>
               </div>
             </div>
@@ -809,7 +855,11 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
               >
                 Cancel
               </Button>
-              <Button variant="destructive" onClick={handleDeleteDirectory} className="text-white">
+              <Button
+                variant="destructive"
+                onClick={handleDeleteDirectory}
+                className="text-white"
+              >
                 Delete Directory
               </Button>
             </div>
@@ -827,17 +877,23 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
             {archivedDirectories && archivedDirectories.length > 0 ? (
               <div className="space-y-2 max-h-96 overflow-y-auto">
                 {archivedDirectories.map((dir) => (
-                  <div key={dir._id} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div
+                    key={dir._id}
+                    className="flex items-center justify-between p-3 border rounded-lg"
+                  >
                     <div>
                       <div className="flex items-center gap-2">
                         <Folder className="h-4 w-4 text-gray-400" />
                         <span className="font-medium">{dir.name}</span>
                       </div>
                       {dir.description && (
-                        <p className="text-sm text-gray-600 ml-6">{dir.description}</p>
+                        <p className="text-sm text-gray-600 ml-6">
+                          {dir.description}
+                        </p>
                       )}
                       <p className="text-xs text-gray-500 ml-6">
-                        Archived {new Date(dir.archivedAt!).toLocaleDateString()}
+                        Archived{" "}
+                        {new Date(dir.archivedAt!).toLocaleDateString()}
                       </p>
                     </div>
                     <div className="flex gap-2">
@@ -851,7 +907,10 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
                             });
                             alert(`Directory "${dir.name}" has been restored!`);
                           } catch (error) {
-                            console.error("Failed to restore directory:", error);
+                            console.error(
+                              "Failed to restore directory:",
+                              error,
+                            );
                             alert("Failed to restore directory");
                           }
                         }}
@@ -862,14 +921,23 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
                         variant="destructive"
                         size="sm"
                         onClick={async () => {
-                          if (confirm(`Permanently delete "${dir.name}"? This cannot be undone.`)) {
+                          if (
+                            confirm(
+                              `Permanently delete "${dir.name}"? This cannot be undone.`,
+                            )
+                          ) {
                             try {
                               await permanentlyDeleteDirectory({
                                 directoryId: dir._id as any,
                               });
-                              alert(`Directory "${dir.name}" has been permanently deleted.`);
+                              alert(
+                                `Directory "${dir.name}" has been permanently deleted.`,
+                              );
                             } catch (error) {
-                              console.error("Failed to permanently delete directory:", error);
+                              console.error(
+                                "Failed to permanently delete directory:",
+                                error,
+                              );
                               alert("Failed to permanently delete directory");
                             }
                           }
@@ -888,7 +956,10 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
               </div>
             )}
             <div className="flex justify-end">
-              <Button variant="outline" onClick={() => setShowArchiveDialog(false)}>
+              <Button
+                variant="outline"
+                onClick={() => setShowArchiveDialog(false)}
+              >
                 Close
               </Button>
             </div>

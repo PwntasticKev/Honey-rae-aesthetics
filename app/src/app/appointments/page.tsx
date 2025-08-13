@@ -8,7 +8,7 @@ import { useEnvironment } from "@/contexts/EnvironmentContext";
 import { EnvironmentToggle } from "@/components/EnvironmentToggle";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Menu, Bell, LogOut, Plus, Calendar, X } from "lucide-react";
+import { Menu, Bell, LogOut, Plus, Calendar, X, RefreshCw } from "lucide-react";
 import { NotificationDropdown } from "@/components/NotificationDropdown";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import { useQuery, useMutation } from "convex/react";
@@ -18,6 +18,7 @@ export default function AppointmentsPage() {
   const { user, logout } = useAuth();
   const { environment } = useEnvironment();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [loadingTimeout, setLoadingTimeout] = useState(false);
 
   // Get or create demo org
   const orgs = useQuery(api.orgs.list);
@@ -73,6 +74,17 @@ export default function AppointmentsPage() {
       handleCreateDemoClients();
     }
   }, [orgId, clients.length, createDemoClients]);
+
+  // Add timeout for loading state
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!orgId || clients.length === 0) {
+        setLoadingTimeout(true);
+      }
+    }, 10000); // 10 second timeout
+
+    return () => clearTimeout(timer);
+  }, [orgId, clients.length]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-rose-50">
@@ -165,22 +177,44 @@ export default function AppointmentsPage() {
             {(!orgId || clients.length === 0) && (
               <div className="text-center py-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-600 mx-auto mb-4"></div>
-                <p className="text-gray-600">Setting up demo data...</p>
+                <p className="text-gray-600">
+                  {loadingTimeout 
+                    ? "Setup is taking longer than expected..." 
+                    : "Setting up demo data..."}
+                </p>
                 <p className="text-sm text-gray-500 mt-2">
                   {!orgId
                     ? "Creating organization..."
                     : "Creating demo clients..."}
                 </p>
-                <button
-                  onClick={() => {
-                    console.log("🔄 Manual refresh triggered");
-                    handleCreateDemoOrg();
-                    handleCreateDemoClients();
-                  }}
-                  className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                >
-                  Retry Setup
-                </button>
+                {loadingTimeout && (
+                  <p className="text-xs text-orange-600 mt-2">
+                    If this continues, try refreshing the page or check your connection.
+                  </p>
+                )}
+                <div className="mt-4 space-x-2">
+                  <Button
+                    onClick={() => {
+                      console.log("🔄 Manual refresh triggered");
+                      setLoadingTimeout(false);
+                      handleCreateDemoOrg();
+                      handleCreateDemoClients();
+                    }}
+                    data-theme-aware="true"
+                    data-variant="solid"
+                  >
+                    Retry Setup
+                  </Button>
+                  <Button
+                    onClick={() => window.location.reload()}
+                    variant="outline"
+                    data-theme-aware="true"
+                    data-variant="light"
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Refresh Page
+                  </Button>
+                </div>
               </div>
             )}
 

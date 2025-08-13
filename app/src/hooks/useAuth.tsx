@@ -101,7 +101,7 @@ function useAuthImplementation(): AuthContextType {
     };
 
     initAuth();
-  }, [createTestOrgMutation]);
+  }, []); // Removed createTestOrgMutation from dependencies to prevent infinite loop
 
   // Update auth state when currentUser query resolves
   useEffect(() => {

@@ -21,6 +21,7 @@ vi.mock('@/convex/_generated/api', () => ({
       create: 'workflows:create',
       update: 'workflows:update',
       delete: 'workflows:delete',
+      getWorkflowUserTracking: 'workflows:getWorkflowUserTracking',
     },
     enhancedWorkflows: {
       getWorkflows: 'enhancedWorkflows:getWorkflows',
@@ -28,10 +29,18 @@ vi.mock('@/convex/_generated/api', () => ({
       getExecutionLogs: 'enhancedWorkflows:getExecutionLogs',
       getWorkflowStats: 'enhancedWorkflows:getWorkflowStats',
       createWorkflow: 'enhancedWorkflows:createWorkflow',
+      updateWorkflowStatus: 'enhancedWorkflows:updateWorkflowStatus',
     },
     workflowDirectories: {
       getDirectories: 'workflowDirectories:getDirectories',
+      getArchivedDirectories: 'workflowDirectories:getArchivedDirectories',
       createDirectory: 'workflowDirectories:createDirectory',
+      updateDirectory: 'workflowDirectories:updateDirectory',
+      deleteDirectory: 'workflowDirectories:deleteDirectory',
+      restoreDirectory: 'workflowDirectories:restoreDirectory',
+      permanentlyDeleteDirectory: 'workflowDirectories:permanentlyDeleteDirectory',
+      renameDirectory: 'workflowDirectories:renameDirectory',
+      moveDirectory: 'workflowDirectories:moveDirectory',
       moveWorkflowToDirectory: 'workflowDirectories:moveWorkflowToDirectory',
     },
     messageTemplates: {
@@ -43,6 +52,8 @@ vi.mock('@/convex/_generated/api', () => ({
       get: 'clients:get',
       create: 'clients:create',
       update: 'clients:update',
+      importClients: 'clients:importClients',
+      exportClients: 'clients:exportClients',
     },
     appointments: {
       list: 'appointments:list',

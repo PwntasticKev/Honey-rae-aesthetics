@@ -251,7 +251,9 @@ export function ClientImportExport({ orgId }: ClientImportExportProps) {
                   type="file"
                   accept=".csv"
                   onChange={handleFileSelect}
-                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-pink-50 file:text-pink-700 hover:file:bg-pink-100"
+                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold"
+                  data-theme-aware="true"
+                  data-variant="light"
                 />
                 {selectedFile && (
                   <div className="flex items-center gap-2 text-sm text-gray-600">
@@ -317,7 +319,8 @@ export function ClientImportExport({ orgId }: ClientImportExportProps) {
             <Button
               onClick={handleImport}
               disabled={!selectedFile || isImporting || !orgId}
-              className="bg-pink-600 hover:bg-pink-700"
+              data-theme-aware="true"
+              data-variant="solid"
             >
               {isImporting ? "Importing..." : "Import"}
             </Button>
@@ -362,7 +365,8 @@ export function ClientImportExport({ orgId }: ClientImportExportProps) {
             <Button
               onClick={handleExport}
               disabled={isExporting || !exportClients || !orgId}
-              className="bg-blue-600 hover:bg-blue-700"
+              data-theme-aware="true"
+              data-variant="solid"
             >
               {isExporting ? "Exporting..." : "Export"}
             </Button>
