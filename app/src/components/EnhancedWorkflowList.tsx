@@ -142,6 +142,18 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
       : "skip",
   );
 
+  // Build directory id → path map for quick lookup
+  const directoryIdToPath = React.useMemo(() => {
+    const map = new Map<string, string>();
+    const dfs = (node: any, path: string[]) => {
+      const current = [...path, node.name];
+      map.set(node._id, current.join(" / "));
+      (node.children || []).forEach((child: any) => dfs(child, current));
+    };
+    (directories || []).forEach((root: any) => dfs(root, []));
+    return map;
+  }, [directories]);
+
   // Mutations
   const createDirectory = useMutation(api.workflowDirectories.createDirectory);
   const updateWorkflowStatus = useMutation(
@@ -159,6 +171,7 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
   const permanentlyDeleteDirectory = useMutation(
     api.workflowDirectories.permanentlyDeleteDirectory,
   );
+  const deleteWorkflowMutation = useMutation(api.workflows.deleteWorkflow);
 
   // Filter workflows by search query
   const filteredWorkflows =
@@ -611,7 +624,7 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 p-2">
+      <div className="flex-1 p-2 overflow-x-hidden">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -669,26 +682,26 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
               key={workflow._id}
               draggable
               onDragStart={() => handleDragStart(workflow._id)}
-              className="bg-white rounded-md transition-all cursor-move workflow-item shadow-sm hover:shadow-md border-0 focus:ring-0 focus:outline-none"
+              className="bg-white rounded-md transition-all cursor-move workflow-item hover-lift border-0 focus:ring-0 focus:outline-none"
               data-theme-aware="true"
               data-variant="light"
               data-testid="workflow-item"
             >
-              <div className="p-3">
+              <div className="p-2.5">
                 {/* Single Row Layout */}
-                <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center justify-between gap-2 min-w-0">
                   {/* Left Section: Name, Description, and Badges */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center space-x-3">
                       <h3
-                        className="font-medium text-gray-800 truncate cursor-pointer hover:text-gray-900 transition-colors"
+                        className="font-medium text-gray-800 truncate cursor-pointer hover:text-gray-900 transition-colors max-w-[320px] md:max-w-[260px]"
                         onClick={() =>
                           router.push(`/workflow-editor?id=${workflow._id}`)
                         }
                       >
                         {workflow.name}
                       </h3>
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-1.5">
                         {getStatusBadge(workflow.status)}
                         <Badge
                           variant="outline"
@@ -698,13 +711,27 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
                         </Badge>
                       </div>
                     </div>
-                    <p className="text-sm text-gray-500 mt-1 truncate">
+                    {/* Directory path under title */}
+                    {workflow.directoryId &&
+                      directoryIdToPath.get(workflow.directoryId) && (
+                        <div className="mt-0.5 flex items-center text-[11px] text-gray-500">
+                          <Folder className="h-3 w-3 mr-1 text-gray-400" />
+                          <span className="truncate max-w-[340px] md:max-w-[280px]">
+                            {
+                              directoryIdToPath.get(
+                                workflow.directoryId,
+                              ) as string
+                            }
+                          </span>
+                        </div>
+                      )}
+                    <p className="text-sm text-gray-500 mt-1 truncate max-w-[380px] md:max-w-[300px]">
                       {workflow.description || "No description"}
                     </p>
                   </div>
 
                   {/* Center Section: Stats */}
-                  <div className="flex items-center space-x-4 mx-2 shrink-0">
+                  <div className="flex items-center space-x-3 mx-1 shrink-0">
                     <div className="text-center">
                       <div className="text-sm font-medium text-gray-700">
                         {workflow.activeEnrollmentCount}
@@ -733,6 +760,7 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
                       variant="ghost"
                       size="sm"
                       className="text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+                      data-theme-aware="false"
                       onClick={() =>
                         handleToggleWorkflow(workflow._id, workflow.status)
                       }
@@ -761,12 +789,14 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
                           variant="ghost"
                           size="sm"
                           className="text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+                          data-theme-aware="false"
                         >
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent>
+                      <DropdownMenuContent data-theme-aware="false">
                         <DropdownMenuItem
+                          data-theme-aware="false"
                           onClick={() =>
                             router.push(`/workflow-editor?id=${workflow._id}`)
                           }
@@ -775,12 +805,14 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
                           Edit
                         </DropdownMenuItem>
                         <DropdownMenuItem
+                          data-theme-aware="false"
                           onClick={() => setViewingStepTracker(workflow._id)}
                         >
                           <BarChart3 className="h-4 w-4 mr-2" />
                           View Step Tracking
                         </DropdownMenuItem>
                         <DropdownMenuItem
+                          data-theme-aware="false"
                           onClick={() => {
                             const email = prompt("Enter test email address:");
                             const phone = prompt("Enter test phone number:");
@@ -793,6 +825,36 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
                         >
                           <Send className="h-4 w-4 mr-2" />
                           Test
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="text-red-600"
+                          data-theme-aware="false"
+                          data-danger="true"
+                          onClick={async () => {
+                            const ok = confirm(
+                              `Delete workflow "${workflow.name}"? This cannot be undone.`,
+                            );
+                            if (!ok) return;
+                            try {
+                              await deleteWorkflowMutation({
+                                workflowId: workflow._id as any,
+                              });
+                            } catch (e) {
+                              console.error("Failed to delete workflow", e);
+                              alert("Failed to delete workflow");
+                            }
+                          }}
+                          // subtle red hover
+                          onMouseEnter={(e) =>
+                            (e.currentTarget.style.backgroundColor = "#fee2e2")
+                          }
+                          onMouseLeave={(e) =>
+                            (e.currentTarget.style.backgroundColor = "")
+                          }
+                          data-testid="delete-workflow"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>

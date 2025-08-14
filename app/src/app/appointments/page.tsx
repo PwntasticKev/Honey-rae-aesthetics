@@ -95,7 +95,7 @@ export default function AppointmentsPage() {
       />
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col lg:ml-64 relative">
+      <div className="flex-1 flex flex-col lg:ml-56 relative">
         {/* Header */}
         <header className="bg-white border-b border-gray-200 shadow-sm">
           <div className="flex items-center justify-between px-6 h-16">
@@ -178,8 +178,8 @@ export default function AppointmentsPage() {
               <div className="text-center py-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-600 mx-auto mb-4"></div>
                 <p className="text-gray-600">
-                  {loadingTimeout 
-                    ? "Setup is taking longer than expected..." 
+                  {loadingTimeout
+                    ? "Setup is taking longer than expected..."
                     : "Setting up demo data..."}
                 </p>
                 <p className="text-sm text-gray-500 mt-2">
@@ -189,7 +189,8 @@ export default function AppointmentsPage() {
                 </p>
                 {loadingTimeout && (
                   <p className="text-xs text-orange-600 mt-2">
-                    If this continues, try refreshing the page or check your connection.
+                    If this continues, try refreshing the page or check your
+                    connection.
                   </p>
                 )}
                 <div className="mt-4 space-x-2">

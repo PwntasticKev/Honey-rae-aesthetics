@@ -579,6 +579,22 @@ function WorkflowEditorInner({
     [nodeId: string]: string[];
   }>({});
 
+  // Track selected edges for deletion
+  const [selectedEdgeIds, setSelectedEdgeIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (
+        (e.key === "Delete" || e.key === "Backspace") &&
+        selectedEdgeIds.length > 0
+      ) {
+        setEdges((eds) => eds.filter((e) => !selectedEdgeIds.includes(e.id)));
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [selectedEdgeIds, setEdges]);
+
   // Compare current state with initial state to detect real changes
 
   // Update hasUnsavedChanges based on real changes
@@ -1799,6 +1815,9 @@ function WorkflowEditorInner({
             onNodeClick={onNodeClick}
             onDrop={onDrop}
             onDragOver={onDragOver}
+            onSelectionChange={(sel) =>
+              setSelectedEdgeIds((sel.edges || []).map((e) => e.id))
+            }
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
             connectionMode={ConnectionMode.Loose}
@@ -2244,7 +2263,7 @@ function WorkflowEditorInner({
           onClick={() => setNodePopupOpen(false)}
         >
           <div
-            className="absolute bg-white rounded-lg shadow-lg border max-w-sm w-80 max-h-96 overflow-y-auto"
+            className="absolute bg-white rounded-lg shadow-lg border max-w-sm w-80 max-h-96 overflow-y-auto themed-scroll"
             style={{
               left: `${Math.min(nodePopupPosition.x - 160, window.innerWidth - 320)}px`,
               top: `${Math.min(nodePopupPosition.y, window.innerHeight - 400)}px`,

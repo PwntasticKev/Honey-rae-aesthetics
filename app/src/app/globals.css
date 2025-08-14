@@ -911,3 +911,58 @@ select:focus {
   animation: edge-draw 3.2s linear infinite;
   stroke-dashoffset: 0;
 }
+
+/* Themed scrollbar for add node popup */
+.themed-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+.themed-scroll::-webkit-scrollbar-track {
+  background: #f5f7fa;
+  border-radius: 8px;
+}
+.themed-scroll::-webkit-scrollbar-thumb {
+  background: var(--primary-light);
+  border-radius: 8px;
+}
+.themed-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
+}
+
+/* Prevent overflow for theme-aware elements (exclude badges) */
+span[data-theme-aware="true"]:not([data-slot="badge"]),
+div[data-theme-aware="true"]:not([data-slot="badge"]) {
+  max-width: 100%;
+  overflow: hidden;
+}
+
+/* Optional nicer truncation for inline text */
+span[data-theme-aware="true"]:not([data-slot="badge"]) {
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-block;
+}
+
+/* Dropdown theming fixes */
+[data-radix-popper-content-wrapper] .bg-popover {
+  /* keep neutral */
+}
+/* Neutral hover for menu items */
+[data-radix-popper-content-wrapper] [role="menuitem"]:not(.danger) {
+  background-color: transparent;
+}
+[data-radix-popper-content-wrapper] [role="menuitem"]:not(.danger):hover,
+[data-radix-popper-content-wrapper]
+  [role="menuitem"][data-highlighted]:not(.danger) {
+  background-color: var(--primary-light);
+  color: var(--primary-dark);
+}
+/* Danger item (delete) */
+[data-radix-popper-content-wrapper] [role="menuitem"].danger,
+[data-radix-popper-content-wrapper] [data-danger="true"] {
+  color: #b91c1c;
+}
+[data-radix-popper-content-wrapper] [role="menuitem"].danger:hover,
+[data-radix-popper-content-wrapper] [data-danger="true"]:hover {
+  background-color: #fee2e2;
+  color: #991b1b;
+}

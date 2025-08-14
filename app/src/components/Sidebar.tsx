@@ -44,13 +44,13 @@ interface SidebarProps {
 }
 
 const menuItems = [
-  {
-    id: "dashboard",
-    label: "Dashboard",
-    icon: Grid,
-    href: "/",
-    notification: null,
-  },
+  // {
+  //   id: "dashboard",
+  //   label: "Dashboard",
+  //   icon: Grid,
+  //   href: "/",
+  //   notification: null,
+  // },
   {
     id: "clients",
     label: "Clients",
@@ -65,13 +65,13 @@ const menuItems = [
     href: "/appointments",
     notification: null,
   },
-  {
-    id: "gallery",
-    label: "Photo Gallery",
-    icon: Camera,
-    href: "/gallery",
-    notification: null,
-  },
+  // {
+  //   id: "gallery",
+  //   label: "Photo Gallery",
+  //   icon: Camera,
+  //   href: "/gallery",
+  //   notification: null,
+  // },
   {
     id: "workflows",
     label: "Workflows",
@@ -79,13 +79,13 @@ const menuItems = [
     href: "/workflows",
     notification: null,
   },
-  {
-    id: "messaging",
-    label: "Messages",
-    icon: MessageSquare,
-    href: "/messaging",
-    notification: "1",
-  },
+  // {
+  //   id: "messaging",
+  //   label: "Messages",
+  //   icon: MessageSquare,
+  //   href: "/messaging",
+  //   notification: "1",
+  // },
   {
     id: "templates",
     label: "Templates",
@@ -114,20 +114,20 @@ const menuItems = [
     href: "/team",
     notification: null,
   },
-  {
-    id: "inventory",
-    label: "Inventory",
-    icon: Box,
-    href: "/inventory",
-    notification: null,
-  },
-  {
-    id: "reviews",
-    label: "Reviews",
-    icon: Star,
-    href: "/reviews",
-    notification: null,
-  },
+  // {
+  //   id: "inventory",
+  //   label: "Inventory",
+  //   icon: Box,
+  //   href: "/inventory",
+  //   notification: null,
+  // },
+  // {
+  //   id: "reviews",
+  //   label: "Reviews",
+  //   icon: Star,
+  //   href: "/reviews",
+  //   notification: null,
+  // },
   {
     id: "settings",
     label: "Settings",
@@ -171,7 +171,7 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
         data-testid="sidebar"
         data-sidebar="true"
         className={cn(
-          "fixed left-0 top-0 z-40 h-full w-64 bg-white border-r border-gray-200 shadow-sm transition-transform duration-300 ease-in-out lg:translate-x-0",
+          "fixed left-0 top-0 z-40 h-full w-56 bg-white border-r border-gray-200 shadow-sm transition-transform duration-300 ease-in-out lg:translate-x-0",
           isOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
