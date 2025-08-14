@@ -526,21 +526,7 @@ button[data-theme-aware="true"]:not([data-variant="solid"]):hover {
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1) !important;
 }
 
-/* Force theme on buttons with default/primary variants */
-button[class*="bg-primary"],
-button[data-slot="button"] {
-  background-color: var(--primary-light) !important;
-  color: var(--primary-dark) !important;
-  border-color: var(--primary-light) !important;
-  transition: all 0.2s ease-in-out !important;
-}
-
-button[class*="bg-primary"]:hover,
-button[data-slot="button"]:hover {
-  background-color: var(--primary-dark) !important;
-  color: white !important;
-  border-color: var(--primary-dark) !important;
-}
+/* Do not force theme on all buttons; respect per-component classes (red/green etc.) */
 
 /* Override any rose/pink hover states - REMOVED DUE TO CSS PARSING ERRORS */
 

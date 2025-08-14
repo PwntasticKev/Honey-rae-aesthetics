@@ -119,10 +119,50 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
   const [dragOverDirectory, setDragOverDirectory] = useState<string | null>(
     null,
   );
+  // Inline rename state for workflows in the tree
+  const [editingWorkflowId, setEditingWorkflowId] = useState<string | null>(
+    null,
+  );
+  const [editingWorkflowName, setEditingWorkflowName] = useState<string>("");
+
+  // Restore tree UI state from localStorage
+  React.useEffect(() => {
+    try {
+      const expandedKey = `workflowTreeExpanded:${orgId}`;
+      const selectedKey = `workflowTreeSelected:${orgId}`;
+      const savedExpanded = localStorage.getItem(expandedKey);
+      const savedSelected = localStorage.getItem(selectedKey);
+      if (savedExpanded) {
+        const ids: string[] = JSON.parse(savedExpanded);
+        if (Array.isArray(ids)) setExpandedDirectories(new Set(ids));
+      }
+      if (savedSelected) {
+        setSelectedDirectory(savedSelected || null);
+      }
+    } catch {}
+  }, [orgId]);
+
+  // Persist tree UI state
+  React.useEffect(() => {
+    try {
+      const expandedKey = `workflowTreeExpanded:${orgId}`;
+      const selectedKey = `workflowTreeSelected:${orgId}`;
+      localStorage.setItem(
+        expandedKey,
+        JSON.stringify(Array.from(expandedDirectories)),
+      );
+      localStorage.setItem(selectedKey, selectedDirectory || "");
+    } catch {}
+  }, [expandedDirectories, selectedDirectory, orgId]);
 
   // Queries
   const directories = useQuery(
     api.workflowDirectories.getDirectories,
+    orgId ? { orgId: orgId as any } : "skip",
+  );
+  // Unfiltered list for the tree view (shows workflows under all directories)
+  const allWorkflows = useQuery(
+    api.enhancedWorkflows.getWorkflows,
     orgId ? { orgId: orgId as any } : "skip",
   );
   const archivedDirectories = useQuery(
@@ -172,6 +212,7 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
     api.workflowDirectories.permanentlyDeleteDirectory,
   );
   const deleteWorkflowMutation = useMutation(api.workflows.deleteWorkflow);
+  const renameWorkflowMutation = useMutation(api.workflows.update);
 
   // Filter workflows by search query
   const filteredWorkflows =
@@ -252,6 +293,13 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
           directoryId: targetDirectoryId as any,
         });
         setDraggedWorkflow(null);
+        // Auto-open and select the target directory after a successful move
+        if (targetDirectoryId) {
+          const updated = new Set(expandedDirectories);
+          updated.add(targetDirectoryId);
+          setExpandedDirectories(updated);
+          setSelectedDirectory(targetDirectoryId);
+        }
       } catch (error) {
         console.error("Failed to move workflow:", error);
       }
@@ -324,7 +372,7 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
   const renderDirectory = (directory: Directory, level: number = 0) => {
     const isExpanded = expandedDirectories.has(directory._id);
     const hasChildren = directory.children.length > 0;
-    const workflowsInDir = (workflows || []).filter(
+    const workflowsInDir = (allWorkflows || []).filter(
       (w: any) => w.directoryId === directory._id,
     );
     const hasWorkflows = workflowsInDir.length > 0;
@@ -438,23 +486,126 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
             {workflowsInDir.map((w: any) => (
               <div
                 key={`w-${w._id}`}
-                className="flex items-center p-1.5 rounded-md ml-6 cursor-pointer hover:bg-gray-50"
+                className="flex items-center p-1.5 rounded-md ml-6 cursor-pointer hover:bg-gray-50 group"
                 draggable
                 onDragStart={(e) => {
                   e.stopPropagation();
                   handleDragStart(w._id);
                 }}
-                onClick={() => router.push(`/workflow-editor?id=${w._id}`)}
+                onDoubleClick={(e) => {
+                  e.stopPropagation();
+                  setEditingWorkflowId(w._id);
+                  setEditingWorkflowName(w.name);
+                }}
+                onClick={(e) => {
+                  if (editingWorkflowId) {
+                    e.stopPropagation();
+                    return; // don't navigate while renaming
+                  }
+                  router.push(`/workflow-editor?id=${w._id}`);
+                }}
               >
                 {w.status === "active" ? (
                   <Pause className="h-3 w-3 mr-2 text-red-600" />
                 ) : (
                   <Play className="h-3 w-3 mr-2 text-green-600" />
                 )}
-                <span className="text-xs text-gray-700 truncate flex-1">
-                  {w.name}
-                </span>
+                {editingWorkflowId === w._id ? (
+                  <input
+                    className="text-xs text-gray-800 border border-gray-200 rounded px-1 py-0.5 flex-1 mr-2"
+                    value={editingWorkflowName}
+                    autoFocus
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={(e) => setEditingWorkflowName(e.target.value)}
+                    onKeyDown={async (e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        if (
+                          editingWorkflowName.trim() &&
+                          editingWorkflowName !== w.name
+                        ) {
+                          try {
+                            await renameWorkflowMutation({
+                              id: w._id as any,
+                              name: editingWorkflowName.trim(),
+                            } as any);
+                          } catch (err) {
+                            console.error("Failed to rename workflow", err);
+                          }
+                        }
+                        setEditingWorkflowId(null);
+                      }
+                      if (e.key === "Escape") {
+                        setEditingWorkflowId(null);
+                      }
+                    }}
+                    onBlur={async () => {
+                      if (editingWorkflowId === w._id) {
+                        if (
+                          editingWorkflowName.trim() &&
+                          editingWorkflowName !== w.name
+                        ) {
+                          try {
+                            await renameWorkflowMutation({
+                              id: w._id as any,
+                              name: editingWorkflowName.trim(),
+                            } as any);
+                          } catch (err) {
+                            console.error("Failed to rename workflow", err);
+                          }
+                        }
+                        setEditingWorkflowId(null);
+                      }
+                    }}
+                  />
+                ) : (
+                  <span className="text-xs text-gray-700 truncate flex-1">
+                    {w.name}
+                  </span>
+                )}
                 {getStatusBadge(w.status)}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-5 w-5 p-0 ml-2 opacity-0 group-hover:opacity-100 text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:ring-0"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        // Enter rename mode and prevent navigation
+                        setEditingWorkflowId(w._id);
+                        setEditingWorkflowName(w.name);
+                      }}
+                      data-theme-aware="false"
+                    >
+                      <MoreHorizontal className="h-3 w-3" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent data-theme-aware="false">
+                    <DropdownMenuItem
+                      className="hover:bg-gray-100"
+                      onSelect={(e) => {
+                        e.preventDefault();
+                        setEditingWorkflowId(w._id);
+                        setEditingWorkflowName(w.name);
+                      }}
+                    >
+                      Rename
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="hover:bg-gray-100"
+                      onSelect={(e) => {
+                        e.preventDefault();
+                        if (!editingWorkflowId) {
+                          router.push(`/workflow-editor?id=${w._id}`);
+                        }
+                      }}
+                    >
+                      Open
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             ))}
           </div>
@@ -737,13 +888,6 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
                       </h3>
                       <div className="flex items-center space-x-1.5">
                         {getStatusBadge(workflow.status)}
-                        <Badge
-                          variant="outline"
-                          className="text-xs bg-gray-50 text-gray-500 border-gray-200"
-                          data-slot="badge"
-                        >
-                          {formatTrigger(workflow.trigger)}
-                        </Badge>
                       </div>
                     </div>
                     {/* Directory path under title */}
@@ -795,7 +939,7 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
                       <Button
                         variant="outline"
                         size="sm"
-                        className="bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
+                        className="bg-red-50 text-red-700 border-red-200 hover:bg-red-100 active:bg-red-200"
                         data-theme-aware="false"
                         onClick={() =>
                           handleToggleWorkflow(workflow._id, workflow.status)
@@ -808,7 +952,7 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
                       <Button
                         variant="outline"
                         size="sm"
-                        className="bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
+                        className="bg-green-50 text-green-700 border-green-200 hover:bg-green-100 active:bg-green-200"
                         data-theme-aware="false"
                         onClick={() =>
                           handleToggleWorkflow(workflow._id, workflow.status)

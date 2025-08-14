@@ -942,6 +942,12 @@ function WorkflowEditorInner({
           description: "Add a tag to the client",
           icon: Tag,
         },
+        {
+          type: "action",
+          label: "Remove Tag",
+          description: "Remove a tag from the client",
+          icon: Tag,
+        },
       ],
     },
     {
@@ -1332,8 +1338,9 @@ function WorkflowEditorInner({
         return { duration: 5, unit: "minutes" };
       case "action":
         return {
-          action: "send_sms",
+          action: "send_sms", // send_sms | send_email | add_tag | remove_tag
           message: "Hello! This is an automated message.",
+          tag: "",
         };
       case "trigger":
         return { trigger: "appointment_booked" };
