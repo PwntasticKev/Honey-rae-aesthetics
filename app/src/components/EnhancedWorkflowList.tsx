@@ -101,7 +101,7 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
   const [viewingStepTracker, setViewingStepTracker] = useState<string | null>(
     null,
   );
-  const [sidebarWidth, setSidebarWidth] = useState(240); // Smaller default width
+  const [sidebarWidth, setSidebarWidth] = useState(200); // Slimmer default width
   const [isResizing, setIsResizing] = useState(false);
   const [contextMenuDirectory, setContextMenuDirectory] = useState<
     string | null
@@ -357,10 +357,10 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
             <Folder className="h-4 w-4 mr-2 text-blue-500" />
           )}
 
-          <span className="text-sm font-medium flex-1">{directory.name}</span>
+          <span className="text-xs font-medium flex-1">{directory.name}</span>
 
           {directory.description && (
-            <span className="text-xs text-gray-500 ml-2">
+            <span className="text-[11px] text-gray-500 ml-2">
               {directory.description}
             </span>
           )}
@@ -423,15 +423,31 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
-      active: { color: "bg-gray-50 text-gray-600 border-gray-200", label: "Active" },
-      inactive: { color: "bg-gray-50 text-gray-500 border-gray-200", label: "Inactive" },
-      draft: { color: "bg-gray-50 text-gray-500 border-gray-200", label: "Draft" },
-      archived: { color: "bg-gray-50 text-gray-400 border-gray-200", label: "Archived" },
+      active: {
+        color: "bg-gray-50 text-gray-600 border-gray-200",
+        label: "Active",
+      },
+      inactive: {
+        color: "bg-gray-50 text-gray-500 border-gray-200",
+        label: "Inactive",
+      },
+      draft: {
+        color: "bg-gray-50 text-gray-500 border-gray-200",
+        label: "Draft",
+      },
+      archived: {
+        color: "bg-gray-50 text-gray-400 border-gray-200",
+        label: "Archived",
+      },
     };
 
     const config =
       statusConfig[status as keyof typeof statusConfig] || statusConfig.draft;
-    return <Badge variant="outline" className={config.color}>{config.label}</Badge>;
+    return (
+      <Badge variant="outline" className={config.color}>
+        {config.label}
+      </Badge>
+    );
   };
 
   const formatTrigger = (trigger: string) => {
@@ -472,7 +488,7 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
 
     const handleMouseMove = (e: MouseEvent) => {
       const newWidth = Math.max(
-        180,
+        160,
         Math.min(400, startWidth + (e.clientX - startX)),
       );
       setSidebarWidth(newWidth);
@@ -579,7 +595,7 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
           onDrop={(e) => handleDrop(e, null)}
         >
           <Folder className="h-4 w-4 mr-2 text-gray-500" />
-          <span className="text-sm font-medium">All Workflows</span>
+          <span className="text-xs font-medium">All Workflows</span>
         </div>
 
         {/* Directory Tree */}
@@ -644,20 +660,23 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
         </div>
 
         {/* Workflow List */}
-        <div className="space-y-2" data-testid="workflow-list">
+        <div
+          className="space-y-2 overflow-x-hidden"
+          data-testid="workflow-list"
+        >
           {filteredWorkflows.map((workflow) => (
             <div
               key={workflow._id}
               draggable
               onDragStart={() => handleDragStart(workflow._id)}
-              className="bg-gray-50/50 hover:bg-white rounded-md border border-gray-100 hover:border-gray-200 transition-all cursor-move workflow-item"
+              className="bg-white rounded-md transition-all cursor-move workflow-item shadow-sm hover:shadow-md border-0 focus:ring-0 focus:outline-none"
               data-theme-aware="true"
               data-variant="light"
               data-testid="workflow-item"
             >
               <div className="p-3">
                 {/* Single Row Layout */}
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-3">
                   {/* Left Section: Name, Description, and Badges */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center space-x-3">
@@ -671,7 +690,10 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
                       </h3>
                       <div className="flex items-center space-x-2">
                         {getStatusBadge(workflow.status)}
-                        <Badge variant="outline" className="text-xs bg-gray-50 text-gray-500 border-gray-200">
+                        <Badge
+                          variant="outline"
+                          className="text-xs bg-gray-50 text-gray-500 border-gray-200"
+                        >
                           {formatTrigger(workflow.trigger)}
                         </Badge>
                       </div>
@@ -682,7 +704,7 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
                   </div>
 
                   {/* Center Section: Stats */}
-                  <div className="flex items-center space-x-6 mx-8">
+                  <div className="flex items-center space-x-4 mx-2 shrink-0">
                     <div className="text-center">
                       <div className="text-sm font-medium text-gray-700">
                         {workflow.activeEnrollmentCount}
@@ -706,7 +728,7 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
                   </div>
 
                   {/* Right Section: Actions */}
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-2 shrink-0">
                     <Button
                       variant="ghost"
                       size="sm"
@@ -735,7 +757,11 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
 
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="text-gray-400 hover:text-gray-600 hover:bg-gray-100">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+                        >
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>

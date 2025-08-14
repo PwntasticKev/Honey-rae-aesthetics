@@ -82,6 +82,7 @@ import {
   Search,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useRouter } from "next/navigation";
 
 // Node data interfaces
 interface BaseNodeData {
@@ -136,42 +137,53 @@ const DeletableEdge: React.FC<any> = ({
   const midX = (sourceX + targetX) / 2;
   const midY = (sourceY + targetY) / 2;
 
-  // Calculate path length for animation
-  const pathLength = Math.sqrt(
-    Math.pow(targetX - sourceX, 2) + Math.pow(targetY - sourceY, 2),
-  );
+  // Build a smooth cubic bezier path for minimal curved connection
+  const dx = Math.abs(targetX - sourceX);
+  const dy = Math.abs(targetY - sourceY);
+  const curvature = Math.max(40, Math.min(200, Math.max(dx, dy) * 0.5));
+  const c1x = sourceX + curvature;
+  const c1y = sourceY;
+  const c2x = targetX - curvature;
+  const c2y = targetY;
+  const d = `M ${sourceX},${sourceY} C ${c1x},${c1y} ${c2x},${c2y} ${targetX},${targetY}`;
+
+  // Enforce tiny arrowhead
+  const tinyMarker = markerEnd
+    ? { ...markerEnd, width: 8, height: 8, color: "#9ca3af" }
+    : undefined;
 
   return (
     <>
-      {/* Main edge path */}
+      {/* Main edge hit area (transparent for interactions) */}
       <path
         id={id}
         className="react-flow__edge-path"
-        d={`M${sourceX},${sourceY} L${targetX},${targetY}`}
-        markerEnd={markerEnd}
+        d={d}
+        markerEnd={tinyMarker}
         style={{
-          strokeWidth: 2,
-          stroke: isHovered ? "#ef4444" : "#6b7280",
+          strokeWidth: 8,
+          stroke: "transparent",
           cursor: "pointer",
+          pointerEvents: "stroke",
           ...style,
         }}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       />
 
-      {/* Animated flowing dots */}
+      {/* Visual animated flow line */}
       <path
-        d={`M${sourceX},${sourceY} L${targetX},${targetY}`}
+        d={d}
         fill="none"
-        stroke="#3b82f6"
-        strokeWidth="3"
-        strokeDasharray="8 12"
+        stroke="#9ca3af"
+        strokeWidth={1.5}
+        strokeDasharray="6 10"
         strokeLinecap="round"
-        className="flowing-edge"
+        className="edge-flow"
+        markerEnd={tinyMarker}
         style={{
-          opacity: 0.7,
+          opacity: 0.95,
           pointerEvents: "none",
-          animationDuration: "3s",
         }}
       />
 
@@ -207,22 +219,20 @@ const TriggerNode: React.FC<{
   };
 }> = ({ data }) => (
   <div className="relative">
-    {/* User count indicator - merged into top of node */}
+    {/* User count indicator - top-left, tiny, blends with node */}
     <div
-      className={`absolute -top-3 left-1/2 transform -translate-x-1/2 px-2 py-1 text-white rounded-t-lg text-xs font-medium shadow-sm z-10 cursor-pointer transition-all duration-200 hover:scale-105 ${
-        data.userCount && data.userCount > 0 ? "bg-blue-600" : "bg-gray-400"
-      }`}
+      className="absolute -top-2 -left-2 px-1.5 py-0.5 rounded-md text-[10px] font-medium z-20 cursor-pointer transition-all duration-200 hover:scale-105 bg-gray-100 text-gray-600 border border-gray-200"
       title={`${data.userCount || 0} users currently at this step`}
       onClick={() => {
         data.onDetailsClick?.(data);
       }}
     >
-      <div className="flex items-center gap-1">
-        <Users className="w-3 h-3" />
-        <span>{data.userCount || 0}</span>
+      <div className="flex items-center gap-0.5">
+        <Users className="w-2.5 h-2.5" />
+        <span className="leading-none">{data.userCount || 0}</span>
       </div>
     </div>
-    <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-3 min-w-[150px] shadow-sm relative transition-all duration-200 hover:shadow-md hover:scale-105">
+    <div className="bg-blue-50 rounded-lg p-3 min-w-[150px] shadow-sm relative transition-all duration-200 hover:shadow-md hover:scale-105">
       <div className="flex items-center justify-center mb-2">
         <Zap className="h-5 w-5 text-blue-600" />
       </div>
@@ -248,18 +258,18 @@ const TriggerNode: React.FC<{
         type="target"
         position={Position.Top}
         className="!w-3 !h-3 !bg-blue-500 !border-2 !border-white !opacity-0"
-        style={{ left: "50%" }}
+        style={{ left: "50%", zIndex: 50 }}
       />
       <Handle
         type="source"
         position={Position.Bottom}
         className="!w-3 !h-3 !bg-blue-500 !border-2 !border-white"
-        style={{ left: "50%" }}
+        style={{ left: "50%", zIndex: 50 }}
       />
 
       {/* Plus button for adding connected nodes */}
       <button
-        className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center hover:bg-blue-600 transition-colors shadow-md z-20"
+        className="absolute -bottom-[36px] left-1/2 -translate-x-1/2 w-6 h-6 rounded-full flex items-center justify-center border border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-500 hover:text-white hover:border-blue-500 transition-all duration-150 hover:scale-105 hover:shadow-md z-10 add-node-btn"
         onClick={(e) => data.onPlusClick?.(e, data.nodeId || "")}
         title="Add node"
       >
@@ -278,22 +288,20 @@ const ActionNode: React.FC<{
   };
 }> = ({ data }) => (
   <div className="relative">
-    {/* User count indicator - merged into top of node */}
+    {/* User count indicator - top-left, blends with node */}
     <div
-      className={`absolute -top-3 left-1/2 transform -translate-x-1/2 px-2 py-1 text-white rounded-t-lg text-xs font-medium shadow-sm z-10 cursor-pointer transition-all duration-200 hover:scale-105 ${
-        data.userCount && data.userCount > 0 ? "bg-green-600" : "bg-gray-400"
-      }`}
+      className="absolute -top-2 -left-2 px-1.5 py-0.5 rounded-md text-[10px] font-medium z-20 cursor-pointer transition-all duration-200 hover:scale-105 bg-gray-100 text-gray-600 border border-gray-200"
       title={`${data.userCount || 0} users currently at this step`}
       onClick={() => {
         data.onDetailsClick?.(data);
       }}
     >
-      <div className="flex items-center gap-1">
-        <Users className="w-3 h-3" />
-        <span>{data.userCount || 0}</span>
+      <div className="flex items-center gap-0.5">
+        <Users className="w-2.5 h-2.5" />
+        <span className="leading-none">{data.userCount || 0}</span>
       </div>
     </div>
-    <div className="bg-green-50 border-2 border-green-200 rounded-lg p-3 min-w-[150px] shadow-sm relative transition-all duration-200 hover:shadow-md hover:scale-105">
+    <div className="bg-green-50 rounded-lg p-3 min-w-[150px] shadow-sm relative transition-all duration-200 hover:shadow-md hover:scale-105">
       <div className="flex items-center justify-center mb-2">
         {data.action === "send_sms" ? (
           <Phone className="h-5 w-5 text-green-600" />
@@ -323,18 +331,18 @@ const ActionNode: React.FC<{
         type="target"
         position={Position.Top}
         className="!w-3 !h-3 !bg-green-500 !border-2 !border-white"
-        style={{ left: "50%" }}
+        style={{ left: "50%", zIndex: 50 }}
       />
       <Handle
         type="source"
         position={Position.Bottom}
         className="!w-3 !h-3 !bg-green-500 !border-2 !border-white"
-        style={{ left: "50%" }}
+        style={{ left: "50%", zIndex: 50 }}
       />
 
       {/* Plus button for adding connected nodes */}
       <button
-        className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center hover:bg-green-600 transition-colors shadow-md z-20"
+        className="absolute -bottom-[36px] left-1/2 -translate-x-1/2 w-6 h-6 rounded-full flex items-center justify-center border border-green-200 bg-green-50 text-green-700 hover:bg-green-500 hover:text-white hover:border-green-500 transition-all duration-150 hover:scale-105 hover:shadow-md z-10 add-node-btn"
         onClick={(e) => data.onPlusClick?.(e, data.nodeId || "")}
         title="Add node"
       >
@@ -353,22 +361,20 @@ const DelayNode: React.FC<{
   };
 }> = ({ data }) => (
   <div className="relative">
-    {/* User count indicator - merged into top of node */}
+    {/* User count indicator - top-left, blends with node */}
     <div
-      className={`absolute -top-3 left-1/2 transform -translate-x-1/2 px-2 py-1 text-white rounded-t-lg text-xs font-medium shadow-sm z-10 cursor-pointer transition-all duration-200 hover:scale-105 ${
-        data.userCount && data.userCount > 0 ? "bg-yellow-600" : "bg-gray-400"
-      }`}
+      className="absolute -top-2 -left-2 px-1.5 py-0.5 rounded-md text-[10px] font-medium z-20 cursor-pointer transition-all duration-200 hover:scale-105 bg-gray-100 text-gray-600 border border-gray-200"
       title={`${data.userCount || 0} users currently waiting at this delay`}
       onClick={() => {
         data.onDetailsClick?.(data);
       }}
     >
-      <div className="flex items-center gap-1">
-        <Users className="w-3 h-3" />
-        <span>{data.userCount || 0}</span>
+      <div className="flex items-center gap-0.5">
+        <Users className="w-2.5 h-2.5" />
+        <span className="leading-none">{data.userCount || 0}</span>
       </div>
     </div>
-    <div className="bg-yellow-50 border-2 border-yellow-200 rounded-lg p-3 min-w-[150px] shadow-sm relative transition-all duration-200 hover:shadow-md hover:scale-105">
+    <div className="bg-yellow-50 rounded-lg p-3 min-w-[150px] shadow-sm relative transition-all duration-200 hover:shadow-md hover:scale-105">
       <div className="flex items-center justify-center mb-2">
         <Timer className="h-5 w-5 text-yellow-600" />
       </div>
@@ -396,18 +402,18 @@ const DelayNode: React.FC<{
         type="target"
         position={Position.Top}
         className="!w-3 !h-3 !bg-yellow-500 !border-2 !border-white"
-        style={{ left: "50%" }}
+        style={{ left: "50%", zIndex: 50 }}
       />
       <Handle
         type="source"
         position={Position.Bottom}
         className="!w-3 !h-3 !bg-yellow-500 !border-2 !border-white"
-        style={{ left: "50%" }}
+        style={{ left: "50%", zIndex: 50 }}
       />
 
       {/* Plus button for adding connected nodes */}
       <button
-        className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 w-6 h-6 bg-yellow-500 text-white rounded-full flex items-center justify-center hover:bg-yellow-600 transition-colors shadow-md z-20"
+        className="absolute -bottom-[36px] left-1/2 -translate-x-1/2 w-6 h-6 rounded-full flex items-center justify-center border border-yellow-200 bg-yellow-50 text-yellow-700 hover:bg-yellow-500 hover:text-white hover:border-yellow-500 transition-all duration-150 hover:scale-105 hover:shadow-md z-10 add-node-btn"
         onClick={(e) => data.onPlusClick?.(e, data.nodeId || "")}
         title="Add node"
       >
@@ -426,22 +432,20 @@ const ConditionNode: React.FC<{
   };
 }> = ({ data }) => (
   <div className="relative">
-    {/* User count indicator - merged into top of node */}
+    {/* User count indicator - top-left, blends with node */}
     <div
-      className={`absolute -top-3 left-1/2 transform -translate-x-1/2 px-2 py-1 text-white rounded-t-lg text-xs font-medium shadow-sm z-10 cursor-pointer transition-all duration-200 hover:scale-105 ${
-        data.userCount && data.userCount > 0 ? "bg-purple-600" : "bg-gray-400"
-      }`}
+      className="absolute -top-2 -left-2 px-1.5 py-0.5 rounded-md text-[10px] font-medium z-20 cursor-pointer transition-all duration-200 hover:scale-105 bg-gray-100 text-gray-600 border border-gray-200"
       title={`${data.userCount || 0} users currently at this condition check`}
       onClick={() => {
         data.onDetailsClick?.(data);
       }}
     >
-      <div className="flex items-center gap-1">
-        <Users className="w-3 h-3" />
-        <span>{data.userCount || 0}</span>
+      <div className="flex items-center gap-0.5">
+        <Users className="w-2.5 h-2.5" />
+        <span className="leading-none">{data.userCount || 0}</span>
       </div>
     </div>
-    <div className="bg-purple-50 border-2 border-purple-200 rounded-lg p-3 min-w-[150px] shadow-sm relative transition-all duration-200 hover:shadow-md hover:scale-105">
+    <div className="bg-purple-50 rounded-lg p-3 min-w-[150px] shadow-sm relative transition-all duration-200 hover:shadow-md hover:scale-105">
       <div className="flex items-center justify-center mb-2">
         <Filter className="h-5 w-5 text-purple-600" />
       </div>
@@ -467,26 +471,26 @@ const ConditionNode: React.FC<{
         type="target"
         position={Position.Top}
         className="!w-3 !h-3 !bg-purple-500 !border-2 !border-white"
-        style={{ left: "50%" }}
+        style={{ left: "50%", zIndex: 50 }}
       />
       <Handle
         type="source"
         position={Position.Bottom}
         id="true"
-        style={{ left: "25%" }}
+        style={{ left: "25%", zIndex: 50 }}
         className="!w-3 !h-3 !bg-green-500 !border-2 !border-white"
       />
       <Handle
         type="source"
         position={Position.Bottom}
         id="false"
-        style={{ left: "75%" }}
+        style={{ left: "75%", zIndex: 50 }}
         className="!w-3 !h-3 !bg-red-500 !border-2 !border-white"
       />
 
       {/* Plus buttons for adding connected nodes - one for each output */}
       <button
-        className="absolute -bottom-6 left-1/4 transform -translate-x-1/2 w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center hover:bg-green-600 transition-colors shadow-md z-20"
+        className="absolute -bottom-[36px] left-1/4 -translate-x-1/2 w-6 h-6 rounded-full flex items-center justify-center border border-green-200 bg-green-50 text-green-700 hover:bg-green-500 hover:text-white hover:border-green-500 transition-all duration-150 hover:scale-105 hover:shadow-md z-10 add-node-btn"
         onClick={(e) => data.onPlusClick?.(e, data.nodeId || "")}
         title="Add node (True path)"
       >
@@ -494,7 +498,7 @@ const ConditionNode: React.FC<{
       </button>
 
       <button
-        className="absolute -bottom-6 left-3/4 transform -translate-x-1/2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors shadow-md z-20"
+        className="absolute -bottom-[36px] left-3/4 -translate-x-1/2 w-6 h-6 rounded-full flex items-center justify-center border border-red-200 bg-red-50 text-red-600 hover:bg-red-500 hover:text-white hover:border-red-500 transition-all duration-150 hover:scale-105 hover:shadow-md z-10 add-node-btn"
         onClick={(e) => data.onPlusClick?.(e, data.nodeId || "")}
         title="Add node (False path)"
       >
@@ -543,13 +547,14 @@ function WorkflowEditorInner({
 
   // ReactFlow instance
   const { screenToFlowPosition } = useReactFlow();
+  const router = useRouter();
 
   // ReactFlow state
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
 
   // Sidebar state
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen] = useState(true);
 
   // Right panel state for node details
   const [rightPanelOpen, setRightPanelOpen] = useState(false);
@@ -830,6 +835,20 @@ function WorkflowEditorInner({
     recentWorkflows?.filter((workflow) =>
       workflow.name.toLowerCase().includes(workflowSearch.toLowerCase()),
     ) || [];
+
+  // Confirm navigation if there are unsaved changes
+  const confirmNavigate = useCallback(
+    (targetUrl: string) => {
+      if (hasUnsavedChanges) {
+        const proceed = confirm(
+          "You have unsaved changes. Are you sure you want to leave?",
+        );
+        if (!proceed) return;
+      }
+      router.push(targetUrl);
+    },
+    [hasUnsavedChanges, router],
+  );
 
   // Handler for plus button clicks on nodes
   const handleNodePlusClick = useCallback(
@@ -1174,8 +1193,30 @@ function WorkflowEditorInner({
         return config?.action === "send_sms" ? "Send SMS" : "Send Email";
       case "delay":
         return `Wait ${config?.duration || 5} ${config?.unit || "minutes"}`;
-      case "condition":
-        return config?.condition || "If/Then";
+      case "condition": {
+        // Summarize first condition for a compact label
+        const first = config?.conditions?.[0];
+        if (first) {
+          const fieldMap: Record<string, string> = {
+            tags: "Tag",
+            appointment_type: "Appointment",
+            last_visit: "Last Visit",
+          };
+          const opMap: Record<string, string> = {
+            equals: "=",
+            not_equals: "≠",
+            includes: "includes",
+            not_includes: "not includes",
+            date_before: "before",
+            date_after: "after",
+            days_ago: "days ago",
+          };
+          const field = fieldMap[first.field] || first.field;
+          const op = opMap[first.operator] || first.operator;
+          return `${field} ${op} ${first.value ?? ""}`.trim();
+        }
+        return "If/Then";
+      }
       default:
         return "Unknown";
     }
@@ -1184,6 +1225,12 @@ function WorkflowEditorInner({
   // Handle edge connections
   const onConnect = useCallback(
     (params: Connection) => {
+      // Prevent connecting into trigger nodes (targets cannot be triggers)
+      const targetNode = nodes.find((n) => n.id === params.target);
+      if (targetNode && targetNode.type === "trigger") {
+        return; // disallow connections that target triggers
+      }
+
       const edge = {
         ...params,
         type: "deletable",
@@ -1196,7 +1243,7 @@ function WorkflowEditorInner({
       };
       setEdges((eds) => addEdge(edge, eds));
     },
-    [setEdges, handleEdgeDelete],
+    [setEdges, handleEdgeDelete, nodes],
   );
 
   // Handle node selection
@@ -1525,21 +1572,10 @@ function WorkflowEditorInner({
   return (
     <div className="h-screen flex bg-gray-50">
       {/* Recent Workflows Sidebar */}
-      <div
-        className={`bg-white border-r border-gray-200 transition-all duration-300 ${
-          sidebarOpen ? "w-80" : "w-0"
-        } overflow-hidden`}
-      >
-        <div className="p-4 h-full overflow-y-auto flex flex-col">
+      <div className="bg-white border-r border-gray-200 w-60 overflow-hidden">
+        <div className="p-3 h-full overflow-y-auto flex flex-col">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-semibold text-lg">Recent Workflows</h3>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setSidebarOpen(false)}
-            >
-              <X className="h-4 w-4" />
-            </Button>
           </div>
 
           {/* Search */}
@@ -1555,11 +1591,11 @@ function WorkflowEditorInner({
           {/* Create New Workflow Button */}
           <Button
             className="mb-4 w-full"
-            onClick={() => window.open("/workflow-editor?id=new", "_blank")}
+            onClick={() => confirmNavigate("/workflow-editor?id=new")}
             data-theme-aware="true"
           >
             <Plus className="h-4 w-4 mr-2" />
-            Create Workflow
+            New Workflow
           </Button>
 
           {/* Recent Workflows List */}
@@ -1578,10 +1614,7 @@ function WorkflowEditorInner({
                   }`}
                   onClick={() => {
                     if (!isCurrentWorkflow) {
-                      window.open(
-                        `/workflow-editor?id=${workflow._id}`,
-                        "_blank",
-                      );
+                      confirmNavigate(`/workflow-editor?id=${workflow._id}`);
                     }
                   }}
                 >
@@ -1649,17 +1682,6 @@ function WorkflowEditorInner({
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back
             </Button>
-
-            {!sidebarOpen && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setSidebarOpen(true)}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add Nodes
-              </Button>
-            )}
 
             <div className="flex flex-col">
               <Input
@@ -1783,10 +1805,11 @@ function WorkflowEditorInner({
             fitView
             className="bg-gray-50"
             panOnScroll={true}
-            selectionOnDrag={true}
-            panOnDrag={[1, 2]}
+            selectionOnDrag={false}
+            panOnDrag={[0, 1]}
             zoomOnScroll={true}
             zoomOnPinch={true}
+            multiSelectionKeyCode={"Meta"}
           >
             <Background variant={BackgroundVariant.Dots} gap={20} size={1} />
             <Controls />
@@ -1836,133 +1859,139 @@ function WorkflowEditorInner({
               />
             </div>
 
-            {/* Type-specific properties */}
-            {selectedNode.type === "delay" && (
-              <>
-                <div>
-                  <Label>Duration</Label>
-                  <Input
-                    type="number"
-                    value={selectedNode.data?.config?.duration || 5}
-                    onChange={(e) => {
-                      setNodes((nds) =>
-                        nds.map((n) =>
-                          n.id === selectedNode.id
-                            ? {
-                                ...n,
-                                data: {
-                                  ...n.data,
-                                  config: {
-                                    ...n.data.config,
-                                    duration: parseInt(e.target.value),
-                                  },
-                                },
-                              }
-                            : n,
-                        ),
-                      );
-                    }}
-                  />
-                </div>
-                <div>
-                  <Label>Unit</Label>
-                  <Select
-                    value={selectedNode.data?.config?.unit || "minutes"}
-                    onValueChange={(value) => {
-                      setNodes((nds) =>
-                        nds.map((n) =>
-                          n.id === selectedNode.id
-                            ? {
-                                ...n,
-                                data: {
-                                  ...n.data,
-                                  config: {
-                                    ...n.data.config,
-                                    unit: value,
-                                  },
-                                },
-                              }
-                            : n,
-                        ),
-                      );
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="minutes">Minutes</SelectItem>
-                      <SelectItem value="hours">Hours</SelectItem>
-                      <SelectItem value="days">Days</SelectItem>
-                      <SelectItem value="weeks">Weeks</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </>
+            {/* Condition Builder (only for condition nodes) */}
+            {selectedNode.type === "condition" && (
+              <div className="space-y-3">
+                <Label className="text-sm">Condition Builder</Label>
+                <SmallConditionBuilder
+                  config={
+                    (selectedNode.data?.config as any) || {
+                      conditions: [],
+                      logic: "AND",
+                    }
+                  }
+                  onChange={(next) => {
+                    setNodes((nds) =>
+                      nds.map((n) =>
+                        n.id === selectedNode.id
+                          ? {
+                              ...n,
+                              data: {
+                                ...n.data,
+                                config: { ...n.data?.config, ...next },
+                                label: getNodeLabel("condition", next),
+                              },
+                            }
+                          : n,
+                      ),
+                    );
+                  }}
+                />
+              </div>
             )}
 
-            {selectedNode.type === "action" && (
-              <>
-                <div>
-                  <Label>Action Type</Label>
-                  <Select
-                    value={selectedNode.data?.config?.action || "send_sms"}
-                    onValueChange={(value) => {
-                      setNodes((nds) =>
-                        nds.map((n) =>
-                          n.id === selectedNode.id
-                            ? {
-                                ...n,
-                                data: {
-                                  ...n.data,
-                                  config: {
-                                    ...n.data.config,
-                                    action: value,
-                                  },
-                                },
-                              }
-                            : n,
-                        ),
-                      );
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="send_sms">Send SMS</SelectItem>
-                      <SelectItem value="send_email">Send Email</SelectItem>
-                    </SelectContent>
-                  </Select>
+            {/* User Statistics */}
+            <div className="space-y-3">
+              <div>
+                <h4 className="font-medium text-gray-900 mb-2">
+                  Node Information
+                </h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Type:</span>
+                    <span className="font-medium capitalize">
+                      {selectedNode.type}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Name:</span>
+                    <span className="font-medium">
+                      {selectedNode.data?.label}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">ID:</span>
+                    <span className="font-mono text-xs">{selectedNode.id}</span>
+                  </div>
                 </div>
-                <div>
-                  <Label>Message</Label>
-                  <Textarea
-                    value={selectedNode.data?.config?.message || ""}
-                    onChange={(e) => {
-                      setNodes((nds) =>
-                        nds.map((n) =>
-                          n.id === selectedNode.id
-                            ? {
-                                ...n,
-                                data: {
-                                  ...n.data,
-                                  config: {
-                                    ...n.data.config,
-                                    message: e.target.value,
-                                  },
-                                },
-                              }
-                            : n,
-                        ),
-                      );
-                    }}
-                    placeholder="Enter your message..."
-                    rows={3}
-                  />
+              </div>
+
+              {selectedNode.data?.userCount > 0 && (
+                <div className="space-y-2">
+                  <h5 className="text-sm font-medium text-gray-700">
+                    Active Users:
+                  </h5>
+                  <div className="max-h-32 overflow-y-auto space-y-1">
+                    {(selectedNode.data?.users || [])
+                      .slice(0, 5)
+                      .map((user: any, index: number) => (
+                        <div
+                          key={index}
+                          className="flex items-center gap-2 p-2 bg-white rounded border text-xs"
+                        >
+                          <div className="w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center">
+                            {user.clientName?.charAt(0) || "U"}
+                          </div>
+                          <div className="flex-1">
+                            <div className="font-medium">
+                              {user.clientName || "Unknown User"}
+                            </div>
+                            <div className="text-gray-500">
+                              {user.email || "No email"}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    {(selectedNode.data?.userCount || 0) > 5 && (
+                      <div className="text-xs text-gray-500 text-center py-1">
+                        +{(selectedNode.data?.userCount || 0) - 5} more users
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </>
-            )}
+              )}
+            </div>
+
+            {/* Configuration */}
+            <div>
+              <h4 className="font-medium text-gray-900 mb-2">Configuration</h4>
+              <div className="bg-gray-50 rounded-lg p-3">
+                <pre className="text-xs text-gray-700 whitespace-pre-wrap overflow-x-auto">
+                  {JSON.stringify(selectedNode.data?.config, null, 2)}
+                </pre>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="space-y-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={() => {
+                  // TODO: Navigate to full tracking view
+                  console.log(
+                    "Navigate to tracking view for node:",
+                    selectedNode.id,
+                  );
+                }}
+              >
+                <BarChart3 className="h-4 w-4 mr-2" />
+                View Full Tracking
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={() => {
+                  // TODO: Test this specific node
+                  console.log("Test node:", selectedNode.id);
+                }}
+              >
+                <Play className="h-4 w-4 mr-2" />
+                Test This Step
+              </Button>
+            </div>
           </div>
         </div>
       )}
@@ -2297,5 +2326,167 @@ export default function EnhancedWorkflowEditor(
     <ReactFlowProvider>
       <WorkflowEditorInner {...props} />
     </ReactFlowProvider>
+  );
+}
+
+// Compact condition builder component
+function SmallConditionBuilder({
+  config,
+  onChange,
+}: {
+  config: {
+    conditions: Array<{ field: string; operator: string; value: any }>;
+    logic: "AND" | "OR";
+  };
+  onChange: (next: {
+    conditions: Array<{ field: string; operator: string; value: any }>;
+    logic: "AND" | "OR";
+  }) => void;
+}) {
+  const fields = [
+    { value: "tags", label: "Tags" },
+    { value: "appointment_type", label: "Appointment Type" },
+    { value: "last_visit", label: "Last Visit" },
+  ];
+
+  const operators = [
+    { value: "equals", label: "equals" },
+    { value: "not_equals", label: "not equals" },
+    { value: "includes", label: "includes" },
+    { value: "not_includes", label: "not includes" },
+    { value: "date_before", label: "before" },
+    { value: "date_after", label: "after" },
+    { value: "days_ago", label: "days ago" },
+  ];
+
+  const update = (
+    idx: number,
+    patch: Partial<{ field: string; operator: string; value: any }>,
+  ) => {
+    const next = { ...config, conditions: [...config.conditions] };
+    next.conditions[idx] = { ...next.conditions[idx], ...patch } as any;
+    onChange(next);
+  };
+
+  const add = () =>
+    onChange({
+      ...config,
+      conditions: [
+        ...config.conditions,
+        { field: "tags", operator: "includes", value: "" },
+      ],
+    });
+  const remove = (idx: number) =>
+    onChange({
+      ...config,
+      conditions: config.conditions.filter((_, i) => i !== idx),
+    });
+
+  const setLogic = (logic: "AND" | "OR") => onChange({ ...config, logic });
+
+  return (
+    <div className="space-y-2 text-sm">
+      <div className="flex items-center gap-2">
+        <span className="text-gray-600">Match</span>
+        <Select value={config.logic} onValueChange={(v) => setLogic(v as any)}>
+          <SelectTrigger className="h-7 px-2 text-xs w-20">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="AND">All (AND)</SelectItem>
+            <SelectItem value="OR">Any (OR)</SelectItem>
+          </SelectContent>
+        </Select>
+        <span className="text-gray-600">conditions</span>
+      </div>
+
+      {config.conditions.map((c, i) => (
+        <div key={i} className="grid grid-cols-12 gap-2 items-center">
+          <div className="col-span-4">
+            <Select
+              value={c.field}
+              onValueChange={(v) => update(i, { field: v })}
+            >
+              <SelectTrigger className="h-7 px-2 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {fields.map((f) => (
+                  <SelectItem key={f.value} value={f.value}>
+                    {f.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="col-span-4">
+            <Select
+              value={c.operator}
+              onValueChange={(v) => update(i, { operator: v })}
+            >
+              <SelectTrigger className="h-7 px-2 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {operators.map((op) => (
+                  <SelectItem key={op.value} value={op.value}>
+                    {op.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="col-span-3">
+            {c.field === "last_visit" && c.operator === "days_ago" ? (
+              <Input
+                className="h-7 text-xs"
+                type="number"
+                placeholder="e.g. 30"
+                value={c.value ?? ""}
+                onChange={(e) => update(i, { value: Number(e.target.value) })}
+              />
+            ) : c.field === "last_visit" &&
+              (c.operator === "date_before" || c.operator === "date_after") ? (
+              <Input
+                className="h-7 text-xs"
+                type="date"
+                value={c.value ?? ""}
+                onChange={(e) => update(i, { value: e.target.value })}
+              />
+            ) : (
+              <Input
+                className="h-7 text-xs"
+                placeholder={
+                  c.field === "appointment_type" ? "e.g. Morpheus8" : "e.g. vip"
+                }
+                value={c.value ?? ""}
+                onChange={(e) => update(i, { value: e.target.value })}
+              />
+            )}
+          </div>
+          <div className="col-span-1 text-right">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-xs text-red-500"
+              onClick={() => remove(i)}
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          </div>
+        </div>
+      ))}
+
+      <div className="pt-1">
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-7 text-xs"
+          onClick={add}
+        >
+          <Plus className="h-3 w-3 mr-1" /> Add condition
+        </Button>
+      </div>
+    </div>
   );
 }
