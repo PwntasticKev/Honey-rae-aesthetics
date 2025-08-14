@@ -595,6 +595,19 @@ function WorkflowEditorInner({
     return () => window.removeEventListener("keydown", onKey);
   }, [selectedEdgeIds, setEdges]);
 
+  const handleSelectionChange = useCallback((sel: any) => {
+    const ids = (sel && sel.edges ? sel.edges : [])
+      .map((e: any) => e.id)
+      .slice()
+      .sort();
+    setSelectedEdgeIds((prev) => {
+      if (prev.length === ids.length && prev.every((v, i) => v === ids[i])) {
+        return prev; // no change, avoid re-render loop
+      }
+      return ids;
+    });
+  }, []);
+
   // Compare current state with initial state to detect real changes
 
   // Update hasUnsavedChanges based on real changes
@@ -1815,9 +1828,7 @@ function WorkflowEditorInner({
             onNodeClick={onNodeClick}
             onDrop={onDrop}
             onDragOver={onDragOver}
-            onSelectionChange={(sel) =>
-              setSelectedEdgeIds((sel.edges || []).map((e) => e.id))
-            }
+            onSelectionChange={handleSelectionChange}
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
             connectionMode={ConnectionMode.Loose}

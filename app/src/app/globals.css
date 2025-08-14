@@ -188,110 +188,8 @@
   color: var(--hover-text) !important;
 }
 
-/* Override red/rose hover states with theme colors - REMOVED DUE TO CSS PARSING ERRORS */
-
-/* Override any remaining red/rose colors with theme colors */
-.text-red-500,
-.text-red-600,
-.text-red-700,
-.text-red-900,
-.text-rose-500,
-.text-rose-600,
-.text-rose-700 {
-  color: var(--primary) !important;
-}
-
-.bg-red-500,
-.bg-red-600,
-.bg-red-700,
-.bg-rose-500,
-.bg-rose-600,
-.bg-rose-700 {
-  background-color: var(--primary) !important;
-}
-
-.border-red-500,
-.border-red-600,
-.border-red-700,
-.border-rose-500,
-.border-rose-600,
-.border-rose-700 {
-  border-color: var(--primary) !important;
-}
-
-/* Override pink colors as well */
-.text-pink-500,
-.text-pink-600,
-.text-pink-700,
-.bg-pink-500,
-.bg-pink-600,
-.bg-pink-700,
-.border-pink-500,
-.border-pink-600,
-.border-pink-700 {
-  color: var(--primary) !important;
-  background-color: var(--primary) !important;
-  border-color: var(--primary) !important;
-}
-
-/* Force theme colors on specific elements */
-[data-sidebar] .bg-orange-50,
-[data-sidebar] .text-orange-600,
-[data-sidebar] .text-orange-900 {
-  background-color: var(--primary) !important;
-  color: var(--primary) !important;
-}
-
-/* Override any gradient backgrounds */
-.bg-gradient-to-r.from-pink-500.to-rose-500,
-.bg-gradient-to-r.from-pink-500.to-purple-600 {
-  background: var(--primary) !important;
-}
-
-/* Force badge colors to use theme */
-[data-slot="badge"] {
-  background-color: var(--primary-light) !important;
-  color: var(--primary-dark) !important;
-  border-color: var(--primary-light) !important;
-}
-
-/* Override secondary badge variant specifically */
-.bg-secondary {
-  background-color: var(--primary) !important;
-}
-
-.text-secondary-foreground {
-  color: white !important;
-}
-
-/* Override any remaining hardcoded colors with theme colors - but exclude headers and inputs */
-*[class*="bg-pink"]:not(h1):not(h2):not(h3):not(h4):not(h5):not(h6):not(
-    input
-  ):not(textarea):not(select),
-*[class*="text-pink"]:not(h1):not(h2):not(h3):not(h4):not(h5):not(h6):not(
-    input
-  ):not(textarea):not(select),
-*[class*="bg-rose"]:not(h1):not(h2):not(h3):not(h4):not(h5):not(h6):not(
-    input
-  ):not(textarea):not(select),
-*[class*="text-rose"]:not(h1):not(h2):not(h3):not(h4):not(h5):not(h6):not(
-    input
-  ):not(textarea):not(select),
-*[class*="bg-red"]:not(h1):not(h2):not(h3):not(h4):not(h5):not(h6):not(
-    input
-  ):not(textarea):not(select),
-*[class*="text-red"]:not(h1):not(h2):not(h3):not(h4):not(h5):not(h6):not(
-    input
-  ):not(textarea):not(select),
-*[class*="bg-orange"]:not(h1):not(h2):not(h3):not(h4):not(h5):not(h6):not(
-    input
-  ):not(textarea):not(select),
-*[class*="text-orange"]:not(h1):not(h2):not(h3):not(h4):not(h5):not(h6):not(
-    input
-  ):not(textarea):not(select) {
-  background-color: var(--primary) !important;
-  color: var(--primary) !important;
-}
+/* Removed global overrides that forced all red/pink/orange variants to theme blue.
+   Components can now use red/green/etc. without being overwritten by theme. */
 
 /* Specific overrides for settings page tabs */
 .border-orange-500,
@@ -812,6 +710,15 @@ select:focus {
   background-color: #fff !important;
 }
 
+/* Active workflow row theme tint */
+.workflow-item--active {
+  background-color: color-mix(in oklab, var(--primary-light) 20%, #ffffff 80%);
+}
+.workflow-item--active:hover {
+  background-color: color-mix(in oklab, var(--primary-light) 30%, #ffffff 70%);
+  box-shadow: 0 8px 20px var(--primary-light);
+}
+
 /* Smooth Icon Rotations */
 .icon-rotate {
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -965,4 +872,23 @@ span[data-theme-aware="true"]:not([data-slot="badge"]) {
 [data-radix-popper-content-wrapper] [data-danger="true"]:hover {
   background-color: #fee2e2;
   color: #991b1b;
+}
+
+/* Light variant badge using theme */
+.badge-theme {
+  background-color: var(--primary-light) !important;
+  color: var(--primary-dark) !important;
+  border-color: color-mix(
+    in oklab,
+    var(--primary-light) 60%,
+    #ffffff 40%
+  ) !important;
+}
+.badge-theme:hover {
+  background-color: color-mix(
+    in oklab,
+    var(--primary-light) 80%,
+    #ffffff 20%
+  ) !important;
+  color: var(--primary-dark) !important;
 }

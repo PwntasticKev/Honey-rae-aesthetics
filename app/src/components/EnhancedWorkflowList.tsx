@@ -324,6 +324,11 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
   const renderDirectory = (directory: Directory, level: number = 0) => {
     const isExpanded = expandedDirectories.has(directory._id);
     const hasChildren = directory.children.length > 0;
+    const workflowsInDir = (workflows || []).filter(
+      (w: any) => w.directoryId === directory._id,
+    );
+    const hasWorkflows = workflowsInDir.length > 0;
+    const isExpandable = hasChildren || hasWorkflows;
     const isSelected = selectedDirectory === directory._id;
 
     return (
@@ -346,7 +351,7 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
           draggable
           onDragStart={() => handleDirectoryDragStart(directory._id)}
         >
-          {hasChildren && (
+          {isExpandable && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -364,7 +369,7 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
             </button>
           )}
 
-          {isExpanded || !hasChildren ? (
+          {isExpanded || !isExpandable ? (
             <FolderOpen className="h-4 w-4 mr-2 text-blue-500" />
           ) : (
             <Folder className="h-4 w-4 mr-2 text-blue-500" />
@@ -423,11 +428,35 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
           </DropdownMenu>
         </div>
 
-        {isExpanded && hasChildren && (
+        {isExpanded && (
           <div className="ml-2">
+            {/* Child directories */}
             {directory.children.map((child) =>
               renderDirectory(child, level + 1),
             )}
+            {/* Workflows inside this directory */}
+            {workflowsInDir.map((w: any) => (
+              <div
+                key={`w-${w._id}`}
+                className="flex items-center p-1.5 rounded-md ml-6 cursor-pointer hover:bg-gray-50"
+                draggable
+                onDragStart={(e) => {
+                  e.stopPropagation();
+                  handleDragStart(w._id);
+                }}
+                onClick={() => router.push(`/workflow-editor?id=${w._id}`)}
+              >
+                {w.status === "active" ? (
+                  <Pause className="h-3 w-3 mr-2 text-red-600" />
+                ) : (
+                  <Play className="h-3 w-3 mr-2 text-green-600" />
+                )}
+                <span className="text-xs text-gray-700 truncate flex-1">
+                  {w.name}
+                </span>
+                {getStatusBadge(w.status)}
+              </div>
+            ))}
           </div>
         )}
       </div>
@@ -435,30 +464,33 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
   };
 
   const getStatusBadge = (status: string) => {
-    const statusConfig = {
+    const statusConfig: Record<string, { className: string; label: string }> = {
       active: {
-        color: "bg-gray-50 text-gray-600 border-gray-200",
+        className: "bg-green-50 text-green-700 border-green-200",
         label: "Active",
       },
       inactive: {
-        color: "bg-gray-50 text-gray-500 border-gray-200",
-        label: "Inactive",
+        className: "bg-red-50 text-red-700 border-red-200",
+        label: "Paused",
+      },
+      paused: {
+        className: "bg-red-50 text-red-700 border-red-200",
+        label: "Paused",
       },
       draft: {
-        color: "bg-gray-50 text-gray-500 border-gray-200",
+        className: "badge-theme",
         label: "Draft",
       },
       archived: {
-        color: "bg-gray-50 text-gray-400 border-gray-200",
+        className: "bg-gray-50 text-gray-500 border-gray-200",
         label: "Archived",
       },
     };
 
-    const config =
-      statusConfig[status as keyof typeof statusConfig] || statusConfig.draft;
+    const cfg = statusConfig[status] || statusConfig.draft;
     return (
-      <Badge variant="outline" className={config.color}>
-        {config.label}
+      <Badge variant="outline" className={cfg.className} data-slot="badge">
+        {cfg.label}
       </Badge>
     );
   };
@@ -518,7 +550,7 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
   };
 
   return (
-    <div className="flex h-[calc(100vh-12rem)]">
+    <div className="flex h-[calc(100vh-5rem)]">
       {/* Directory Sidebar */}
       <div
         className="border-r bg-gray-50 p-2 relative"
@@ -665,7 +697,7 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
             <SelectContent>
               <SelectItem value="all">All Status</SelectItem>
               <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="inactive">Inactive</SelectItem>
+              <SelectItem value="inactive">Paused</SelectItem>
               <SelectItem value="draft">Draft</SelectItem>
               <SelectItem value="archived">Archived</SelectItem>
             </SelectContent>
@@ -682,7 +714,9 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
               key={workflow._id}
               draggable
               onDragStart={() => handleDragStart(workflow._id)}
-              className="bg-white rounded-md transition-all cursor-move workflow-item hover-lift border-0 focus:ring-0 focus:outline-none"
+              className={`bg-white rounded-md transition-all cursor-pointer workflow-item hover-lift border-0 focus:ring-0 focus:outline-none ${
+                workflow.status === "active" ? "workflow-item--active" : ""
+              }`}
               data-theme-aware="true"
               data-variant="light"
               data-testid="workflow-item"
@@ -706,6 +740,7 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
                         <Badge
                           variant="outline"
                           className="text-xs bg-gray-50 text-gray-500 border-gray-200"
+                          data-slot="badge"
                         >
                           {formatTrigger(workflow.trigger)}
                         </Badge>
@@ -714,8 +749,8 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
                     {/* Directory path under title */}
                     {workflow.directoryId &&
                       directoryIdToPath.get(workflow.directoryId) && (
-                        <div className="mt-0.5 flex items-center text-[11px] text-gray-500">
-                          <Folder className="h-3 w-3 mr-1 text-gray-400" />
+                        <div className="mt-0.5 flex items-center text-[11px] text-gray-400">
+                          <Folder className="h-3 w-3 mr-1 text-gray-300" />
                           <span className="truncate max-w-[340px] md:max-w-[280px]">
                             {
                               directoryIdToPath.get(
@@ -725,7 +760,7 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
                           </span>
                         </div>
                       )}
-                    <p className="text-sm text-gray-500 mt-1 truncate max-w-[380px] md:max-w-[300px]">
+                    <p className="text-xs italic text-gray-500 mt-1 truncate max-w-[380px] md:max-w-[300px]">
                       {workflow.description || "No description"}
                     </p>
                   </div>
@@ -756,32 +791,33 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
 
                   {/* Right Section: Actions */}
                   <div className="flex items-center space-x-2 shrink-0">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-gray-500 hover:text-gray-700 hover:bg-gray-100"
-                      data-theme-aware="false"
-                      onClick={() =>
-                        handleToggleWorkflow(workflow._id, workflow.status)
-                      }
-                      data-testid={
-                        workflow.status === "active"
-                          ? "pause-workflow"
-                          : "play-workflow"
-                      }
-                    >
-                      {workflow.status === "active" ? (
-                        <>
-                          <Pause className="h-4 w-4 mr-1" />
-                          Pause
-                        </>
-                      ) : (
-                        <>
-                          <Play className="h-4 w-4 mr-1" />
-                          Activate
-                        </>
-                      )}
-                    </Button>
+                    {workflow.status === "active" ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
+                        data-theme-aware="false"
+                        onClick={() =>
+                          handleToggleWorkflow(workflow._id, workflow.status)
+                        }
+                        data-testid="pause-workflow"
+                      >
+                        <Pause className="h-4 w-4 mr-1" /> Pause
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
+                        data-theme-aware="false"
+                        onClick={() =>
+                          handleToggleWorkflow(workflow._id, workflow.status)
+                        }
+                        data-testid="play-workflow"
+                      >
+                        <Play className="h-4 w-4 mr-1" /> Activate
+                      </Button>
+                    )}
 
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
