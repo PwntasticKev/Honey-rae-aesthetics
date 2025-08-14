@@ -32,6 +32,33 @@ export default defineSchema({
         }),
       ),
     ),
+    // Workflow variables for message templates
+    workflowVariables: v.optional(
+      v.object({
+        // Business information
+        business_name: v.optional(v.string()),
+        business_phone: v.optional(v.string()),
+        business_email: v.optional(v.string()),
+        business_address: v.optional(v.string()),
+        // Booking and review links
+        booking_link: v.optional(v.string()),
+        google_review_link: v.optional(v.string()),
+        website_url: v.optional(v.string()),
+        // Social media links
+        instagram_link: v.optional(v.string()),
+        facebook_link: v.optional(v.string()),
+        // Custom variables
+        custom_variables: v.optional(
+          v.array(
+            v.object({
+              key: v.string(),
+              value: v.string(),
+              description: v.optional(v.string()),
+            })
+          )
+        ),
+      })
+    ),
     createdAt: v.number(),
     updatedAt: v.number(),
   }),

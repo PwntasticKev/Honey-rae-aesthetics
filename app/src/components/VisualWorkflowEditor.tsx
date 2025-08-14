@@ -124,21 +124,20 @@ const blockTypes: BlockType[] = [
         type: "select",
         options: [
           { value: "appointment_completed", label: "Appointment Completed" },
-          { value: "appointment_scheduled", label: "Appointment Scheduled" },
-          { value: "client_added", label: "New Client Added" },
-          { value: "follow_up_due", label: "Follow-up Due" },
-          { value: "birthday", label: "Client Birthday" },
-          { value: "contact_created", label: "Contact Created" },
-          { value: "contact_changed", label: "Contact Changed" },
-          { value: "note_added", label: "Note Added" },
-          { value: "task_added", label: "Task Added" },
+          { value: "appointment_scheduled", label: "Appointment Booked" },
+          { value: "new_client", label: "New Client Added" },
+          { value: "morpheus8", label: "Morpheus8 Appointment" },
+          { value: "toxins", label: "Toxins/Botox Appointment" },
+          { value: "filler", label: "Filler Appointment" },
+          { value: "consultation", label: "Consultation Appointment" },
+          { value: "manual", label: "Manual Trigger" },
         ],
       },
     ],
   },
   {
     type: "delay",
-    label: "Delay",
+    label: "Wait",
     icon: Clock,
     description: "Wait for time",
     color: "bg-yellow-500",
@@ -149,19 +148,21 @@ const blockTypes: BlockType[] = [
     configFields: [
       {
         key: "value",
-        label: "Delay Value",
+        label: "Wait Time",
         type: "number",
         placeholder: "1",
       },
       {
         key: "unit",
-        label: "Delay Unit",
+        label: "Time Unit",
         type: "select",
         options: [
+          { value: "seconds", label: "Seconds" },
           { value: "minutes", label: "Minutes" },
           { value: "hours", label: "Hours" },
           { value: "days", label: "Days" },
           { value: "weeks", label: "Weeks" },
+          { value: "months", label: "Months" },
         ],
       },
     ],
@@ -173,14 +174,14 @@ const blockTypes: BlockType[] = [
     description: "Send text message",
     color: "bg-green-500",
     config: {
-      message: "{{first_name}}, thank you for your appointment!",
+      message: "Hi {{first_name}}, thank you for your appointment today!",
     },
     configFields: [
       {
         key: "message",
-        label: "Message",
+        label: "SMS Message",
         type: "textarea",
-        placeholder: "Enter your message...",
+        placeholder: "Enter your SMS message...\n\nAvailable variables:\n{{first_name}}, {{last_name}}, {{client_name}}\n{{appointment_date}}, {{appointment_time}}\n{{phone}}, {{email}}, {{google_review_link}}",
       },
     ],
   },
@@ -191,21 +192,21 @@ const blockTypes: BlockType[] = [
     description: "Send email",
     color: "bg-purple-500",
     config: {
-      subject: "Appointment Reminder",
-      body: "Hi {{first_name}}, this is a reminder about your appointment.",
+      subject: "Thank you for your appointment!",
+      body: "Hi {{first_name}},\n\nThank you for visiting us today! We hope you're happy with your {{appointment_type}} treatment.\n\nWe'd love to hear about your experience: {{google_review_link}}\n\nBest regards,\nThe Team",
     },
     configFields: [
       {
         key: "subject",
-        label: "Subject",
+        label: "Email Subject",
         type: "input",
-        placeholder: "Email subject",
+        placeholder: "Email subject line",
       },
       {
         key: "body",
-        label: "Body",
+        label: "Email Body",
         type: "textarea",
-        placeholder: "Email body...",
+        placeholder: "Enter your email message...\n\nAvailable variables:\n{{first_name}}, {{last_name}}, {{client_name}}\n{{appointment_date}}, {{appointment_time}}, {{appointment_type}}\n{{phone}}, {{email}}, {{google_review_link}}",
       },
     ],
   },
@@ -221,45 +222,83 @@ const blockTypes: BlockType[] = [
     configFields: [
       {
         key: "tag",
-        label: "Tag Name",
+        label: "Tag to Add",
         type: "input",
-        placeholder: "Enter tag name",
+        placeholder: "Enter tag name (e.g., VIP, follow-up-needed)",
+      },
+    ],
+  },
+  {
+    type: "remove_tag",
+    label: "Remove Tag",
+    icon: X,
+    description: "Remove client tag",
+    color: "bg-red-500",
+    config: {
+      tag: "",
+      removeAll: false,
+    },
+    configFields: [
+      {
+        key: "removeAll",
+        label: "Remove All Tags",
+        type: "select",
+        options: [
+          { value: "false", label: "Remove Specific Tag" },
+          { value: "true", label: "Remove ALL Tags" },
+        ],
+      },
+      {
+        key: "tag",
+        label: "Tag to Remove",
+        type: "input",
+        placeholder: "Enter tag name to remove (ignored if removing all)",
       },
     ],
   },
   {
     type: "if",
-    label: "Condition",
+    label: "If/Then",
     icon: Settings,
-    description: "If statement",
+    description: "Conditional logic",
     color: "bg-red-500",
     config: {
-      field: "status",
-      operator: "equals",
-      value: "active",
+      field: "tags",
+      operator: "contains",
+      value: "VIP",
     },
     configFields: [
       {
         key: "field",
-        label: "Field",
-        type: "input",
-        placeholder: "Field name",
+        label: "Check Field",
+        type: "select",
+        options: [
+          { value: "tags", label: "Client Tags" },
+          { value: "appointment_count", label: "Appointment Count" },
+          { value: "appointment_type", label: "Current Appointment Type" },
+          { value: "last_appointment_date", label: "Last Appointment Date" },
+          { value: "client_status", label: "Client Status" },
+        ],
       },
       {
         key: "operator",
-        label: "Operator",
+        label: "Condition",
         type: "select",
         options: [
-          { value: "equals", label: "Equals" },
           { value: "contains", label: "Contains" },
+          { value: "equals", label: "Equals" },
+          { value: "not_equals", label: "Not Equals" },
           { value: "greater_than", label: "Greater Than" },
+          { value: "less_than", label: "Less Than" },
+          { value: "has_tag", label: "Has Tag" },
+          { value: "not_has_tag", label: "Does Not Have Tag" },
         ],
       },
       {
         key: "value",
         label: "Value",
         type: "input",
-        placeholder: "Value to compare",
+        placeholder: "Value to compare (e.g., VIP, 5, morpheus8)",
       },
     ],
   },
@@ -489,7 +528,7 @@ const SendEmailNode = ({ data, selected }: any) => {
 
 const AddTagNode = ({ data, selected }: any) => {
   const blockType = blockTypes.find((bt) => bt.type === data.type);
-  const Icon = blockType?.icon || Settings;
+  const Icon = blockType?.icon || Tag;
 
   const getTag = () => {
     const config = data.config || {};
@@ -508,6 +547,37 @@ const AddTagNode = ({ data, selected }: any) => {
         <div>
           <div className="font-medium text-sm">Add Tag</div>
           <div className="text-xs text-gray-500">{getTag()}</div>
+        </div>
+      </div>
+      <Handle type="source" position={Position.Right} className="w-3 h-3" />
+    </div>
+  );
+};
+
+const RemoveTagNode = ({ data, selected }: any) => {
+  const blockType = blockTypes.find((bt) => bt.type === data.type);
+  const Icon = blockType?.icon || X;
+
+  const getTagInfo = () => {
+    const config = data.config || {};
+    if (config.removeAll === "true" || config.removeAll === true) {
+      return "Remove ALL tags";
+    }
+    return config.tag || "No tag set";
+  };
+
+  return (
+    <div
+      className={`p-3 rounded-lg border-2 ${selected ? "border-blue-500" : "border-gray-200"} bg-white cursor-pointer`}
+    >
+      <Handle type="target" position={Position.Left} className="w-3 h-3" />
+      <div className="flex items-center space-x-2">
+        <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-red-100">
+          <Icon className="w-4 h-4 text-red-600" />
+        </div>
+        <div>
+          <div className="font-medium text-sm">Remove Tag</div>
+          <div className="text-xs text-gray-500">{getTagInfo()}</div>
         </div>
       </div>
       <Handle type="source" position={Position.Right} className="w-3 h-3" />
@@ -625,7 +695,9 @@ function WorkflowEditor({
                     ? "send_email"
                     : block.type === "add_tag"
                       ? "add_tag"
-                      : "action";
+                      : block.type === "remove_tag"
+                        ? "remove_tag"
+                        : "action";
 
         return {
           id: block.id,
@@ -844,10 +916,10 @@ function WorkflowEditor({
   const testWorkflow = async () => {
     console.log("🧪 Test workflow function called!");
 
-    if (!selectedTestContact) {
+    if (!workflow?.id) {
       toast({
         title: "Error",
-        description: "Please select a test contact",
+        description: "Please save the workflow before testing",
         variant: "destructive",
       });
       return;
@@ -855,80 +927,64 @@ function WorkflowEditor({
 
     toast({
       title: "Testing Workflow",
-      description: `Running workflow test for ${selectedTestContact}...`,
+      description: `Running workflow test...`,
     });
 
-    const messagingService = MessagingService.getInstance();
-    const results: { type: string; success: boolean; message: string }[] = [];
-
     try {
-      console.log("🧪 Starting workflow test with nodes:", nodes.length);
+      // Save current workflow state
+      const workflowData = {
+        id: workflow.id,
+        name: workflowName === "Loading..." ? "Test Workflow" : workflowName,
+        description: workflowDescription,
+        enabled: workflow?.enabled || false,
+        blocks: nodes.map((node) => ({
+          id: node.id,
+          type: node.data?.type || node.type,
+          position: node.position,
+          width: node.width,
+          height: node.height,
+          config: node.data?.config || {},
+        })),
+        connections: edges
+          .filter((edge) => edge.source && edge.target)
+          .map((edge) => ({
+            id: edge.id,
+            from: edge.source,
+            to: edge.target,
+            fromPort: edge.sourceHandle || "output",
+            toPort: edge.targetHandle || "input",
+          })),
+      };
 
-      // Execute workflow steps based on nodes
-      for (const node of nodes) {
-        if (node.type === "send_email" && node.data?.config) {
-          console.log("🧪 Found email node:", node.data.config);
-          // Only send email if the contact is an email address
-          if (selectedTestContact.includes("@")) {
-            const result = await messagingService.sendEmail({
-              to: selectedTestContact,
-              subject: node.data.config.subject || "Workflow Test Email",
-              body:
-                node.data.config.body ||
-                "This is a test email from your workflow.",
-              type: "email",
-              orgId: workflow?.id, // Use workflow ID as org ID for now
-              clientId: undefined, // No client ID for test messages
-            });
-            results.push({ type: "Email", ...result });
-          } else {
-            results.push({
-              type: "Email",
-              success: false,
-              message: "Cannot send email to phone number",
-            });
-          }
-        } else if (node.type === "send_sms" && node.data?.config) {
-          console.log("🧪 Found SMS node:", node.data.config);
-          // Only send SMS if the contact is a phone number
-          if (!selectedTestContact.includes("@")) {
-            const result = await messagingService.sendMockSMS({
-              to: selectedTestContact,
-              body:
-                node.data.config.message ||
-                "This is a test SMS from your workflow.",
-              type: "sms",
-            });
-            results.push({ type: "SMS", ...result });
-          } else {
-            results.push({
-              type: "SMS",
-              success: false,
-              message: "Cannot send SMS to email address",
-            });
-          }
-        }
-      }
+      // Test the workflow using the enhanced test function
+      const testResult = await fetch("/api/test-workflow", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          workflowData,
+          testContactEmail: "pwntastickevin@gmail.com",
+          testContactPhone: "+18018850601",
+        }),
+      });
 
-      // Show results
-      const successCount = results.filter((r) => r.success).length;
-      const totalCount = results.length;
+      const result = await testResult.json();
 
-      if (totalCount === 0) {
-        console.log("🧪 No actions found in workflow");
-        toast({
-          title: "No Actions Found",
-          description:
-            "This workflow doesn't contain any email or SMS actions to test. Add a 'Send Email' or 'Send SMS' node first.",
-        });
-      } else {
+      if (result.success) {
         toast({
           title: "Test Complete",
-          description: `${successCount}/${totalCount} actions executed successfully for ${selectedTestContact}`,
+          description: `${result.successfulSteps}/${result.totalSteps} steps executed successfully`,
         });
 
         // Log detailed results
-        console.log("🧪 Workflow Test Results:", results);
+        console.log("🧪 Workflow Test Results:", result.results);
+      } else {
+        toast({
+          title: "Test Failed",
+          description: result.error || "An error occurred while testing the workflow.",
+          variant: "destructive",
+        });
       }
     } catch (error) {
       console.error("Workflow test error:", error);
@@ -1010,7 +1066,8 @@ function WorkflowEditor({
       } else if (
         type === "send_sms" ||
         type === "send_email" ||
-        type === "add_tag"
+        type === "add_tag" ||
+        type === "remove_tag"
       ) {
         nodeType = type; // Use the specific type for these actions
       }
@@ -1093,74 +1150,119 @@ function WorkflowEditor({
     const blockType = blockTypes.find(
       (bt) => bt.type === editingNode.data?.type,
     );
-    if (!blockType?.configFields) return null;
-
+    
+    // Always render something
     return (
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold">Configure {blockType.label}</h3>
-        {blockType.configFields.map((field) => (
-          <div key={field.key} className="space-y-2">
-            <Label htmlFor={field.key}>{field.label}</Label>
-            {field.type === "input" && (
-              <Input
-                id={field.key}
-                value={editingNode.data?.config?.[field.key] || ""}
-                onChange={(e) =>
-                  updateNodeConfig(editingNode.id, {
-                    [field.key]: e.target.value,
-                  })
-                }
-                placeholder={field.placeholder}
-              />
-            )}
-            {field.type === "textarea" && (
-              <Textarea
-                id={field.key}
-                value={editingNode.data?.config?.[field.key] || ""}
-                onChange={(e) =>
-                  updateNodeConfig(editingNode.id, {
-                    [field.key]: e.target.value,
-                  })
-                }
-                placeholder={field.placeholder}
-              />
-            )}
-            {field.type === "number" && (
-              <Input
-                id={field.key}
-                type="number"
-                value={editingNode.data?.config?.[field.key] || ""}
-                onChange={(e) =>
-                  updateNodeConfig(editingNode.id, {
-                    [field.key]: parseInt(e.target.value) || 0,
-                  })
-                }
-                placeholder={field.placeholder}
-              />
-            )}
-            {field.type === "select" && (
-              <Select
-                value={editingNode.data?.config?.[field.key] || ""}
-                onValueChange={(value) =>
-                  updateNodeConfig(editingNode.id, {
-                    [field.key]: value,
-                  })
-                }
+        <h3 className="text-lg font-semibold">Configure {blockType?.label || editingNode.data?.type || 'Node'}</h3>
+        
+        {blockType?.configFields ? (
+          <>
+            {blockType.configFields.map((field) => (
+              <div key={field.key} className="space-y-2">
+                <Label htmlFor={field.key}>{field.label}</Label>
+                {field.type === "input" && (
+                  <Input
+                    id={field.key}
+                    value={editingNode.data?.config?.[field.key] || ""}
+                    onChange={(e) =>
+                      updateNodeConfig(editingNode.id, {
+                        [field.key]: e.target.value,
+                      })
+                    }
+                    placeholder={field.placeholder}
+                  />
+                )}
+                {field.type === "textarea" && (
+                  <Textarea
+                    id={field.key}
+                    value={editingNode.data?.config?.[field.key] || ""}
+                    onChange={(e) =>
+                      updateNodeConfig(editingNode.id, {
+                        [field.key]: e.target.value,
+                      })
+                    }
+                    placeholder={field.placeholder}
+                  />
+                )}
+                {field.type === "number" && (
+                  <Input
+                    id={field.key}
+                    type="number"
+                    value={editingNode.data?.config?.[field.key] || ""}
+                    onChange={(e) =>
+                      updateNodeConfig(editingNode.id, {
+                        [field.key]: parseInt(e.target.value) || 0,
+                      })
+                    }
+                    placeholder={field.placeholder}
+                  />
+                )}
+                {field.type === "select" && (
+                  <Select
+                    value={editingNode.data?.config?.[field.key] || ""}
+                    onValueChange={(value) =>
+                      updateNodeConfig(editingNode.id, {
+                        [field.key]: value,
+                      })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select option" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {field.options?.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+            ))}
+            
+            {/* Delete Node Button */}
+            <div className="pt-4 border-t">
+              <Button
+                onClick={() => deleteNode(editingNode.id)}
+                variant="destructive"
+                size="sm"
+                className="w-full"
               >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select option" />
-                </SelectTrigger>
-                <SelectContent>
-                  {field.options?.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete Node
+              </Button>
+            </div>
+          </>
+        ) : (
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">No configuration options available for this node type.</p>
+            
+            {/* Show current config */}
+            {editingNode.data?.config && Object.keys(editingNode.data.config).length > 0 && (
+              <div>
+                <Label>Current Configuration:</Label>
+                <pre className="text-xs bg-gray-100 p-2 rounded mt-1">
+                  {JSON.stringify(editingNode.data.config, null, 2)}
+                </pre>
+              </div>
             )}
+            
+            {/* Delete Node Button */}
+            <div className="pt-4 border-t">
+              <Button
+                onClick={() => deleteNode(editingNode.id)}
+                variant="destructive"
+                size="sm"
+                className="w-full"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete Node
+              </Button>
+            </div>
           </div>
-        ))}
+        )}
       </div>
     );
   };
@@ -1174,6 +1276,7 @@ function WorkflowEditor({
       send_sms: SendSMSNode,
       send_email: SendEmailNode,
       add_tag: AddTagNode,
+      remove_tag: RemoveTagNode,
       action: ActionNode,
     }),
     [],
@@ -1324,7 +1427,28 @@ function WorkflowEditor({
               <X className="w-4 h-4" />
             </Button>
           </div>
-          {renderNodeConfig()}
+          
+          {/* Always show some content */}
+          <div className="space-y-4">
+            {renderNodeConfig() || (
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-orange-600">Debug: Configuration Panel</h3>
+                <div className="text-sm space-y-2 p-3 bg-orange-50 rounded">
+                  <p><strong>Editing Node ID:</strong> {editingNode?.id || "None"}</p>
+                  <p><strong>Node Type:</strong> {editingNode?.data?.type || "None"}</p>
+                  <p><strong>ReactFlow Type:</strong> {editingNode?.type || "None"}</p>
+                  <p><strong>Config:</strong> <pre className="whitespace-pre-wrap text-xs">{JSON.stringify(editingNode?.data?.config || {}, null, 2)}</pre></p>
+                  <div className="mt-3 pt-2 border-t">
+                    <p><strong>All Available Block Types:</strong></p>
+                    <p className="text-xs">{blockTypes.map(bt => bt.type).join(", ")}</p>
+                  </div>
+                  <div className="mt-3 pt-2 border-t">
+                    <p><strong>Found Block Type:</strong> {blockTypes.find(bt => bt.type === editingNode?.data?.type)?.label || "Not Found"}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -1366,9 +1490,13 @@ function WorkflowEditor({
             </div>
             <div className="text-sm text-gray-600">
               <p>
-                This will send real test emails/SMS to the selected contact.
+                This will send real test emails/SMS to:
               </p>
-              <p className="mt-2">Check the console for detailed logs.</p>
+              <ul className="mt-1 text-xs list-disc list-inside">
+                <li>📧 pwntastickevin@gmail.com</li>
+                <li>📱 +18018850601</li>
+              </ul>
+              <p className="mt-2 font-medium">Variables will be substituted with test data.</p>
             </div>
             <div className="flex space-x-2">
               <Button

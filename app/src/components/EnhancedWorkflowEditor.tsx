@@ -1281,6 +1281,302 @@ function WorkflowEditorInner({
     [setEdges, handleEdgeDelete, nodes],
   );
 
+  // Update node configuration
+  const updateNodeConfig = useCallback(
+    (nodeId: string, configUpdate: any) => {
+      setNodes((nds) =>
+        nds.map((node) =>
+          node.id === nodeId
+            ? {
+                ...node,
+                data: {
+                  ...node.data,
+                  config: { ...node.data?.config, ...configUpdate },
+                },
+              }
+            : node,
+        ),
+      );
+    },
+    [setNodes],
+  );
+
+  // Render editable configuration forms
+  const renderNodeConfig = useCallback(() => {
+    if (!selectedNode) return null;
+
+    const nodeType = selectedNode.type;
+    const config = selectedNode.data?.config || {};
+
+    switch (nodeType) {
+      case "trigger":
+        return (
+          <div className="space-y-4">
+            <div>
+              <Label>Trigger Event</Label>
+              <Select
+                value={config.trigger || ""}
+                onValueChange={(value) => updateNodeConfig(selectedNode.id, { trigger: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select trigger event" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="appointment_booked">Appointment Booked</SelectItem>
+                  <SelectItem value="appointment_completed">Appointment Completed</SelectItem>
+                  <SelectItem value="6_months_passed">6 Months Passed</SelectItem>
+                  <SelectItem value="appointment_cancelled">Appointment Cancelled</SelectItem>
+                  <SelectItem value="client_added">Client Added</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        );
+
+      case "action":
+        return (
+          <div className="space-y-4">
+            <div>
+              <Label>Action Type</Label>
+              <Select
+                value={config.action || ""}
+                onValueChange={(value) => updateNodeConfig(selectedNode.id, { action: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select action" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="send_sms">Send SMS</SelectItem>
+                  <SelectItem value="send_email">Send Email</SelectItem>
+                  <SelectItem value="add_tag">Add Tag</SelectItem>
+                  <SelectItem value="remove_tag">Remove Tag</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {(config.action === "send_sms" || config.action === "send_email") && (
+              <div>
+                <Label>Message</Label>
+                <Textarea
+                  value={config.message || ""}
+                  onChange={(e) => updateNodeConfig(selectedNode.id, { message: e.target.value })}
+                  placeholder={config.action === "send_sms" ? "Hi {{first_name}}, thank you for your appointment!" : "Subject: Thank you!\n\nHi {{first_name}}, thank you for your appointment!"}
+                  rows={4}
+                />
+              </div>
+            )}
+            
+            {config.action === "send_email" && (
+              <div>
+                <Label>Email Subject</Label>
+                <Input
+                  value={config.subject || ""}
+                  onChange={(e) => updateNodeConfig(selectedNode.id, { subject: e.target.value })}
+                  placeholder="Thank you for your appointment!"
+                />
+              </div>
+            )}
+            
+            {(config.action === "add_tag" || config.action === "remove_tag") && (
+              <div>
+                <Label>Tag</Label>
+                <Input
+                  value={config.tag || ""}
+                  onChange={(e) => updateNodeConfig(selectedNode.id, { tag: e.target.value })}
+                  placeholder="Enter tag name"
+                />
+              </div>
+            )}
+          </div>
+        );
+
+      case "delay":
+        return (
+          <div className="space-y-4">
+            <div>
+              <Label>Delay Duration</Label>
+              <Input
+                type="number"
+                value={config.duration || ""}
+                onChange={(e) => updateNodeConfig(selectedNode.id, { duration: parseInt(e.target.value) || 1 })}
+                placeholder="1"
+                min="1"
+              />
+            </div>
+            <div>
+              <Label>Time Unit</Label>
+              <Select
+                value={config.unit || "days"}
+                onValueChange={(value) => updateNodeConfig(selectedNode.id, { unit: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="minutes">Minutes</SelectItem>
+                  <SelectItem value="hours">Hours</SelectItem>
+                  <SelectItem value="days">Days</SelectItem>
+                  <SelectItem value="weeks">Weeks</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        );
+
+      case "condition":
+        // Keep existing condition builder for condition nodes
+        return null; // This will fall back to existing condition builder
+
+      default:
+        return (
+          <div className="text-sm text-gray-600">
+            <p>Configuration options for {nodeType} nodes will be available soon.</p>
+            <div className="mt-2 bg-gray-50 rounded p-2">
+              <pre className="text-xs">{JSON.stringify(config, null, 2)}</pre>
+            </div>
+          </div>
+        );
+    }
+  }, [selectedNode, updateNodeConfig]);
+
+  // Render editable configuration forms for any node
+  const renderNodeConfigForNode = useCallback((node: Node | null) => {
+    if (!node) return null;
+
+    const nodeType = node.type;
+    const config = node.data?.config || {};
+
+    switch (nodeType) {
+      case "trigger":
+        return (
+          <div className="space-y-4">
+            <div>
+              <Label>Trigger Event</Label>
+              <Select
+                value={config.trigger || ""}
+                onValueChange={(value) => updateNodeConfig(node.id, { trigger: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select trigger event" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="appointment_booked">Appointment Booked</SelectItem>
+                  <SelectItem value="appointment_completed">Appointment Completed</SelectItem>
+                  <SelectItem value="6_months_passed">6 Months Passed</SelectItem>
+                  <SelectItem value="appointment_cancelled">Appointment Cancelled</SelectItem>
+                  <SelectItem value="client_added">Client Added</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        );
+
+      case "action":
+        return (
+          <div className="space-y-4">
+            <div>
+              <Label>Action Type</Label>
+              <Select
+                value={config.action || ""}
+                onValueChange={(value) => updateNodeConfig(node.id, { action: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select action" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="send_sms">Send SMS</SelectItem>
+                  <SelectItem value="send_email">Send Email</SelectItem>
+                  <SelectItem value="add_tag">Add Tag</SelectItem>
+                  <SelectItem value="remove_tag">Remove Tag</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {(config.action === "send_sms" || config.action === "send_email") && (
+              <div>
+                <Label>Message</Label>
+                <Textarea
+                  value={config.message || ""}
+                  onChange={(e) => updateNodeConfig(node.id, { message: e.target.value })}
+                  placeholder={config.action === "send_sms" ? "Hi {{first_name}}, thank you for your appointment!" : "Subject: Thank you!\n\nHi {{first_name}}, thank you for your appointment!"}
+                  rows={4}
+                />
+              </div>
+            )}
+            
+            {config.action === "send_email" && (
+              <div>
+                <Label>Email Subject</Label>
+                <Input
+                  value={config.subject || ""}
+                  onChange={(e) => updateNodeConfig(node.id, { subject: e.target.value })}
+                  placeholder="Thank you for your appointment!"
+                />
+              </div>
+            )}
+            
+            {(config.action === "add_tag" || config.action === "remove_tag") && (
+              <div>
+                <Label>Tag</Label>
+                <Input
+                  value={config.tag || ""}
+                  onChange={(e) => updateNodeConfig(node.id, { tag: e.target.value })}
+                  placeholder="Enter tag name"
+                />
+              </div>
+            )}
+          </div>
+        );
+
+      case "delay":
+        return (
+          <div className="space-y-4">
+            <div>
+              <Label>Delay Duration</Label>
+              <Input
+                type="number"
+                value={config.duration || ""}
+                onChange={(e) => updateNodeConfig(node.id, { duration: parseInt(e.target.value) || 1 })}
+                placeholder="1"
+                min="1"
+              />
+            </div>
+            <div>
+              <Label>Time Unit</Label>
+              <Select
+                value={config.unit || "days"}
+                onValueChange={(value) => updateNodeConfig(node.id, { unit: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="minutes">Minutes</SelectItem>
+                  <SelectItem value="hours">Hours</SelectItem>
+                  <SelectItem value="days">Days</SelectItem>
+                  <SelectItem value="weeks">Weeks</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        );
+
+      case "condition":
+        // Keep existing condition builder for condition nodes
+        return null; // This will fall back to existing condition builder
+
+      default:
+        return (
+          <div className="text-sm text-gray-600">
+            <p>Configuration options for {nodeType} nodes will be available soon.</p>
+            <div className="mt-2 bg-gray-50 rounded p-2">
+              <pre className="text-xs">{JSON.stringify(config, null, 2)}</pre>
+            </div>
+          </div>
+        );
+    }
+  }, [updateNodeConfig]);
+
   // Handle node selection
   const onNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {
     setSelectedNode(node);
@@ -1992,11 +2288,13 @@ function WorkflowEditorInner({
             {/* Configuration */}
             <div>
               <h4 className="font-medium text-gray-900 mb-2">Configuration</h4>
-              <div className="bg-gray-50 rounded-lg p-3">
-                <pre className="text-xs text-gray-700 whitespace-pre-wrap overflow-x-auto">
-                  {JSON.stringify(selectedNode.data?.config, null, 2)}
-                </pre>
-              </div>
+              {renderNodeConfig() || (
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <pre className="text-xs text-gray-700 whitespace-pre-wrap overflow-x-auto">
+                    {JSON.stringify(selectedNode.data?.config, null, 2)}
+                  </pre>
+                </div>
+              )}
             </div>
 
             {/* Actions */}
@@ -2135,11 +2433,13 @@ function WorkflowEditorInner({
             {/* Configuration */}
             <div>
               <h4 className="font-medium text-gray-900 mb-2">Configuration</h4>
-              <div className="bg-gray-50 rounded-lg p-3">
-                <pre className="text-xs text-gray-700 whitespace-pre-wrap overflow-x-auto">
-                  {JSON.stringify(selectedNodeForDetails.data?.config, null, 2)}
-                </pre>
-              </div>
+              {renderNodeConfigForNode(selectedNodeForDetails) || (
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <pre className="text-xs text-gray-700 whitespace-pre-wrap overflow-x-auto">
+                    {JSON.stringify(selectedNodeForDetails.data?.config, null, 2)}
+                  </pre>
+                </div>
+              )}
             </div>
 
             {/* Actions */}

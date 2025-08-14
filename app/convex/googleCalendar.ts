@@ -254,6 +254,8 @@ async function handleAppointmentCreated(ctx: any, args: any) {
 
   // Try to find existing client by email from attendees
   let clientId = null;
+  let isNewClient = false;
+  
   if (args.eventData.attendees && args.eventData.attendees.length > 0) {
     for (const attendee of args.eventData.attendees) {
       // Skip the provider's own email
@@ -289,13 +291,32 @@ async function handleAppointmentCreated(ctx: any, args: any) {
           phones: [],
           gender: "other", // Default since we don't know
           clientPortalStatus: "pending",
-          tags: ["google_calendar_import"],
+          tags: ["google_calendar_import", "needs_completion"],
           importSource: "google_calendar",
           createdAt: Date.now(),
           updatedAt: Date.now(),
         });
 
+        isNewClient = true;
         console.log(`Created new client ${clientId} from Google Calendar appointment`);
+        
+        // Create notification for incomplete client profile
+        await ctx.db.insert("notifications", {
+          orgId: args.orgId,
+          title: "New Client Profile Needs Completion",
+          message: `Client ${primaryAttendee.displayName || firstName} was auto-created from Google Calendar and needs profile completion.`,
+          type: "client",
+          read: false,
+          actionUrl: `/clients/${clientId}`,
+          actionText: "Complete Profile",
+          metadata: {
+            clientId,
+            source: "google_calendar_import",
+            appointmentTitle: args.eventData.summary
+          },
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        });
       }
     }
   }
@@ -320,6 +341,17 @@ async function handleAppointmentCreated(ctx: any, args: any) {
     await ctx.db.patch(args.providerId, {
       lastSync: Date.now(),
       updatedAt: Date.now(),
+    });
+
+    // Trigger workflow for appointment scheduled
+    await triggerAppointmentWorkflows(ctx, {
+      orgId: args.orgId,
+      appointmentId,
+      clientId,
+      appointmentTitle: args.eventData.summary,
+      appointmentStartTime: startDate.getTime(),
+      triggerType: "appointment_scheduled",
+      isNewClient
     });
 
     console.log(`Created appointment ${appointmentId} for client ${clientId} from Google Calendar event ${args.eventId}`);
@@ -349,6 +381,8 @@ async function handleAppointmentUpdated(ctx: any, args: any) {
   }
 
   const startDate = new Date(args.eventData.startDateTime);
+  const previousStatus = appointment.status;
+  
   const updates: any = {
     dateTime: startDate.getTime(),
     type: args.eventData.summary,
@@ -362,6 +396,18 @@ async function handleAppointmentUpdated(ctx: any, args: any) {
   }
 
   await ctx.db.patch(appointment._id, updates);
+
+  // If appointment was marked as completed, trigger completion workflows
+  if (updates.status === "completed" && previousStatus !== "completed") {
+    await triggerAppointmentWorkflows(ctx, {
+      orgId: args.orgId,
+      appointmentId: appointment._id,
+      clientId: appointment.clientId,
+      appointmentTitle: args.eventData.summary,
+      appointmentEndTime: new Date(args.eventData.endDateTime).getTime(),
+      triggerType: "appointment_completed"
+    });
+  }
 
   console.log(`Updated appointment ${appointment._id} from Google Calendar event ${args.eventId}`);
   return appointment._id;
@@ -508,3 +554,141 @@ export const getRecentCalendarAppointments = query({
     return enrichedAppointments;
   },
 });
+
+// Helper function to trigger workflows for appointments
+async function triggerAppointmentWorkflows(ctx: any, data: any) {
+  const { orgId, appointmentId, clientId, appointmentTitle, triggerType, isNewClient } = data;
+  
+  try {
+    // Extract appointment type for workflow matching
+    const appointmentType = extractAppointmentTypeForWorkflow(appointmentTitle);
+    
+    // Find matching workflows
+    const workflows = await ctx.db
+      .query("workflows")
+      .withIndex("by_org", (q: any) => q.eq("orgId", orgId))
+      .filter((q: any) => 
+        q.and(
+          q.eq(q.field("status"), "active"),
+          q.or(
+            q.eq(q.field("trigger"), triggerType),
+            q.eq(q.field("trigger"), appointmentType)
+          )
+        )
+      )
+      .collect();
+    
+    let triggeredCount = 0;
+    const enrollmentIds = [];
+    
+    for (const workflow of workflows) {
+      // Check for duplicate prevention
+      if (workflow.preventDuplicates) {
+        const cutoffTime = Date.now() - (workflow.duplicatePreventionDays || 30) * 24 * 60 * 60 * 1000;
+        
+        const recentEnrollment = await ctx.db
+          .query("workflowEnrollments")
+          .withIndex("by_workflow", (q: any) => q.eq("workflowId", workflow._id))
+          .filter((q: any) => 
+            q.and(
+              q.eq(q.field("clientId"), clientId),
+              q.gt(q.field("enrolledAt"), cutoffTime)
+            )
+          )
+          .first();
+        
+        if (recentEnrollment) {
+          console.log(`⏭️ Skipping duplicate enrollment for client ${clientId} in workflow ${workflow._id}`);
+          continue;
+        }
+      }
+      
+      // Enroll client in workflow
+      const enrollmentId = await ctx.db.insert("workflowEnrollments", {
+        orgId,
+        workflowId: workflow._id,
+        clientId,
+        enrollmentReason: `${triggerType}_${appointmentType}`,
+        currentStatus: "active",
+        enrolledAt: Date.now(),
+        metadata: {
+          appointmentId,
+          appointmentType: appointmentTitle,
+          appointmentDate: data.appointmentStartTime || data.appointmentEndTime,
+          triggerType,
+          isNewClient: !!isNewClient
+        }
+      });
+      
+      // Log the enrollment
+      await ctx.db.insert("executionLogs", {
+        orgId,
+        workflowId: workflow._id,
+        enrollmentId,
+        clientId,
+        stepId: "google_calendar_trigger",
+        action: "enroll_client",
+        status: "executed",
+        executedAt: Date.now(),
+        message: `Auto-enrolled from Google Calendar: ${appointmentTitle}`,
+        metadata: {
+          appointmentType,
+          appointmentId,
+          triggerType,
+          source: "google_calendar"
+        }
+      });
+      
+      triggeredCount++;
+      enrollmentIds.push(enrollmentId);
+    }
+    
+    // Record the trigger event if any workflows were triggered
+    if (triggeredCount > 0) {
+      await ctx.db.insert("appointmentTriggers", {
+        orgId,
+        appointmentId,
+        clientId,
+        appointmentType,
+        triggeredWorkflows: workflows.slice(0, triggeredCount).map(w => w._id),
+        enrollmentIds,
+        triggeredAt: Date.now(),
+        appointmentEndTime: data.appointmentEndTime || data.appointmentStartTime + (60 * 60 * 1000), // Default 1 hour duration
+        metadata: {
+          appointmentTitle,
+          source: "google_calendar",
+          triggerType
+        }
+      });
+    }
+    
+    console.log(`🚀 Triggered ${triggeredCount} workflows for appointment: ${appointmentTitle}`);
+    return { triggered: triggeredCount, enrollments: enrollmentIds };
+    
+  } catch (error) {
+    console.error(`❌ Error triggering workflows for appointment:`, error);
+    throw error;
+  }
+}
+
+// Helper function to extract workflow trigger type from appointment title
+function extractAppointmentTypeForWorkflow(title: string): string {
+  const lowerTitle = title.toLowerCase();
+  
+  // Map appointment titles to workflow trigger types
+  if (lowerTitle.includes("morpheus8") || lowerTitle.includes("morpheus")) {
+    return "morpheus8";
+  }
+  if (lowerTitle.includes("botox") || lowerTitle.includes("toxin") || lowerTitle.includes("neurotoxin")) {
+    return "toxins";
+  }
+  if (lowerTitle.includes("filler") || lowerTitle.includes("dermal") || lowerTitle.includes("juvederm") || lowerTitle.includes("restylane")) {
+    return "filler";
+  }
+  if (lowerTitle.includes("consultation") || lowerTitle.includes("consult")) {
+    return "consultation";
+  }
+  
+  // Default fallback
+  return "appointment_scheduled";
+}
