@@ -20,6 +20,8 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -80,9 +82,13 @@ interface Workflow {
 
 interface EnhancedWorkflowListProps {
   orgId: string;
+  viewMode?: "full" | "sidebar";
 }
 
-export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
+export function EnhancedWorkflowList({
+  orgId,
+  viewMode = "full",
+}: EnhancedWorkflowListProps) {
   const router = useRouter();
   const { user } = useAuth();
   const [selectedDirectory, setSelectedDirectory] = useState<string | null>(
@@ -124,6 +130,11 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
     null,
   );
   const [editingWorkflowName, setEditingWorkflowName] = useState<string>("");
+  const [testDialogOpen, setTestDialogOpen] = useState(false);
+  const [workflowToTest, setWorkflowToTest] = useState<Workflow | null>(null);
+  const [testEmail, setTestEmail] = useState("");
+  const [testPhone, setTestPhone] = useState("");
+  const [isTesting, setIsTesting] = useState(false);
 
   // Restore tree UI state from localStorage
   React.useEffect(() => {
@@ -221,6 +232,32 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
         workflow.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         workflow.description?.toLowerCase().includes(searchQuery.toLowerCase()),
     ) || [];
+
+  const handleTestWorkflow = async () => {
+    if (!workflowToTest) return;
+    if (!testEmail && !testPhone) {
+      alert("Please provide an email or phone number to send the test to.");
+      return;
+    }
+    setIsTesting(true);
+    // This is a simulation. In a real scenario, you'd call a Convex action.
+    console.log("Simulating test for workflow:", {
+      workflowId: workflowToTest._id,
+      name: workflowToTest.name,
+      testEmail,
+      testPhone,
+    });
+    setTimeout(() => {
+      setIsTesting(false);
+      setTestDialogOpen(false);
+      alert(
+        `Test for "${workflowToTest.name}" has been initiated to:\nEmail: ${testEmail}\nPhone: ${testPhone}`,
+      );
+      setWorkflowToTest(null);
+      setTestEmail("");
+      setTestPhone("");
+    }, 1500);
+  };
 
   const handleCreateDirectory = async () => {
     if (!newDirectoryName.trim()) return;
@@ -705,7 +742,7 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
       {/* Directory Sidebar */}
       <div
         className="border-r bg-gray-50 p-2 relative"
-        style={{ width: `${sidebarWidth}px` }}
+        style={{ width: viewMode === "sidebar" ? "100%" : `${sidebarWidth}px` }}
       >
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-semibold text-gray-900">Directories</h3>
@@ -807,265 +844,311 @@ export function EnhancedWorkflowList({ orgId }: EnhancedWorkflowListProps) {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 p-2 overflow-x-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              {selectedDirectory ? "Directory Workflows" : "All Workflows"}
-            </h1>
-            <p className="text-gray-600">
-              {filteredWorkflows.length} workflow
-              {filteredWorkflows.length !== 1 ? "s" : ""}
-            </p>
-          </div>
+      {viewMode === "full" && (
+        <div className="flex-1 p-2 overflow-x-hidden">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">
+                {selectedDirectory ? "Directory Workflows" : "All Workflows"}
+              </h1>
+              <p className="text-gray-600">
+                {filteredWorkflows.length} workflow
+                {filteredWorkflows.length !== 1 ? "s" : ""}
+              </p>
+            </div>
 
-          <Button
-            onClick={() => router.push("/workflow-editor")}
-            data-testid="add-workflow-button"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            New Workflow
-          </Button>
-        </div>
-
-        {/* Filters */}
-        <div className="flex items-center space-x-4 mb-6">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-            <Input
-              placeholder="Search workflows..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-48">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="inactive">Paused</SelectItem>
-              <SelectItem value="draft">Draft</SelectItem>
-              <SelectItem value="archived">Archived</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Workflow List */}
-        <div
-          className="space-y-2 overflow-x-hidden"
-          data-testid="workflow-list"
-        >
-          {filteredWorkflows.map((workflow) => (
-            <div
-              key={workflow._id}
-              draggable
-              onDragStart={() => handleDragStart(workflow._id)}
-              className={`bg-white rounded-md transition-all cursor-pointer workflow-item hover-lift border-0 focus:ring-0 focus:outline-none ${
-                workflow.status === "active" ? "workflow-item--active" : ""
-              }`}
-              data-theme-aware="true"
-              data-variant="light"
-              data-testid="workflow-item"
+            <Button
+              onClick={() => router.push("/workflow-editor")}
+              data-testid="add-workflow-button"
             >
-              <div className="p-2.5">
-                {/* Single Row Layout */}
-                <div className="flex items-center justify-between gap-2 min-w-0">
-                  {/* Left Section: Name, Description, and Badges */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center space-x-3">
-                      <h3
-                        className="font-medium text-gray-800 truncate cursor-pointer hover:text-gray-900 transition-colors max-w-[320px] md:max-w-[260px]"
-                        onClick={() =>
-                          router.push(`/workflow-editor?id=${workflow._id}`)
-                        }
-                      >
-                        {workflow.name}
-                      </h3>
-                      <div className="flex items-center space-x-1.5">
-                        {getStatusBadge(workflow.status)}
-                      </div>
-                    </div>
-                    {/* Directory path under title */}
-                    {workflow.directoryId &&
-                      directoryIdToPath.get(workflow.directoryId) && (
-                        <div className="mt-0.5 flex items-center text-[11px] text-gray-400">
-                          <Folder className="h-3 w-3 mr-1 text-gray-300" />
-                          <span className="truncate max-w-[340px] md:max-w-[280px]">
-                            {
-                              directoryIdToPath.get(
-                                workflow.directoryId,
-                              ) as string
-                            }
-                          </span>
-                        </div>
-                      )}
-                    <p className="text-xs italic text-gray-500 mt-1 truncate max-w-[380px] md:max-w-[300px]">
-                      {workflow.description || "No description"}
-                    </p>
-                  </div>
+              <Plus className="h-4 w-4 mr-2" />
+              New Workflow
+            </Button>
+          </div>
 
-                  {/* Center Section: Stats */}
-                  <div className="flex items-center space-x-3 mx-1 shrink-0">
-                    <div className="text-center">
-                      <div className="text-sm font-medium text-gray-700">
-                        {workflow.activeEnrollmentCount}
-                      </div>
-                      <div className="text-xs text-gray-400">Active</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-sm font-medium text-gray-700">
-                        {workflow.totalRuns}
-                      </div>
-                      <div className="text-xs text-gray-400">Total Runs</div>
-                    </div>
-                    {workflow.lastRun && (
-                      <div className="text-center">
-                        <div className="text-xs text-gray-400">Last run</div>
-                        <div className="text-xs text-gray-500">
-                          {new Date(workflow.lastRun).toLocaleDateString()}
-                        </div>
-                      </div>
-                    )}
-                  </div>
+          {/* Filters */}
+          <div className="flex items-center space-x-4 mb-6">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <Input
+                placeholder="Search workflows..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
 
-                  {/* Right Section: Actions */}
-                  <div className="flex items-center space-x-2 shrink-0">
-                    {workflow.status === "active" ? (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="bg-red-50 text-red-700 border-red-200 hover:bg-red-100 active:bg-red-200"
-                        data-theme-aware="false"
-                        onClick={() =>
-                          handleToggleWorkflow(workflow._id, workflow.status)
-                        }
-                        data-testid="pause-workflow"
-                      >
-                        <Pause className="h-4 w-4 mr-1" /> Pause
-                      </Button>
-                    ) : (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="bg-green-50 text-green-700 border-green-200 hover:bg-green-100 active:bg-green-200"
-                        data-theme-aware="false"
-                        onClick={() =>
-                          handleToggleWorkflow(workflow._id, workflow.status)
-                        }
-                        data-testid="play-workflow"
-                      >
-                        <Play className="h-4 w-4 mr-1" /> Activate
-                      </Button>
-                    )}
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-48">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="inactive">Paused</SelectItem>
+                <SelectItem value="draft">Draft</SelectItem>
+                <SelectItem value="archived">Archived</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-gray-400 hover:text-gray-600 hover:bg-gray-100"
-                          data-theme-aware="false"
-                        >
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent data-theme-aware="false">
-                        <DropdownMenuItem
-                          data-theme-aware="false"
+          {/* Workflow List */}
+          <div
+            className="space-y-2 overflow-x-hidden"
+            data-testid="workflow-list"
+          >
+            {filteredWorkflows.map((workflow) => (
+              <div
+                key={workflow._id}
+                draggable
+                onDragStart={() => handleDragStart(workflow._id)}
+                className={`bg-white rounded-md transition-all cursor-pointer workflow-item hover-lift border-0 focus:ring-0 focus:outline-none ${
+                  workflow.status === "active" ? "workflow-item--active" : ""
+                }`}
+                data-theme-aware="true"
+                data-variant="light"
+                data-testid="workflow-item"
+              >
+                <div className="p-2.5">
+                  {/* Single Row Layout */}
+                  <div className="flex items-center justify-between gap-2 min-w-0">
+                    {/* Left Section: Name, Description, and Badges */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center space-x-3">
+                        <h3
+                          className="font-medium text-gray-800 truncate cursor-pointer hover:text-gray-900 transition-colors max-w-[320px] md:max-w-[260px]"
                           onClick={() =>
                             router.push(`/workflow-editor?id=${workflow._id}`)
                           }
                         >
-                          <Edit3 className="h-4 w-4 mr-2" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
+                          {workflow.name}
+                        </h3>
+                        <div className="flex items-center space-x-1.5">
+                          {getStatusBadge(workflow.status)}
+                        </div>
+                      </div>
+                      {/* Directory path under title */}
+                      {workflow.directoryId &&
+                        directoryIdToPath.get(workflow.directoryId) && (
+                          <div className="mt-0.5 flex items-center text-[11px] text-gray-400">
+                            <Folder className="h-3 w-3 mr-1 text-gray-300" />
+                            <span className="truncate max-w-[340px] md:max-w-[280px]">
+                              {
+                                directoryIdToPath.get(
+                                  workflow.directoryId,
+                                ) as string
+                              }
+                            </span>
+                          </div>
+                        )}
+                      <p className="text-xs italic text-gray-500 mt-1 truncate max-w-[380px] md:max-w-[300px]">
+                        {workflow.description || "No description"}
+                      </p>
+                    </div>
+
+                    {/* Center Section: Stats */}
+                    <div className="flex items-center space-x-3 mx-1 shrink-0">
+                      <div className="text-center">
+                        <div className="text-sm font-medium text-gray-700">
+                          {workflow.activeEnrollmentCount}
+                        </div>
+                        <div className="text-xs text-gray-400">Active</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-sm font-medium text-gray-700">
+                          {workflow.totalRuns}
+                        </div>
+                        <div className="text-xs text-gray-400">Total Runs</div>
+                      </div>
+                      {workflow.lastRun && (
+                        <div className="text-center">
+                          <div className="text-xs text-gray-400">Last run</div>
+                          <div className="text-xs text-gray-500">
+                            {new Date(workflow.lastRun).toLocaleDateString()}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Right Section: Actions */}
+                    <div className="flex items-center space-x-2 shrink-0">
+                      {workflow.status === "active" ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="bg-red-50 text-red-700 border-red-200 hover:bg-red-100 active:bg-red-200"
                           data-theme-aware="false"
-                          onClick={() => setViewingStepTracker(workflow._id)}
+                          onClick={() =>
+                            handleToggleWorkflow(workflow._id, workflow.status)
+                          }
+                          data-testid="pause-workflow"
                         >
-                          <BarChart3 className="h-4 w-4 mr-2" />
-                          View Step Tracking
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
+                          <Pause className="h-4 w-4 mr-1" /> Pause
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="bg-green-50 text-green-700 border-green-200 hover:bg-green-100 active:bg-green-200"
                           data-theme-aware="false"
-                          onClick={() => {
-                            const email = prompt("Enter test email address:");
-                            const phone = prompt("Enter test phone number:");
-                            if (email || phone) {
-                              alert(
-                                `Test workflow would be sent to:\nEmail: ${email || "Not provided"}\nPhone: ${phone || "Not provided"}`,
+                          onClick={() =>
+                            handleToggleWorkflow(workflow._id, workflow.status)
+                          }
+                          data-testid="play-workflow"
+                        >
+                          <Play className="h-4 w-4 mr-1" /> Activate
+                        </Button>
+                      )}
+
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+                            data-theme-aware="false"
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent data-theme-aware="false">
+                          <DropdownMenuItem
+                            data-theme-aware="false"
+                            onClick={() =>
+                              router.push(`/workflow-editor?id=${workflow._id}`)
+                            }
+                          >
+                            <Edit3 className="h-4 w-4 mr-2" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            data-theme-aware="false"
+                            onClick={() => setViewingStepTracker(workflow._id)}
+                          >
+                            <BarChart3 className="h-4 w-4 mr-2" />
+                            View Step Tracking
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            data-theme-aware="false"
+                            onClick={() => {
+                              setWorkflowToTest(workflow);
+                              setTestDialogOpen(true);
+                            }}
+                          >
+                            <Send className="h-4 w-4 mr-2" />
+                            Test
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="text-red-600"
+                            data-theme-aware="false"
+                            data-danger="true"
+                            onClick={async () => {
+                              const ok = confirm(
+                                `Delete workflow "${workflow.name}"? This cannot be undone.`,
                               );
+                              if (!ok) return;
+                              try {
+                                await deleteWorkflowMutation({
+                                  workflowId: workflow._id as any,
+                                });
+                              } catch (e) {
+                                console.error("Failed to delete workflow", e);
+                                alert("Failed to delete workflow");
+                              }
+                            }}
+                            // subtle red hover
+                            onMouseEnter={(e) =>
+                              (e.currentTarget.style.backgroundColor =
+                                "#fee2e2")
                             }
-                          }}
-                        >
-                          <Send className="h-4 w-4 mr-2" />
-                          Test
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          className="text-red-600"
-                          data-theme-aware="false"
-                          data-danger="true"
-                          onClick={async () => {
-                            const ok = confirm(
-                              `Delete workflow "${workflow.name}"? This cannot be undone.`,
-                            );
-                            if (!ok) return;
-                            try {
-                              await deleteWorkflowMutation({
-                                workflowId: workflow._id as any,
-                              });
-                            } catch (e) {
-                              console.error("Failed to delete workflow", e);
-                              alert("Failed to delete workflow");
+                            onMouseLeave={(e) =>
+                              (e.currentTarget.style.backgroundColor = "")
                             }
-                          }}
-                          // subtle red hover
-                          onMouseEnter={(e) =>
-                            (e.currentTarget.style.backgroundColor = "#fee2e2")
-                          }
-                          onMouseLeave={(e) =>
-                            (e.currentTarget.style.backgroundColor = "")
-                          }
-                          data-testid="delete-workflow"
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                            data-testid="delete-workflow"
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Empty State */}
-        {filteredWorkflows.length === 0 && (
-          <div className="text-center py-12">
-            <FileText className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              No workflows found
-            </h3>
-            <p className="text-gray-600 mb-4">
-              {searchQuery || statusFilter !== "all"
-                ? "Try adjusting your filters or search query"
-                : "Get started by creating your first workflow"}
-            </p>
-            {!searchQuery && statusFilter === "all" && (
-              <Button onClick={() => router.push("/workflow-editor")}>
-                <Plus className="h-4 w-4 mr-2" />
-                Create Workflow
-              </Button>
-            )}
+            ))}
           </div>
-        )}
-      </div>
+
+          {/* Empty State */}
+          {filteredWorkflows.length === 0 && (
+            <div className="text-center py-12">
+              <FileText className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                No workflows found
+              </h3>
+              <p className="text-gray-600 mb-4">
+                {searchQuery || statusFilter !== "all"
+                  ? "Try adjusting your filters or search query"
+                  : "Get started by creating your first workflow"}
+              </p>
+              {!searchQuery && statusFilter === "all" && (
+                <Button onClick={() => router.push("/workflow-editor")}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Workflow
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Test Workflow Dialog */}
+      <Dialog open={testDialogOpen} onOpenChange={setTestDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Test Workflow: {workflowToTest?.name}</DialogTitle>
+            <DialogDescription>
+              Simulate this workflow for a test user.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label htmlFor="test-email">Test Email</Label>
+              <Input
+                id="test-email"
+                type="email"
+                placeholder="test@example.com"
+                value={testEmail}
+                onChange={(e) => setTestEmail(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="test-phone">Test Phone</Label>
+              <Input
+                id="test-phone"
+                type="tel"
+                placeholder="+1234567890"
+                value={testPhone}
+                onChange={(e) => setTestPhone(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setTestDialogOpen(false);
+                setWorkflowToTest(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleTestWorkflow} disabled={isTesting}>
+              {isTesting ? "Testing..." : "Run Test"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Rename Directory Dialog */}
       <Dialog open={showRenameDialog} onOpenChange={setShowRenameDialog}>

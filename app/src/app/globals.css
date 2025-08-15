@@ -801,7 +801,7 @@ select:focus {
 }
 
 .edge-flow {
-  animation: edge-draw 3.2s linear infinite;
+  animation: edge-draw 4.5s linear infinite;
   stroke-dashoffset: 0;
 }
 

@@ -80,9 +80,11 @@ import {
   CheckCircle,
   AlertCircle,
   Search,
+  FolderOpen,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
+import { EnhancedWorkflowList } from "@/components/EnhancedWorkflowList";
 
 // Node data interfaces
 interface BaseNodeData {
@@ -169,6 +171,7 @@ const DeletableEdge: React.FC<any> = ({
         }}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
+        onClick={() => data?.onEdgeDelete?.(id)}
       />
 
       {/* Visual animated flow line */}
@@ -177,7 +180,7 @@ const DeletableEdge: React.FC<any> = ({
         fill="none"
         stroke="#9ca3af"
         strokeWidth={1.5}
-        strokeDasharray="6 10"
+        strokeDasharray="4 8"
         strokeLinecap="round"
         className="edge-flow"
         markerEnd={tinyMarker}
@@ -214,11 +217,12 @@ const TriggerNode: React.FC<{
   data: TriggerNodeData & {
     onDetailsClick?: (data: any) => void;
     onPlusClick?: (event: React.MouseEvent, nodeId: string) => void;
+    onNodeDelete?: (nodeId: string) => void;
     nodeId?: string;
     errors?: string[];
   };
 }> = ({ data }) => (
-  <div className="relative">
+  <div className="relative group">
     {/* User count indicator - top-left, tiny, blends with node */}
     <div
       className="absolute -top-2 -left-2 px-1.5 py-0.5 rounded-md text-[10px] font-medium z-20 cursor-pointer transition-all duration-200 hover:scale-105 bg-gray-100 text-gray-600 border border-gray-200"
@@ -232,6 +236,19 @@ const TriggerNode: React.FC<{
         <span className="leading-none">{data.userCount || 0}</span>
       </div>
     </div>
+
+    {/* Hover delete button - right side, middle */}
+    <button
+      className="absolute -right-2 top-1/2 -translate-y-1/2 w-6 h-6 bg-white border-2 border-red-500 text-red-500 rounded-full flex items-center justify-center hover:bg-red-50 transition-colors shadow-md opacity-0 group-hover:opacity-100 z-20"
+      onClick={(e) => {
+        e.stopPropagation();
+        data.onNodeDelete?.(data.nodeId || "");
+      }}
+      title="Delete node"
+    >
+      <X className="w-3 h-3" />
+    </button>
+
     <div className="bg-blue-50 rounded-lg p-3 min-w-[150px] shadow-sm relative transition-all duration-200 hover:shadow-md hover:scale-105">
       <div className="flex items-center justify-center mb-2">
         <Zap className="h-5 w-5 text-blue-600" />
@@ -283,11 +300,12 @@ const ActionNode: React.FC<{
   data: ActionNodeData & {
     onDetailsClick?: (data: any) => void;
     onPlusClick?: (event: React.MouseEvent, nodeId: string) => void;
+    onNodeDelete?: (nodeId: string) => void;
     nodeId?: string;
     errors?: string[];
   };
 }> = ({ data }) => (
-  <div className="relative">
+  <div className="relative group">
     {/* User count indicator - top-left, blends with node */}
     <div
       className="absolute -top-2 -left-2 px-1.5 py-0.5 rounded-md text-[10px] font-medium z-20 cursor-pointer transition-all duration-200 hover:scale-105 bg-gray-100 text-gray-600 border border-gray-200"
@@ -301,6 +319,19 @@ const ActionNode: React.FC<{
         <span className="leading-none">{data.userCount || 0}</span>
       </div>
     </div>
+
+    {/* Hover delete button - right side, middle */}
+    <button
+      className="absolute -right-2 top-1/2 -translate-y-1/2 w-6 h-6 bg-white border-2 border-red-500 text-red-500 rounded-full flex items-center justify-center hover:bg-red-50 transition-colors shadow-md opacity-0 group-hover:opacity-100 z-20"
+      onClick={(e) => {
+        e.stopPropagation();
+        data.onNodeDelete?.(data.nodeId || "");
+      }}
+      title="Delete node"
+    >
+      <X className="w-3 h-3" />
+    </button>
+
     <div className="bg-green-50 rounded-lg p-3 min-w-[150px] shadow-sm relative transition-all duration-200 hover:shadow-md hover:scale-105">
       <div className="flex items-center justify-center mb-2">
         {data.action === "send_sms" ? (
@@ -356,11 +387,12 @@ const DelayNode: React.FC<{
   data: DelayNodeData & {
     onDetailsClick?: (data: any) => void;
     onPlusClick?: (event: React.MouseEvent, nodeId: string) => void;
+    onNodeDelete?: (nodeId: string) => void;
     nodeId?: string;
     errors?: string[];
   };
 }> = ({ data }) => (
-  <div className="relative">
+  <div className="relative group">
     {/* User count indicator - top-left, blends with node */}
     <div
       className="absolute -top-2 -left-2 px-1.5 py-0.5 rounded-md text-[10px] font-medium z-20 cursor-pointer transition-all duration-200 hover:scale-105 bg-gray-100 text-gray-600 border border-gray-200"
@@ -374,6 +406,19 @@ const DelayNode: React.FC<{
         <span className="leading-none">{data.userCount || 0}</span>
       </div>
     </div>
+
+    {/* Hover delete button - right side, middle */}
+    <button
+      className="absolute -right-2 top-1/2 -translate-y-1/2 w-6 h-6 bg-white border-2 border-red-500 text-red-500 rounded-full flex items-center justify-center hover:bg-red-50 transition-colors shadow-md opacity-0 group-hover:opacity-100 z-20"
+      onClick={(e) => {
+        e.stopPropagation();
+        data.onNodeDelete?.(data.nodeId || "");
+      }}
+      title="Delete node"
+    >
+      <X className="w-3 h-3" />
+    </button>
+
     <div className="bg-yellow-50 rounded-lg p-3 min-w-[150px] shadow-sm relative transition-all duration-200 hover:shadow-md hover:scale-105">
       <div className="flex items-center justify-center mb-2">
         <Timer className="h-5 w-5 text-yellow-600" />
@@ -427,11 +472,12 @@ const ConditionNode: React.FC<{
   data: ConditionNodeData & {
     onDetailsClick?: (data: any) => void;
     onPlusClick?: (event: React.MouseEvent, nodeId: string) => void;
+    onNodeDelete?: (nodeId: string) => void;
     nodeId?: string;
     errors?: string[];
   };
 }> = ({ data }) => (
-  <div className="relative">
+  <div className="relative group">
     {/* User count indicator - top-left, blends with node */}
     <div
       className="absolute -top-2 -left-2 px-1.5 py-0.5 rounded-md text-[10px] font-medium z-20 cursor-pointer transition-all duration-200 hover:scale-105 bg-gray-100 text-gray-600 border border-gray-200"
@@ -445,6 +491,19 @@ const ConditionNode: React.FC<{
         <span className="leading-none">{data.userCount || 0}</span>
       </div>
     </div>
+
+    {/* Hover delete button - right side, middle */}
+    <button
+      className="absolute -right-2 top-1/2 -translate-y-1/2 w-6 h-6 bg-white border-2 border-red-500 text-red-500 rounded-full flex items-center justify-center hover:bg-red-50 transition-colors shadow-md opacity-0 group-hover:opacity-100 z-20"
+      onClick={(e) => {
+        e.stopPropagation();
+        data.onNodeDelete?.(data.nodeId || "");
+      }}
+      title="Delete node"
+    >
+      <X className="w-3 h-3" />
+    </button>
+
     <div className="bg-purple-50 rounded-lg p-3 min-w-[150px] shadow-sm relative transition-all duration-200 hover:shadow-md hover:scale-105">
       <div className="flex items-center justify-center mb-2">
         <Filter className="h-5 w-5 text-purple-600" />
@@ -758,6 +817,7 @@ function WorkflowEditorInner({
             users: userTracking?.[block.id]?.users || [],
             onDetailsClick: handleNodeDetailsClick,
             onPlusClick: handleNodePlusClick,
+            onNodeDelete: handleNodeDelete,
             nodeId: block.id,
           },
         }));
@@ -799,6 +859,7 @@ function WorkflowEditorInner({
                   users: userTracking?.[block.id]?.users || [],
                   onDetailsClick: handleNodeDetailsClick,
                   onPlusClick: handleNodePlusClick,
+                  onNodeDelete: handleNodeDelete,
                   nodeId: block.id,
                 },
               }))
@@ -969,14 +1030,18 @@ function WorkflowEditorInner({
     },
   ];
 
-  // Filter nodes based on search
+  // Filter nodes based on search and context (show only triggers for first node)
   const filteredNodeCategories = nodeCategories
     .map((category) => ({
       ...category,
       nodes: category.nodes.filter(
         (node) =>
-          node.label.toLowerCase().includes(nodeSearch.toLowerCase()) ||
-          node.description.toLowerCase().includes(nodeSearch.toLowerCase()),
+          (node.label.toLowerCase().includes(nodeSearch.toLowerCase()) ||
+            node.description
+              .toLowerCase()
+              .includes(nodeSearch.toLowerCase())) &&
+          // For first node (empty sourceNodeId), only show triggers
+          (sourceNodeId === "" ? category.title === "Triggers" : true),
       ),
     }))
     .filter((category) => category.nodes.length > 0);
@@ -999,6 +1064,7 @@ function WorkflowEditorInner({
           users: [],
           onDetailsClick: handleNodeDetailsClick,
           onPlusClick: handleNodePlusClick,
+          onNodeDelete: handleNodeDelete,
           nodeId: `node-${Date.now()}`,
         },
       };
@@ -1059,6 +1125,29 @@ function WorkflowEditorInner({
     },
     [edges],
   ); // Removed setEdges to prevent infinite loop
+
+  // Handler for node deletion
+  const handleNodeDelete = useCallback(
+    (nodeId: string) => {
+      // Remove the node
+      setNodes((nds) => nds.filter((n) => n.id !== nodeId));
+
+      // Remove all edges connected to this node
+      setEdges((eds) =>
+        eds.filter((e) => e.source !== nodeId && e.target !== nodeId),
+      );
+
+      // Clear selection if the deleted node was selected
+      if (selectedNode?.id === nodeId) {
+        setSelectedNode(null);
+      }
+      if (selectedNodeForDetails?.id === nodeId) {
+        setSelectedNodeForDetails(null);
+        setRightPanelOpen(false);
+      }
+    },
+    [selectedNode, selectedNodeForDetails],
+  );
 
   // Handler for undo edge deletion
   const handleUndoEdgeDelete = useCallback(() => {
@@ -1316,16 +1405,26 @@ function WorkflowEditorInner({
               <Label>Trigger Event</Label>
               <Select
                 value={config.trigger || ""}
-                onValueChange={(value) => updateNodeConfig(selectedNode.id, { trigger: value })}
+                onValueChange={(value) =>
+                  updateNodeConfig(selectedNode.id, { trigger: value })
+                }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select trigger event" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="appointment_booked">Appointment Booked</SelectItem>
-                  <SelectItem value="appointment_completed">Appointment Completed</SelectItem>
-                  <SelectItem value="6_months_passed">6 Months Passed</SelectItem>
-                  <SelectItem value="appointment_cancelled">Appointment Cancelled</SelectItem>
+                  <SelectItem value="appointment_booked">
+                    Appointment Booked
+                  </SelectItem>
+                  <SelectItem value="appointment_completed">
+                    Appointment Completed
+                  </SelectItem>
+                  <SelectItem value="6_months_passed">
+                    6 Months Passed
+                  </SelectItem>
+                  <SelectItem value="appointment_cancelled">
+                    Appointment Cancelled
+                  </SelectItem>
                   <SelectItem value="client_added">Client Added</SelectItem>
                 </SelectContent>
               </Select>
@@ -1340,7 +1439,9 @@ function WorkflowEditorInner({
               <Label>Action Type</Label>
               <Select
                 value={config.action || ""}
-                onValueChange={(value) => updateNodeConfig(selectedNode.id, { action: value })}
+                onValueChange={(value) =>
+                  updateNodeConfig(selectedNode.id, { action: value })
+                }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select action" />
@@ -1353,36 +1454,52 @@ function WorkflowEditorInner({
                 </SelectContent>
               </Select>
             </div>
-            
-            {(config.action === "send_sms" || config.action === "send_email") && (
+
+            {(config.action === "send_sms" ||
+              config.action === "send_email") && (
               <div>
                 <Label>Message</Label>
                 <Textarea
                   value={config.message || ""}
-                  onChange={(e) => updateNodeConfig(selectedNode.id, { message: e.target.value })}
-                  placeholder={config.action === "send_sms" ? "Hi {{first_name}}, thank you for your appointment!" : "Subject: Thank you!\n\nHi {{first_name}}, thank you for your appointment!"}
+                  onChange={(e) =>
+                    updateNodeConfig(selectedNode.id, {
+                      message: e.target.value,
+                    })
+                  }
+                  placeholder={
+                    config.action === "send_sms"
+                      ? "Hi {{first_name}}, thank you for your appointment!"
+                      : "Subject: Thank you!\n\nHi {{first_name}}, thank you for your appointment!"
+                  }
                   rows={4}
                 />
               </div>
             )}
-            
+
             {config.action === "send_email" && (
               <div>
                 <Label>Email Subject</Label>
                 <Input
                   value={config.subject || ""}
-                  onChange={(e) => updateNodeConfig(selectedNode.id, { subject: e.target.value })}
+                  onChange={(e) =>
+                    updateNodeConfig(selectedNode.id, {
+                      subject: e.target.value,
+                    })
+                  }
                   placeholder="Thank you for your appointment!"
                 />
               </div>
             )}
-            
-            {(config.action === "add_tag" || config.action === "remove_tag") && (
+
+            {(config.action === "add_tag" ||
+              config.action === "remove_tag") && (
               <div>
                 <Label>Tag</Label>
                 <Input
                   value={config.tag || ""}
-                  onChange={(e) => updateNodeConfig(selectedNode.id, { tag: e.target.value })}
+                  onChange={(e) =>
+                    updateNodeConfig(selectedNode.id, { tag: e.target.value })
+                  }
                   placeholder="Enter tag name"
                 />
               </div>
@@ -1398,7 +1515,11 @@ function WorkflowEditorInner({
               <Input
                 type="number"
                 value={config.duration || ""}
-                onChange={(e) => updateNodeConfig(selectedNode.id, { duration: parseInt(e.target.value) || 1 })}
+                onChange={(e) =>
+                  updateNodeConfig(selectedNode.id, {
+                    duration: parseInt(e.target.value) || 1,
+                  })
+                }
                 placeholder="1"
                 min="1"
               />
@@ -1407,7 +1528,9 @@ function WorkflowEditorInner({
               <Label>Time Unit</Label>
               <Select
                 value={config.unit || "days"}
-                onValueChange={(value) => updateNodeConfig(selectedNode.id, { unit: value })}
+                onValueChange={(value) =>
+                  updateNodeConfig(selectedNode.id, { unit: value })
+                }
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -1430,7 +1553,9 @@ function WorkflowEditorInner({
       default:
         return (
           <div className="text-sm text-gray-600">
-            <p>Configuration options for {nodeType} nodes will be available soon.</p>
+            <p>
+              Configuration options for {nodeType} nodes will be available soon.
+            </p>
             <div className="mt-2 bg-gray-50 rounded p-2">
               <pre className="text-xs">{JSON.stringify(config, null, 2)}</pre>
             </div>
@@ -1440,142 +1565,178 @@ function WorkflowEditorInner({
   }, [selectedNode, updateNodeConfig]);
 
   // Render editable configuration forms for any node
-  const renderNodeConfigForNode = useCallback((node: Node | null) => {
-    if (!node) return null;
+  const renderNodeConfigForNode = useCallback(
+    (node: Node | null) => {
+      if (!node) return null;
 
-    const nodeType = node.type;
-    const config = node.data?.config || {};
+      const nodeType = node.type;
+      const config = node.data?.config || {};
 
-    switch (nodeType) {
-      case "trigger":
-        return (
-          <div className="space-y-4">
-            <div>
-              <Label>Trigger Event</Label>
-              <Select
-                value={config.trigger || ""}
-                onValueChange={(value) => updateNodeConfig(node.id, { trigger: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select trigger event" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="appointment_booked">Appointment Booked</SelectItem>
-                  <SelectItem value="appointment_completed">Appointment Completed</SelectItem>
-                  <SelectItem value="6_months_passed">6 Months Passed</SelectItem>
-                  <SelectItem value="appointment_cancelled">Appointment Cancelled</SelectItem>
-                  <SelectItem value="client_added">Client Added</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        );
-
-      case "action":
-        return (
-          <div className="space-y-4">
-            <div>
-              <Label>Action Type</Label>
-              <Select
-                value={config.action || ""}
-                onValueChange={(value) => updateNodeConfig(node.id, { action: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select action" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="send_sms">Send SMS</SelectItem>
-                  <SelectItem value="send_email">Send Email</SelectItem>
-                  <SelectItem value="add_tag">Add Tag</SelectItem>
-                  <SelectItem value="remove_tag">Remove Tag</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            {(config.action === "send_sms" || config.action === "send_email") && (
+      switch (nodeType) {
+        case "trigger":
+          return (
+            <div className="space-y-4">
               <div>
-                <Label>Message</Label>
-                <Textarea
-                  value={config.message || ""}
-                  onChange={(e) => updateNodeConfig(node.id, { message: e.target.value })}
-                  placeholder={config.action === "send_sms" ? "Hi {{first_name}}, thank you for your appointment!" : "Subject: Thank you!\n\nHi {{first_name}}, thank you for your appointment!"}
-                  rows={4}
-                />
+                <Label>Trigger Event</Label>
+                <Select
+                  value={config.trigger || ""}
+                  onValueChange={(value) =>
+                    updateNodeConfig(node.id, { trigger: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select trigger event" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="appointment_booked">
+                      Appointment Booked
+                    </SelectItem>
+                    <SelectItem value="appointment_completed">
+                      Appointment Completed
+                    </SelectItem>
+                    <SelectItem value="6_months_passed">
+                      6 Months Passed
+                    </SelectItem>
+                    <SelectItem value="appointment_cancelled">
+                      Appointment Cancelled
+                    </SelectItem>
+                    <SelectItem value="client_added">Client Added</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-            )}
-            
-            {config.action === "send_email" && (
+            </div>
+          );
+
+        case "action":
+          return (
+            <div className="space-y-4">
               <div>
-                <Label>Email Subject</Label>
+                <Label>Action Type</Label>
+                <Select
+                  value={config.action || ""}
+                  onValueChange={(value) =>
+                    updateNodeConfig(node.id, { action: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select action" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="send_sms">Send SMS</SelectItem>
+                    <SelectItem value="send_email">Send Email</SelectItem>
+                    <SelectItem value="add_tag">Add Tag</SelectItem>
+                    <SelectItem value="remove_tag">Remove Tag</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {(config.action === "send_sms" ||
+                config.action === "send_email") && (
+                <div>
+                  <Label>Message</Label>
+                  <Textarea
+                    value={config.message || ""}
+                    onChange={(e) =>
+                      updateNodeConfig(node.id, { message: e.target.value })
+                    }
+                    placeholder={
+                      config.action === "send_sms"
+                        ? "Hi {{first_name}}, thank you for your appointment!"
+                        : "Subject: Thank you!\n\nHi {{first_name}}, thank you for your appointment!"
+                    }
+                    rows={4}
+                  />
+                </div>
+              )}
+
+              {config.action === "send_email" && (
+                <div>
+                  <Label>Email Subject</Label>
+                  <Input
+                    value={config.subject || ""}
+                    onChange={(e) =>
+                      updateNodeConfig(node.id, { subject: e.target.value })
+                    }
+                    placeholder="Thank you for your appointment!"
+                  />
+                </div>
+              )}
+
+              {(config.action === "add_tag" ||
+                config.action === "remove_tag") && (
+                <div>
+                  <Label>Tag</Label>
+                  <Input
+                    value={config.tag || ""}
+                    onChange={(e) =>
+                      updateNodeConfig(node.id, { tag: e.target.value })
+                    }
+                    placeholder="Enter tag name"
+                  />
+                </div>
+              )}
+            </div>
+          );
+
+        case "delay":
+          return (
+            <div className="space-y-4">
+              <div>
+                <Label>Delay Duration</Label>
                 <Input
-                  value={config.subject || ""}
-                  onChange={(e) => updateNodeConfig(node.id, { subject: e.target.value })}
-                  placeholder="Thank you for your appointment!"
+                  type="number"
+                  value={config.duration || ""}
+                  onChange={(e) =>
+                    updateNodeConfig(node.id, {
+                      duration: parseInt(e.target.value) || 1,
+                    })
+                  }
+                  placeholder="1"
+                  min="1"
                 />
               </div>
-            )}
-            
-            {(config.action === "add_tag" || config.action === "remove_tag") && (
               <div>
-                <Label>Tag</Label>
-                <Input
-                  value={config.tag || ""}
-                  onChange={(e) => updateNodeConfig(node.id, { tag: e.target.value })}
-                  placeholder="Enter tag name"
-                />
+                <Label>Time Unit</Label>
+                <Select
+                  value={config.unit || "days"}
+                  onValueChange={(value) =>
+                    updateNodeConfig(node.id, { unit: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="minutes">Minutes</SelectItem>
+                    <SelectItem value="hours">Hours</SelectItem>
+                    <SelectItem value="days">Days</SelectItem>
+                    <SelectItem value="weeks">Weeks</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-            )}
-          </div>
-        );
-
-      case "delay":
-        return (
-          <div className="space-y-4">
-            <div>
-              <Label>Delay Duration</Label>
-              <Input
-                type="number"
-                value={config.duration || ""}
-                onChange={(e) => updateNodeConfig(node.id, { duration: parseInt(e.target.value) || 1 })}
-                placeholder="1"
-                min="1"
-              />
             </div>
-            <div>
-              <Label>Time Unit</Label>
-              <Select
-                value={config.unit || "days"}
-                onValueChange={(value) => updateNodeConfig(node.id, { unit: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="minutes">Minutes</SelectItem>
-                  <SelectItem value="hours">Hours</SelectItem>
-                  <SelectItem value="days">Days</SelectItem>
-                  <SelectItem value="weeks">Weeks</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        );
+          );
 
-      case "condition":
-        // Keep existing condition builder for condition nodes
-        return null; // This will fall back to existing condition builder
+        case "condition":
+          // Keep existing condition builder for condition nodes
+          return null; // This will fall back to existing condition builder
 
-      default:
-        return (
-          <div className="text-sm text-gray-600">
-            <p>Configuration options for {nodeType} nodes will be available soon.</p>
-            <div className="mt-2 bg-gray-50 rounded p-2">
-              <pre className="text-xs">{JSON.stringify(config, null, 2)}</pre>
+        default:
+          return (
+            <div className="text-sm text-gray-600">
+              <p>
+                Configuration options for {nodeType} nodes will be available
+                soon.
+              </p>
+              <div className="mt-2 bg-gray-50 rounded p-2">
+                <pre className="text-xs">{JSON.stringify(config, null, 2)}</pre>
+              </div>
             </div>
-          </div>
-        );
-    }
-  }, [updateNodeConfig]);
+          );
+      }
+    },
+    [updateNodeConfig],
+  );
 
   // Handle node selection
   const onNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {
@@ -1618,6 +1779,7 @@ function WorkflowEditorInner({
           users: [],
           onDetailsClick: handleNodeDetailsClick,
           onPlusClick: handleNodePlusClick,
+          onNodeDelete: handleNodeDelete,
           nodeId: `${nodeData.type}-${Date.now()}`,
         },
       };
@@ -1665,6 +1827,7 @@ function WorkflowEditorInner({
           users: [],
           onDetailsClick: handleNodeDetailsClick,
           onPlusClick: handleNodePlusClick,
+          onNodeDelete: handleNodeDelete,
           nodeId: `${type}-${Date.now()}`,
         },
       };
@@ -1903,101 +2066,9 @@ function WorkflowEditorInner({
 
   return (
     <div className="h-screen flex bg-gray-50">
-      {/* Recent Workflows Sidebar */}
-      <div className="bg-white border-r border-gray-200 w-60 overflow-hidden">
-        <div className="p-3 h-full overflow-y-auto flex flex-col">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-lg">Recent Workflows</h3>
-          </div>
-
-          {/* Search */}
-          <div className="mb-4">
-            <Input
-              placeholder="Search workflows..."
-              value={workflowSearch}
-              onChange={(e) => setWorkflowSearch(e.target.value)}
-              className="text-sm"
-            />
-          </div>
-
-          {/* Create New Workflow Button */}
-          <Button
-            className="mb-4 w-full"
-            onClick={() => confirmNavigate("/workflow-editor?id=new")}
-            data-theme-aware="true"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            New Workflow
-          </Button>
-
-          {/* Recent Workflows List */}
-          <div className="flex-1 space-y-2">
-            {filteredRecentWorkflows.map((workflow) => {
-              const TriggerIcon = getTriggerIcon(workflow.trigger);
-              const isCurrentWorkflow = workflow._id === workflowId;
-
-              return (
-                <div
-                  key={workflow._id}
-                  className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors hover:bg-gray-50 ${
-                    isCurrentWorkflow
-                      ? "border-blue-200 bg-blue-50"
-                      : "border-gray-200"
-                  }`}
-                  onClick={() => {
-                    if (!isCurrentWorkflow) {
-                      confirmNavigate(`/workflow-editor?id=${workflow._id}`);
-                    }
-                  }}
-                >
-                  {/* Status indicator */}
-                  <div className="flex items-center mr-3">
-                    {getWorkflowStatusIcon(workflow.status)}
-                  </div>
-
-                  {/* Workflow icon */}
-                  <TriggerIcon className="h-4 w-4 mr-3 text-gray-600" />
-
-                  {/* Workflow info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-gray-900 truncate">
-                      {workflow.name}
-                    </div>
-                    <div className="text-xs text-gray-500 truncate">
-                      {workflow.status === "active"
-                        ? "Active"
-                        : workflow.status === "paused"
-                          ? "Paused"
-                          : workflow.status === "draft"
-                            ? "Draft"
-                            : "Inactive"}{" "}
-                      •{workflow.activeEnrollmentCount || 0} active
-                    </div>
-                  </div>
-
-                  {/* Current workflow indicator */}
-                  {isCurrentWorkflow && (
-                    <div className="text-xs text-blue-600 font-medium">
-                      Current
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-
-            {/* Empty state */}
-            {filteredRecentWorkflows.length === 0 && (
-              <div className="text-center py-8 text-gray-500">
-                <FileText className="h-8 w-8 mx-auto mb-2 text-gray-300" />
-                <p className="text-sm">
-                  {workflowSearch
-                    ? "No workflows found"
-                    : "No recent workflows"}
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
+      {/* Enhanced Workflow List Sidebar */}
+      <div className="w-80 overflow-hidden">
+        <EnhancedWorkflowList orgId={orgId} viewMode="sidebar" />
       </div>
 
       {/* Main Canvas */}
@@ -2010,6 +2081,8 @@ function WorkflowEditorInner({
               size="sm"
               onClick={handleBack}
               className="flex items-center"
+              data-theme-aware="true"
+              data-variant="light"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back
@@ -2076,6 +2149,8 @@ function WorkflowEditorInner({
               variant="outline"
               size="sm"
               onClick={() => setTestDialogOpen(true)}
+              data-theme-aware="true"
+              data-variant="light"
             >
               <Send className="h-4 w-4 mr-2" />
               Test Workflow
@@ -2087,6 +2162,7 @@ function WorkflowEditorInner({
               className={
                 !hasUnsavedChanges ? "opacity-50 cursor-not-allowed" : ""
               }
+              data-theme-aware="true"
             >
               <Save className="h-4 w-4 mr-2" />
               Save
@@ -2106,6 +2182,8 @@ function WorkflowEditorInner({
               size="sm"
               onClick={handleUndoEdgeDelete}
               className="text-blue-600 border-blue-300 hover:bg-blue-50"
+              data-theme-aware="true"
+              data-variant="light"
             >
               Undo
             </Button>
@@ -2121,7 +2199,7 @@ function WorkflowEditorInner({
         )}
 
         {/* ReactFlow Canvas */}
-        <div className="flex-1">
+        <div className="flex-1 relative">
           <ReactFlow
             nodes={nodes}
             edges={edges}
@@ -2148,6 +2226,19 @@ function WorkflowEditorInner({
             <Controls />
             <MiniMap />
           </ReactFlow>
+
+          {/* Empty State - Add First Node Button */}
+          {nodes.length === 0 && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <button
+                className="pointer-events-auto w-12 h-12 rounded-full flex items-center justify-center border border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-500 hover:text-white hover:border-blue-500 transition-all duration-150 hover:scale-105 hover:shadow-lg cursor-pointer"
+                onClick={(e) => handleNodePlusClick(e, "")}
+                title="Add your first node"
+              >
+                <Plus className="w-6 h-6" />
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -2223,109 +2314,67 @@ function WorkflowEditorInner({
               </div>
             )}
 
-            {/* User Statistics */}
-            <div className="space-y-3">
-              <div>
-                <h4 className="font-medium text-gray-900 mb-2">
-                  Node Information
-                </h4>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Type:</span>
-                    <span className="font-medium capitalize">
-                      {selectedNode.type}
-                    </span>
+            <div>
+              {/* User Statistics */}
+              <div className="space-y-3">
+                {selectedNode.data?.userCount > 0 && (
+                  <div className="space-y-2">
+                    <h5 className="text-sm font-medium text-gray-700">
+                      Active Users:
+                    </h5>
+                    <div className="max-h-32 overflow-y-auto themed-scroll space-y-1">
+                      {(selectedNode.data?.users || [])
+                        .slice(0, 5)
+                        .map((user: any, index: number) => (
+                          <div
+                            key={index}
+                            className="flex items-center gap-2 p-2 bg-white rounded border text-xs"
+                          >
+                            <div className="w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center">
+                              {user.clientName?.charAt(0) || "U"}
+                            </div>
+                            <div className="flex-1">
+                              <div className="font-medium">
+                                {user.clientName || "Unknown User"}
+                              </div>
+                              <div className="text-gray-500">
+                                {user.email || "No email"}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      {(selectedNode.data?.userCount || 0) > 5 && (
+                        <div className="text-xs text-gray-500 text-center py-1">
+                          +{(selectedNode.data?.userCount || 0) - 5} more users
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Name:</span>
-                    <span className="font-medium">
-                      {selectedNode.data?.label}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">ID:</span>
-                    <span className="font-mono text-xs">{selectedNode.id}</span>
-                  </div>
-                </div>
+                )}
               </div>
 
-              {selectedNode.data?.userCount > 0 && (
-                <div className="space-y-2">
-                  <h5 className="text-sm font-medium text-gray-700">
-                    Active Users:
-                  </h5>
-                  <div className="max-h-32 overflow-y-auto space-y-1">
-                    {(selectedNode.data?.users || [])
-                      .slice(0, 5)
-                      .map((user: any, index: number) => (
-                        <div
-                          key={index}
-                          className="flex items-center gap-2 p-2 bg-white rounded border text-xs"
-                        >
-                          <div className="w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center">
-                            {user.clientName?.charAt(0) || "U"}
-                          </div>
-                          <div className="flex-1">
-                            <div className="font-medium">
-                              {user.clientName || "Unknown User"}
-                            </div>
-                            <div className="text-gray-500">
-                              {user.email || "No email"}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    {(selectedNode.data?.userCount || 0) > 5 && (
-                      <div className="text-xs text-gray-500 text-center py-1">
-                        +{(selectedNode.data?.userCount || 0) - 5} more users
-                      </div>
-                    )}
+              {/* Configuration */}
+              <div>
+                <h4 className="font-medium text-gray-900 mb-2">
+                  Configuration
+                </h4>
+                {renderNodeConfig() || (
+                  <div className="bg-gray-50 rounded-lg p-3">
+                    <pre className="text-xs text-gray-700 whitespace-pre-wrap overflow-x-auto">
+                      {JSON.stringify(selectedNode.data?.config, null, 2)}
+                    </pre>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
 
-            {/* Configuration */}
-            <div>
-              <h4 className="font-medium text-gray-900 mb-2">Configuration</h4>
-              {renderNodeConfig() || (
-                <div className="bg-gray-50 rounded-lg p-3">
-                  <pre className="text-xs text-gray-700 whitespace-pre-wrap overflow-x-auto">
-                    {JSON.stringify(selectedNode.data?.config, null, 2)}
-                  </pre>
-                </div>
-              )}
-            </div>
-
-            {/* Actions */}
-            <div className="space-y-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full"
-                onClick={() => {
-                  // TODO: Navigate to full tracking view
-                  console.log(
-                    "Navigate to tracking view for node:",
-                    selectedNode.id,
-                  );
-                }}
-              >
-                <BarChart3 className="h-4 w-4 mr-2" />
-                View Full Tracking
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full"
-                onClick={() => {
-                  // TODO: Test this specific node
-                  console.log("Test node:", selectedNode.id);
-                }}
-              >
-                <Play className="h-4 w-4 mr-2" />
-                Test This Step
-              </Button>
+            {/* Node Information */}
+            <div className="mt-6 pt-4 border-t">
+              <pre className="text-[10px] text-gray-400 font-mono bg-gray-50 p-1.5 rounded overflow-x-auto">
+                {`Node ID: ${selectedNode.id}
+Type: ${selectedNode.type}
+Config: ${JSON.stringify(selectedNode.data?.config || {}, null, 2)}`}
+              </pre>
             </div>
           </div>
         </div>
@@ -2397,7 +2446,7 @@ function WorkflowEditorInner({
                     <h5 className="text-sm font-medium text-gray-700">
                       Active Users:
                     </h5>
-                    <div className="max-h-32 overflow-y-auto space-y-1">
+                    <div className="max-h-32 overflow-y-auto themed-scroll space-y-1">
                       {(selectedNodeForDetails.data?.users || [])
                         .slice(0, 5)
                         .map((user: any, index: number) => (
@@ -2436,41 +2485,23 @@ function WorkflowEditorInner({
               {renderNodeConfigForNode(selectedNodeForDetails) || (
                 <div className="bg-gray-50 rounded-lg p-3">
                   <pre className="text-xs text-gray-700 whitespace-pre-wrap overflow-x-auto">
-                    {JSON.stringify(selectedNodeForDetails.data?.config, null, 2)}
+                    {JSON.stringify(
+                      selectedNodeForDetails.data?.config,
+                      null,
+                      2,
+                    )}
                   </pre>
                 </div>
               )}
             </div>
 
-            {/* Actions */}
-            <div className="space-y-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full"
-                onClick={() => {
-                  // TODO: Navigate to full tracking view
-                  console.log(
-                    "Navigate to tracking view for node:",
-                    selectedNodeForDetails.id,
-                  );
-                }}
-              >
-                <BarChart3 className="h-4 w-4 mr-2" />
-                View Full Tracking
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full"
-                onClick={() => {
-                  // TODO: Test this specific node
-                  console.log("Test node:", selectedNodeForDetails.id);
-                }}
-              >
-                <Play className="h-4 w-4 mr-2" />
-                Test This Step
-              </Button>
+            {/* Node Information */}
+            <div className="mt-6 pt-4 border-t">
+              <pre className="text-[10px] text-gray-400 font-mono bg-gray-50 p-1.5 rounded overflow-x-auto">
+                {`Node ID: ${selectedNodeForDetails.id}
+Type: ${selectedNodeForDetails.type}
+Config: ${JSON.stringify(selectedNodeForDetails.data?.config || {}, null, 2)}`}
+              </pre>
             </div>
           </div>
         </div>
@@ -2620,7 +2651,9 @@ function WorkflowEditorInner({
                     {category.nodes.map((node) => (
                       <div
                         key={`${node.type}-${node.label}`}
-                        className="flex items-center p-2 rounded-md cursor-pointer hover:bg-gray-50 transition-colors"
+                        className="flex items-center p-2 rounded-md cursor-pointer transition-colors"
+                        data-theme-aware="true"
+                        data-variant="light"
                         onClick={() =>
                           handleAddNodeFromPopup(node.type, node.label)
                         }
