@@ -44,6 +44,7 @@ import type * as security from "../security.js";
 import type * as socialMedia from "../socialMedia.js";
 import type * as teamManagement from "../teamManagement.js";
 import type * as users from "../users.js";
+import type * as utils from "../utils.js";
 import type * as workflowDirectories from "../workflowDirectories.js";
 import type * as workflowExecutions from "../workflowExecutions.js";
 import type * as workflowScheduler from "../workflowScheduler.js";
@@ -89,6 +90,7 @@ declare const fullApi: ApiFromModules<{
   socialMedia: typeof socialMedia;
   teamManagement: typeof teamManagement;
   users: typeof users;
+  utils: typeof utils;
   workflowDirectories: typeof workflowDirectories;
   workflowExecutions: typeof workflowExecutions;
   workflowScheduler: typeof workflowScheduler;
