@@ -2152,7 +2152,6 @@ function WorkflowEditorInner({
           description: workflowDescription,
           blocks,
           connections,
-          lastAutoSave: new Date().toISOString(), // Track auto-save timestamp
         });
       } else {
         // For new workflows, create with auto-save flag
