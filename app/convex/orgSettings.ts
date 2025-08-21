@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
 
 // Define the org settings schema for workflow variables
 const workflowVariablesSchema = v.object({
@@ -8,22 +9,26 @@ const workflowVariablesSchema = v.object({
   business_phone: v.optional(v.string()),
   business_email: v.optional(v.string()),
   business_address: v.optional(v.string()),
-  
+
   // Booking and review links
   booking_link: v.optional(v.string()),
   google_review_link: v.optional(v.string()),
   website_url: v.optional(v.string()),
-  
+
   // Social media links
   instagram_link: v.optional(v.string()),
   facebook_link: v.optional(v.string()),
-  
+
   // Custom variables (key-value pairs)
-  custom_variables: v.optional(v.array(v.object({
-    key: v.string(),
-    value: v.string(),
-    description: v.optional(v.string())
-  })))
+  custom_variables: v.optional(
+    v.array(
+      v.object({
+        key: v.string(),
+        value: v.string(),
+        description: v.optional(v.string()),
+      }),
+    ),
+  ),
 });
 
 // Get org settings including workflow variables
@@ -32,7 +37,7 @@ export const getOrgSettings = query({
   handler: async (ctx, args) => {
     const org = await ctx.db.get(args.orgId);
     if (!org) throw new Error("Organization not found");
-    
+
     // Get or create default workflow variables
     const defaultVariables = {
       business_name: org.name || "Our Clinic",
@@ -48,20 +53,20 @@ export const getOrgSettings = query({
         {
           key: "cancellation_policy",
           value: "24 hours advance notice required",
-          description: "Your cancellation policy text"
+          description: "Your cancellation policy text",
         },
         {
           key: "emergency_contact",
           value: "(555) 999-HELP",
-          description: "Emergency contact number"
-        }
-      ]
+          description: "Emergency contact number",
+        },
+      ],
     };
-    
+
     return {
       org,
       workflowVariables: org.workflowVariables || defaultVariables,
-      availableVariables: getAvailableVariables()
+      availableVariables: getAvailableVariablesHelper(),
     };
   },
 });
@@ -75,12 +80,12 @@ export const updateWorkflowVariables = mutation({
   handler: async (ctx, args) => {
     const org = await ctx.db.get(args.orgId);
     if (!org) throw new Error("Organization not found");
-    
+
     await ctx.db.patch(args.orgId, {
       workflowVariables: args.workflowVariables,
       updatedAt: Date.now(),
     });
-    
+
     return { success: true };
   },
 });
@@ -106,7 +111,10 @@ function getAvailableVariablesHelper() {
     appointmentVariables: [
       { key: "{{appointment_date}}", description: "Appointment date" },
       { key: "{{appointment_time}}", description: "Appointment time" },
-      { key: "{{appointment_type}}", description: "Type of appointment/treatment" },
+      {
+        key: "{{appointment_type}}",
+        description: "Type of appointment/treatment",
+      },
       { key: "{{provider}}", description: "Provider/staff member name" },
     ],
     businessVariables: [
@@ -121,9 +129,15 @@ function getAvailableVariablesHelper() {
       { key: "{{facebook_link}}", description: "Facebook page link" },
     ],
     customVariables: [
-      { key: "{{cancellation_policy}}", description: "Your cancellation policy" },
-      { key: "{{emergency_contact}}", description: "Emergency contact information" },
-    ]
+      {
+        key: "{{cancellation_policy}}",
+        description: "Your cancellation policy",
+      },
+      {
+        key: "{{emergency_contact}}",
+        description: "Emergency contact information",
+      },
+    ],
   };
 }
 
@@ -138,13 +152,13 @@ export const addCustomVariable = mutation({
   handler: async (ctx, args) => {
     const org = await ctx.db.get(args.orgId);
     if (!org) throw new Error("Organization not found");
-    
+
     const currentVariables = org.workflowVariables || { custom_variables: [] };
     const customVariables = currentVariables.custom_variables || [];
-    
+
     // Check if variable already exists
-    const existingIndex = customVariables.findIndex(v => v.key === args.key);
-    
+    const existingIndex = customVariables.findIndex((v) => v.key === args.key);
+
     if (existingIndex >= 0) {
       // Update existing variable
       customVariables[existingIndex] = {
@@ -160,7 +174,7 @@ export const addCustomVariable = mutation({
         description: args.description,
       });
     }
-    
+
     await ctx.db.patch(args.orgId, {
       workflowVariables: {
         ...currentVariables,
@@ -168,7 +182,7 @@ export const addCustomVariable = mutation({
       },
       updatedAt: Date.now(),
     });
-    
+
     return { success: true };
   },
 });
@@ -182,12 +196,12 @@ export const removeCustomVariable = mutation({
   handler: async (ctx, args) => {
     const org = await ctx.db.get(args.orgId);
     if (!org) throw new Error("Organization not found");
-    
+
     const currentVariables = org.workflowVariables || { custom_variables: [] };
     const customVariables = currentVariables.custom_variables || [];
-    
-    const updatedVariables = customVariables.filter(v => v.key !== args.key);
-    
+
+    const updatedVariables = customVariables.filter((v) => v.key !== args.key);
+
     await ctx.db.patch(args.orgId, {
       workflowVariables: {
         ...currentVariables,
@@ -195,7 +209,7 @@ export const removeCustomVariable = mutation({
       },
       updatedAt: Date.now(),
     });
-    
+
     return { success: true };
   },
 });
@@ -208,29 +222,29 @@ export const getOrgTags = query({
       .query("clients")
       .withIndex("by_org", (q) => q.eq("orgId", args.orgId))
       .collect();
-    
+
     // Collect all unique tags
     const allTags = new Set<string>();
-    clients.forEach(client => {
+    clients.forEach((client) => {
       if (client.tags) {
-        client.tags.forEach(tag => allTags.add(tag));
+        client.tags.forEach((tag) => allTags.add(tag));
       }
     });
-    
+
     // Convert to array and sort
     const uniqueTags = Array.from(allTags).sort();
-    
+
     // Calculate tag usage counts
     const tagCounts = new Map<string, number>();
-    clients.forEach(client => {
+    clients.forEach((client) => {
       if (client.tags) {
-        client.tags.forEach(tag => {
+        client.tags.forEach((tag) => {
           tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
         });
       }
     });
-    
-    return uniqueTags.map(tag => ({
+
+    return uniqueTags.map((tag) => ({
       name: tag,
       count: tagCounts.get(tag) || 0,
     }));
@@ -249,23 +263,31 @@ export const createOrgTag = mutation({
     if (!trimmedTag) {
       throw new Error("Tag name cannot be empty");
     }
-    
-    // Check if tag already exists
-    const existingTags = await ctx.runQuery("internal:orgSettings:getOrgTags", {
-      orgId: args.orgId
+
+    // Check if tag already exists (compute locally to avoid runQuery)
+    const clients = await ctx.db
+      .query("clients")
+      .withIndex("by_org", (q: any) => q.eq("orgId", args.orgId))
+      .collect();
+
+    const allTags = new Set<string>();
+    clients.forEach((client: any) => {
+      if (client.tags) {
+        client.tags.forEach((tag: string) => allTags.add(tag));
+      }
     });
-    
-    const tagExists = existingTags.some(tag => 
-      tag.name.toLowerCase() === trimmedTag.toLowerCase()
+
+    const tagExists = Array.from(allTags).some(
+      (tag) => tag.toLowerCase() === trimmedTag.toLowerCase(),
     );
-    
+
     if (tagExists) {
       throw new Error("Tag already exists");
     }
-    
+
     // For now, we'll just return success since tags are created when assigned to clients
     // In the future, you might want to have a dedicated tags table
-    
+
     return {
       success: true,
       tagName: trimmedTag,

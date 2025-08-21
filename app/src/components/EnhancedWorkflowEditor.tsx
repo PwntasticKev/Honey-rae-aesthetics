@@ -81,6 +81,8 @@ import {
   AlertCircle,
   Search,
   FolderOpen,
+  ChevronRight,
+  ChevronLeft,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
@@ -170,7 +172,12 @@ const DeletableEdge: React.FC<any> = ({
           ...style,
         }}
         onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
+        onMouseLeave={(e) => {
+          const related = (e as any).relatedTarget as HTMLElement | null;
+          if (!related || related.dataset?.edgeDelete !== id) {
+            setIsHovered(false);
+          }
+        }}
         onClick={() => data?.onEdgeDelete?.(id)}
       />
 
@@ -201,6 +208,9 @@ const DeletableEdge: React.FC<any> = ({
         >
           <button
             className="w-6 h-6 bg-white border-2 border-red-500 text-red-500 rounded-full flex items-center justify-center hover:bg-red-50 transition-colors shadow-md"
+            data-edge-delete={id}
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
             onClick={() => data?.onEdgeDelete?.(id)}
             title="Delete connection"
           >
@@ -638,8 +648,98 @@ function WorkflowEditorInner({
     [nodeId: string]: string[];
   }>({});
 
+  // Allow saving new workflows even before initialState diffing finishes
+  const canSave = useMemo(() => {
+    const metaChanged =
+      workflowName.trim() !== "Untitled Workflow" ||
+      workflowDescription.trim().length > 0;
+    const graphChanged = nodes.length > 0 || edges.length > 0;
+    if (!workflowId || workflowId === "new") {
+      return hasUnsavedChanges || metaChanged || graphChanged;
+    }
+    return hasUnsavedChanges;
+  }, [
+    hasUnsavedChanges,
+    workflowId,
+    workflowName,
+    workflowDescription,
+    nodes.length,
+    edges.length,
+  ]);
+
   // Track selected edges for deletion
   const [selectedEdgeIds, setSelectedEdgeIds] = useState<string[]>([]);
+
+  // Directory menu collapse state (default closed)
+  const [directoryMenuOpen, setDirectoryMenuOpen] = useState(false);
+
+  // Auto-collapse directory menu on mobile/tablet screens
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 1024) {
+        // lg breakpoint
+        setDirectoryMenuOpen(false);
+      }
+    };
+
+    window.addEventListener("resize", handleResize);
+    handleResize(); // Check initial size
+
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  // Add scroll-to-close functionality for directory menu
+  useEffect(() => {
+    if (!directoryMenuOpen) return;
+
+    const directoryElement = document.querySelector("[data-directory-menu]");
+    if (!directoryElement) return;
+
+    let startScrollLeft = 0;
+    let isScrolling = false;
+
+    const handleScrollStart = (e: Event) => {
+      const target = e.target as HTMLElement;
+      if (target.scrollLeft !== undefined) {
+        startScrollLeft = target.scrollLeft;
+        isScrolling = true;
+      }
+    };
+
+    const handleScroll = (e: Event) => {
+      if (!isScrolling) return;
+
+      const target = e.target as HTMLElement;
+      if (target.scrollLeft !== undefined) {
+        const currentScrollLeft = target.scrollLeft;
+        const scrollDelta = startScrollLeft - currentScrollLeft;
+        const threshold = (target.scrollWidth - target.clientWidth) * 0.6; // 60% threshold
+
+        if (scrollDelta > threshold) {
+          setDirectoryMenuOpen(false);
+          isScrolling = false;
+        }
+      }
+    };
+
+    const handleScrollEnd = () => {
+      isScrolling = false;
+    };
+
+    directoryElement.addEventListener("scroll", handleScroll);
+    directoryElement.addEventListener("touchstart", handleScrollStart);
+    directoryElement.addEventListener("mousedown", handleScrollStart);
+    directoryElement.addEventListener("touchend", handleScrollEnd);
+    directoryElement.addEventListener("mouseup", handleScrollEnd);
+
+    return () => {
+      directoryElement.removeEventListener("scroll", handleScroll);
+      directoryElement.removeEventListener("touchstart", handleScrollStart);
+      directoryElement.removeEventListener("mousedown", handleScrollStart);
+      directoryElement.removeEventListener("touchend", handleScrollEnd);
+      directoryElement.removeEventListener("mouseup", handleScrollEnd);
+    };
+  }, [directoryMenuOpen]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -691,16 +791,26 @@ function WorkflowEditorInner({
       return;
     }
 
-    // Compare node data
+    // Compare node data (excluding functions)
     for (let i = 0; i < nodes.length; i++) {
       const currentNode = nodes[i];
       const initialNode = initialState.nodes.find(
         (n) => n.id === currentNode.id,
       );
+      if (!initialNode || currentNode.type !== initialNode.type) {
+        setHasUnsavedChanges(true);
+        return;
+      }
+
+      // Compare only serializable config data
+      const currentConfig = currentNode.data?.config || {};
+      const initialConfig = initialNode.data?.config || {};
+      const currentLabel = currentNode.data?.label || "";
+      const initialLabel = initialNode.data?.label || "";
+
       if (
-        !initialNode ||
-        currentNode.type !== initialNode.type ||
-        JSON.stringify(currentNode.data) !== JSON.stringify(initialNode.data)
+        JSON.stringify(currentConfig) !== JSON.stringify(initialConfig) ||
+        currentLabel !== initialLabel
       ) {
         setHasUnsavedChanges(true);
         return;
@@ -779,6 +889,26 @@ function WorkflowEditorInner({
     workflowId && workflowId !== "new" ? { id: workflowId as any } : "skip",
   );
 
+  // Debug logging for save button state (moved after existingWorkflow declaration)
+  useEffect(() => {
+    console.log("Save button state:", {
+      hasUnsavedChanges,
+      initialState: !!initialState,
+      nodeCount: nodes.length,
+      workflowName,
+      workflowId,
+      initialNodeCount: initialState?.nodes?.length || 0,
+      existingWorkflow: !!existingWorkflow,
+    });
+  }, [
+    hasUnsavedChanges,
+    initialState,
+    nodes.length,
+    workflowName,
+    workflowId,
+    existingWorkflow,
+  ]);
+
   // Get user tracking data for the workflow
   const userTracking = useQuery(
     api.workflows.getWorkflowUserTracking,
@@ -802,6 +932,12 @@ function WorkflowEditorInner({
     if (existingWorkflow) {
       setWorkflowName(existingWorkflow.name);
       setWorkflowDescription(existingWorkflow.description || "");
+
+      // Always set initial state for existing workflows (even if empty)
+      const hasBlocks =
+        existingWorkflow.blocks && existingWorkflow.blocks.length > 0;
+      const hasConnections =
+        existingWorkflow.connections && existingWorkflow.connections.length > 0;
 
       // Convert blocks to ReactFlow nodes
       if (existingWorkflow.blocks) {
@@ -841,12 +977,12 @@ function WorkflowEditorInner({
         setEdges(flowEdges);
       }
 
-      // Capture initial state for change tracking
+      // Capture initial state for change tracking (always, even if empty)
       setTimeout(() => {
         setInitialState({
           name: existingWorkflow.name,
           description: existingWorkflow.description || "",
-          nodes: existingWorkflow.blocks
+          nodes: hasBlocks
             ? existingWorkflow.blocks.map((block: any) => ({
                 id: block.id,
                 type: block.type,
@@ -855,33 +991,31 @@ function WorkflowEditorInner({
                   label: getNodeLabel(block.type, block.config),
                   type: block.type,
                   config: block.config,
-                  userCount: userTracking?.[block.id]?.userCount || 0,
-                  users: userTracking?.[block.id]?.users || [],
-                  onDetailsClick: handleNodeDetailsClick,
-                  onPlusClick: handleNodePlusClick,
-                  onNodeDelete: handleNodeDelete,
-                  nodeId: block.id,
+                  // Only store essential data, not functions
                 },
               }))
             : [],
-          edges: existingWorkflow.connections
+          edges: hasConnections
             ? existingWorkflow.connections.map((conn: any) => ({
                 id: conn.id,
                 source: conn.from,
                 target: conn.to,
                 type: "deletable",
-                markerEnd: {
-                  type: MarkerType.ArrowClosed,
-                },
-                data: {
-                  onEdgeDelete: handleEdgeDelete,
-                },
+                // Only store essential data, not functions
               }))
             : [],
         });
       }, 100); // Small delay to ensure nodes/edges are set
     } else if (workflowId === "new") {
-      // For new workflows, set initial state as empty
+      // For new workflows, set initial state as empty immediately
+      setInitialState({
+        name: "Untitled Workflow",
+        description: "",
+        nodes: [],
+        edges: [],
+      });
+    } else if (workflowId && !existingWorkflow) {
+      // For workflows that are still loading, set initial state as empty
       setInitialState({
         name: "Untitled Workflow",
         description: "",
@@ -889,7 +1023,7 @@ function WorkflowEditorInner({
         edges: [],
       });
     }
-  }, [existingWorkflow, userTracking, workflowId]); // Removed setNodes, setEdges, handleNodeDetailsClick to prevent infinite loop
+  }, [existingWorkflow, userTracking, workflowId]); // Keep dependencies minimal to prevent infinite loops
 
   // Helper function to get workflow status indicator
   const getWorkflowStatusIcon = (status: string) => {
@@ -1049,7 +1183,7 @@ function WorkflowEditorInner({
   // Handler for adding node from popup
   const handleAddNodeFromPopup = useCallback(
     (nodeType: string, nodeLabel: string) => {
-      if (!sourceNodeId) return;
+      if (sourceNodeId === null) return;
 
       // Create new node
       const newNode = {
@@ -1069,33 +1203,41 @@ function WorkflowEditorInner({
         },
       };
 
-      // Find source node position
-      const sourceNode = nodes.find((n) => n.id === sourceNodeId);
-      if (sourceNode) {
-        newNode.position = {
-          x: sourceNode.position.x,
-          y: sourceNode.position.y + 120, // Position below source node
+      // Handle positioning and connections
+      if (sourceNodeId === "") {
+        // First node - position in center
+        newNode.position = { x: 200, y: 150 };
+        // Add node without any edges for first node
+        setNodes((nds) => [...nds, newNode]);
+      } else {
+        // Find source node position
+        const sourceNode = nodes.find((n) => n.id === sourceNodeId);
+        if (sourceNode) {
+          newNode.position = {
+            x: sourceNode.position.x,
+            y: sourceNode.position.y + 120, // Position below source node
+          };
+        }
+
+        // Add node and connection
+        setNodes((nds) => [...nds, newNode]);
+
+        // Create edge between source and new node
+        const newEdge = {
+          id: `edge-${sourceNodeId}-${newNode.id}`,
+          source: sourceNodeId,
+          target: newNode.id,
+          type: "deletable",
+          markerEnd: {
+            type: MarkerType.ArrowClosed,
+          },
+          data: {
+            onEdgeDelete: handleEdgeDelete,
+          },
         };
+
+        setEdges((eds) => [...eds, newEdge]);
       }
-
-      // Add node and connection
-      setNodes((nds) => [...nds, newNode]);
-
-      // Create edge between source and new node
-      const newEdge = {
-        id: `edge-${sourceNodeId}-${newNode.id}`,
-        source: sourceNodeId,
-        target: newNode.id,
-        type: "deletable",
-        markerEnd: {
-          type: MarkerType.ArrowClosed,
-        },
-        data: {
-          onEdgeDelete: handleEdgeDelete,
-        },
-      };
-
-      setEdges((eds) => [...eds, newEdge]);
 
       // Close popup
       setNodePopupOpen(false);
@@ -2065,10 +2207,36 @@ function WorkflowEditorInner({
   ]);
 
   return (
-    <div className="h-screen flex bg-gray-50">
+    <div className="h-full flex bg-gray-50 relative">
+      {/* Persistent toggle control anchored to sidebar edge */}
+      <button
+        onClick={() => setDirectoryMenuOpen(!directoryMenuOpen)}
+        className="absolute top-1/2 -translate-y-1/2 z-50 bg-white border border-gray-200 rounded-r-md shadow-md hover:shadow-lg transition-all duration-200 p-2 hover:bg-gray-50"
+        style={{ left: directoryMenuOpen ? 320 : 0 }}
+        title={
+          directoryMenuOpen ? "Close directory menu" : "Open directory menu"
+        }
+      >
+        {directoryMenuOpen ? (
+          <ChevronLeft className="h-4 w-4 text-gray-600" />
+        ) : (
+          <ChevronRight className="h-4 w-4 text-gray-600" />
+        )}
+      </button>
+
       {/* Enhanced Workflow List Sidebar */}
-      <div className="w-80 overflow-hidden">
-        <EnhancedWorkflowList orgId={orgId} viewMode="sidebar" />
+      <div
+        className={`overflow-hidden bg-white border-r border-gray-200 transition-all duration-300 ease-in-out ${
+          directoryMenuOpen ? "w-80" : "w-0"
+        }`}
+      >
+        <div
+          className="w-80 h-full relative overflow-hidden"
+          data-directory_menu_fix="true"
+          data-directory-menu
+        >
+          <EnhancedWorkflowList orgId={orgId} viewMode="sidebar" />
+        </div>
       </div>
 
       {/* Main Canvas */}
@@ -2158,10 +2326,8 @@ function WorkflowEditorInner({
             <Button
               onClick={handleSave}
               size="sm"
-              disabled={!hasUnsavedChanges}
-              className={
-                !hasUnsavedChanges ? "opacity-50 cursor-not-allowed" : ""
-              }
+              disabled={!canSave}
+              className={!canSave ? "opacity-50 cursor-not-allowed" : ""}
               data-theme-aware="true"
             >
               <Save className="h-4 w-4 mr-2" />

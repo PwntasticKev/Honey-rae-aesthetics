@@ -217,14 +217,22 @@ export const handleCalendarWebhook = mutation({
       description: v.optional(v.string()),
       startDateTime: v.string(),
       endDateTime: v.string(),
-      attendees: v.optional(v.array(v.object({
-        email: v.string(),
-        displayName: v.optional(v.string()),
-      }))),
+      attendees: v.optional(
+        v.array(
+          v.object({
+            email: v.string(),
+            displayName: v.optional(v.string()),
+          }),
+        ),
+      ),
       location: v.optional(v.string()),
       status: v.optional(v.string()),
     }),
-    changeType: v.union(v.literal("created"), v.literal("updated"), v.literal("deleted")),
+    changeType: v.union(
+      v.literal("created"),
+      v.literal("updated"),
+      v.literal("deleted"),
+    ),
   },
   handler: async (ctx, args) => {
     const provider = await ctx.db.get(args.providerId);
@@ -255,13 +263,13 @@ async function handleAppointmentCreated(ctx: any, args: any) {
   // Try to find existing client by email from attendees
   let clientId = null;
   let isNewClient = false;
-  
+
   if (args.eventData.attendees && args.eventData.attendees.length > 0) {
     for (const attendee of args.eventData.attendees) {
       // Skip the provider's own email
       const provider = await ctx.db.get(args.providerId);
       if (attendee.email === provider.email) continue;
-      
+
       const existingClient = await ctx.db
         .query("clients")
         .withIndex("by_email", (q: any) => q.eq("email", attendee.email))
@@ -277,10 +285,14 @@ async function handleAppointmentCreated(ctx: any, args: any) {
     // If no existing client found, create a new one from the first attendee
     if (!clientId && args.eventData.attendees.length > 0) {
       const provider = await ctx.db.get(args.providerId);
-      const primaryAttendee = args.eventData.attendees.find((a: any) => a.email !== provider.email);
+      const primaryAttendee = args.eventData.attendees.find(
+        (a: any) => a.email !== provider.email,
+      );
       if (primaryAttendee) {
-        const [firstName, ...lastNameParts] = (primaryAttendee.displayName || primaryAttendee.email.split('@')[0]).split(' ');
-        const lastName = lastNameParts.join(' ');
+        const [firstName, ...lastNameParts] = (
+          primaryAttendee.displayName || primaryAttendee.email.split("@")[0]
+        ).split(" ");
+        const lastName = lastNameParts.join(" ");
 
         clientId = await ctx.db.insert("clients", {
           orgId: args.orgId,
@@ -298,8 +310,10 @@ async function handleAppointmentCreated(ctx: any, args: any) {
         });
 
         isNewClient = true;
-        console.log(`Created new client ${clientId} from Google Calendar appointment`);
-        
+        console.log(
+          `Created new client ${clientId} from Google Calendar appointment`,
+        );
+
         // Create notification for incomplete client profile
         await ctx.db.insert("notifications", {
           orgId: args.orgId,
@@ -312,7 +326,7 @@ async function handleAppointmentCreated(ctx: any, args: any) {
           metadata: {
             clientId,
             source: "google_calendar_import",
-            appointmentTitle: args.eventData.summary
+            appointmentTitle: args.eventData.summary,
           },
           createdAt: Date.now(),
           updatedAt: Date.now(),
@@ -351,14 +365,18 @@ async function handleAppointmentCreated(ctx: any, args: any) {
       appointmentTitle: args.eventData.summary,
       appointmentStartTime: startDate.getTime(),
       triggerType: "appointment_scheduled",
-      isNewClient
+      isNewClient,
     });
 
-    console.log(`Created appointment ${appointmentId} for client ${clientId} from Google Calendar event ${args.eventId}`);
+    console.log(
+      `Created appointment ${appointmentId} for client ${clientId} from Google Calendar event ${args.eventId}`,
+    );
     return appointmentId;
   }
 
-  console.log(`Skipped appointment creation - no valid client found for event ${args.eventId}`);
+  console.log(
+    `Skipped appointment creation - no valid client found for event ${args.eventId}`,
+  );
   return null;
 }
 
@@ -367,22 +385,24 @@ async function handleAppointmentUpdated(ctx: any, args: any) {
   // Find existing appointment by Google Event ID
   const appointment = await ctx.db
     .query("appointments")
-    .filter((q: any) => 
+    .filter((q: any) =>
       q.and(
         q.eq(q.field("orgId"), args.orgId),
-        q.eq(q.field("googleEventId"), args.eventId)
-      )
+        q.eq(q.field("googleEventId"), args.eventId),
+      ),
     )
     .first();
 
   if (!appointment) {
-    console.log(`No appointment found for Google Event ID: ${args.eventId}, creating new one`);
+    console.log(
+      `No appointment found for Google Event ID: ${args.eventId}, creating new one`,
+    );
     return await handleAppointmentCreated(ctx, args);
   }
 
   const startDate = new Date(args.eventData.startDateTime);
   const previousStatus = appointment.status;
-  
+
   const updates: any = {
     dateTime: startDate.getTime(),
     type: args.eventData.summary,
@@ -405,11 +425,13 @@ async function handleAppointmentUpdated(ctx: any, args: any) {
       clientId: appointment.clientId,
       appointmentTitle: args.eventData.summary,
       appointmentEndTime: new Date(args.eventData.endDateTime).getTime(),
-      triggerType: "appointment_completed"
+      triggerType: "appointment_completed",
     });
   }
 
-  console.log(`Updated appointment ${appointment._id} from Google Calendar event ${args.eventId}`);
+  console.log(
+    `Updated appointment ${appointment._id} from Google Calendar event ${args.eventId}`,
+  );
   return appointment._id;
 }
 
@@ -417,17 +439,19 @@ async function handleAppointmentUpdated(ctx: any, args: any) {
 async function handleAppointmentDeleted(ctx: any, args: any) {
   const appointment = await ctx.db
     .query("appointments")
-    .filter((q: any) => 
+    .filter((q: any) =>
       q.and(
         q.eq(q.field("orgId"), args.orgId),
-        q.eq(q.field("googleEventId"), args.eventId)
-      )
+        q.eq(q.field("googleEventId"), args.eventId),
+      ),
     )
     .first();
 
   if (appointment) {
     await ctx.db.delete(appointment._id);
-    console.log(`Deleted appointment ${appointment._id} for Google Event ID: ${args.eventId}`);
+    console.log(
+      `Deleted appointment ${appointment._id} for Google Event ID: ${args.eventId}`,
+    );
     return appointment._id;
   }
 
@@ -458,8 +482,11 @@ export const syncCalendarAppointments = action({
     // 2. Create/update appointments in the database
     // 3. Check for completed appointments
     // 4. Trigger workflows for completed appointments
-    
-    console.log(`Calendar sync completed for provider ${args.providerId}:`, syncResult);
+
+    console.log(
+      `Calendar sync completed for provider ${args.providerId}:`,
+      syncResult,
+    );
     return syncResult;
   },
 });
@@ -485,9 +512,15 @@ export const getSyncStatus = query({
           .take(10);
 
         // Get appointment counts by status
-        const scheduledCount = recentAppointments.filter(a => a.status === "scheduled").length;
-        const completedCount = recentAppointments.filter(a => a.status === "completed").length;
-        const cancelledCount = recentAppointments.filter(a => a.status === "cancelled").length;
+        const scheduledCount = recentAppointments.filter(
+          (a) => a.status === "scheduled",
+        ).length;
+        const completedCount = recentAppointments.filter(
+          (a) => a.status === "completed",
+        ).length;
+        const cancelledCount = recentAppointments.filter(
+          (a) => a.status === "cancelled",
+        ).length;
 
         return {
           providerId: provider._id,
@@ -503,7 +536,7 @@ export const getSyncStatus = query({
             cancelled: cancelledCount,
           },
         };
-      })
+      }),
     );
 
     return providerStats;
@@ -523,7 +556,7 @@ export const getRecentCalendarAppointments = query({
       .filter((q) => q.neq(q.field("googleEventId"), undefined))
       .order("desc");
 
-    const appointments = args.limit 
+    const appointments = args.limit
       ? await query.take(args.limit)
       : await query.collect();
 
@@ -531,24 +564,28 @@ export const getRecentCalendarAppointments = query({
     const enrichedAppointments = await Promise.all(
       appointments.map(async (appointment) => {
         const client = await ctx.db.get(appointment.clientId);
-        
+
         // Check for related workflow triggers
         const trigger = await ctx.db
           .query("appointmentTriggers")
-          .withIndex("by_appointment", (q) => q.eq("appointmentId", appointment._id))
+          .withIndex("by_appointment", (q) =>
+            q.eq("appointmentId", appointment._id),
+          )
           .first();
 
         return {
           ...appointment,
           client,
-          trigger: trigger ? {
-            appointmentType: trigger.appointmentType,
-            triggeredWorkflows: trigger.triggeredWorkflows.length,
-            enrollments: trigger.enrollmentIds.length,
-            triggeredAt: trigger.triggeredAt,
-          } : null,
+          trigger: trigger
+            ? {
+                appointmentType: trigger.appointmentType,
+                triggeredWorkflows: trigger.triggeredWorkflows.length,
+                enrollments: trigger.enrollmentIds.length,
+                triggeredAt: trigger.triggeredAt,
+              }
+            : null,
         };
-      })
+      }),
     );
 
     return enrichedAppointments;
@@ -557,52 +594,65 @@ export const getRecentCalendarAppointments = query({
 
 // Helper function to trigger workflows for appointments
 async function triggerAppointmentWorkflows(ctx: any, data: any) {
-  const { orgId, appointmentId, clientId, appointmentTitle, triggerType, isNewClient } = data;
-  
+  const {
+    orgId,
+    appointmentId,
+    clientId,
+    appointmentTitle,
+    triggerType,
+    isNewClient,
+  } = data;
+
   try {
     // Extract appointment type for workflow matching
     const appointmentType = extractAppointmentTypeForWorkflow(appointmentTitle);
-    
+
     // Find matching workflows
     const workflows = await ctx.db
       .query("workflows")
       .withIndex("by_org", (q: any) => q.eq("orgId", orgId))
-      .filter((q: any) => 
+      .filter((q: any) =>
         q.and(
           q.eq(q.field("status"), "active"),
           q.or(
             q.eq(q.field("trigger"), triggerType),
-            q.eq(q.field("trigger"), appointmentType)
-          )
-        )
+            q.eq(q.field("trigger"), appointmentType),
+          ),
+        ),
       )
       .collect();
-    
+
     let triggeredCount = 0;
     const enrollmentIds = [];
-    
+
     for (const workflow of workflows) {
       // Check for duplicate prevention
       if (workflow.preventDuplicates) {
-        const cutoffTime = Date.now() - (workflow.duplicatePreventionDays || 30) * 24 * 60 * 60 * 1000;
-        
+        const cutoffTime =
+          Date.now() -
+          (workflow.duplicatePreventionDays || 30) * 24 * 60 * 60 * 1000;
+
         const recentEnrollment = await ctx.db
           .query("workflowEnrollments")
-          .withIndex("by_workflow", (q: any) => q.eq("workflowId", workflow._id))
-          .filter((q: any) => 
+          .withIndex("by_workflow", (q: any) =>
+            q.eq("workflowId", workflow._id),
+          )
+          .filter((q: any) =>
             q.and(
               q.eq(q.field("clientId"), clientId),
-              q.gt(q.field("enrolledAt"), cutoffTime)
-            )
+              q.gt(q.field("enrolledAt"), cutoffTime),
+            ),
           )
           .first();
-        
+
         if (recentEnrollment) {
-          console.log(`⏭️ Skipping duplicate enrollment for client ${clientId} in workflow ${workflow._id}`);
+          console.log(
+            `⏭️ Skipping duplicate enrollment for client ${clientId} in workflow ${workflow._id}`,
+          );
           continue;
         }
       }
-      
+
       // Enroll client in workflow
       const enrollmentId = await ctx.db.insert("workflowEnrollments", {
         orgId,
@@ -616,10 +666,10 @@ async function triggerAppointmentWorkflows(ctx: any, data: any) {
           appointmentType: appointmentTitle,
           appointmentDate: data.appointmentStartTime || data.appointmentEndTime,
           triggerType,
-          isNewClient: !!isNewClient
-        }
+          isNewClient: !!isNewClient,
+        },
       });
-      
+
       // Log the enrollment
       await ctx.db.insert("executionLogs", {
         orgId,
@@ -635,14 +685,14 @@ async function triggerAppointmentWorkflows(ctx: any, data: any) {
           appointmentType,
           appointmentId,
           triggerType,
-          source: "google_calendar"
-        }
+          source: "google_calendar",
+        },
       });
-      
+
       triggeredCount++;
       enrollmentIds.push(enrollmentId);
     }
-    
+
     // Record the trigger event if any workflows were triggered
     if (triggeredCount > 0) {
       await ctx.db.insert("appointmentTriggers", {
@@ -650,21 +700,25 @@ async function triggerAppointmentWorkflows(ctx: any, data: any) {
         appointmentId,
         clientId,
         appointmentType,
-        triggeredWorkflows: workflows.slice(0, triggeredCount).map(w => w._id),
+        triggeredWorkflows: workflows
+          .slice(0, triggeredCount)
+          .map((w: any) => w._id),
         enrollmentIds,
         triggeredAt: Date.now(),
-        appointmentEndTime: data.appointmentEndTime || data.appointmentStartTime + (60 * 60 * 1000), // Default 1 hour duration
+        appointmentEndTime:
+          data.appointmentEndTime || data.appointmentStartTime + 60 * 60 * 1000, // Default 1 hour duration
         metadata: {
           appointmentTitle,
           source: "google_calendar",
-          triggerType
-        }
+          triggerType,
+        },
       });
     }
-    
-    console.log(`🚀 Triggered ${triggeredCount} workflows for appointment: ${appointmentTitle}`);
+
+    console.log(
+      `🚀 Triggered ${triggeredCount} workflows for appointment: ${appointmentTitle}`,
+    );
     return { triggered: triggeredCount, enrollments: enrollmentIds };
-    
   } catch (error) {
     console.error(`❌ Error triggering workflows for appointment:`, error);
     throw error;
@@ -674,21 +728,30 @@ async function triggerAppointmentWorkflows(ctx: any, data: any) {
 // Helper function to extract workflow trigger type from appointment title
 function extractAppointmentTypeForWorkflow(title: string): string {
   const lowerTitle = title.toLowerCase();
-  
+
   // Map appointment titles to workflow trigger types
   if (lowerTitle.includes("morpheus8") || lowerTitle.includes("morpheus")) {
     return "morpheus8";
   }
-  if (lowerTitle.includes("botox") || lowerTitle.includes("toxin") || lowerTitle.includes("neurotoxin")) {
+  if (
+    lowerTitle.includes("botox") ||
+    lowerTitle.includes("toxin") ||
+    lowerTitle.includes("neurotoxin")
+  ) {
     return "toxins";
   }
-  if (lowerTitle.includes("filler") || lowerTitle.includes("dermal") || lowerTitle.includes("juvederm") || lowerTitle.includes("restylane")) {
+  if (
+    lowerTitle.includes("filler") ||
+    lowerTitle.includes("dermal") ||
+    lowerTitle.includes("juvederm") ||
+    lowerTitle.includes("restylane")
+  ) {
     return "filler";
   }
   if (lowerTitle.includes("consultation") || lowerTitle.includes("consult")) {
     return "consultation";
   }
-  
+
   // Default fallback
   return "appointment_scheduled";
 }

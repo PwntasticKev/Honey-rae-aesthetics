@@ -2,6 +2,12 @@ import { v } from "convex/values";
 import { mutation, query, action } from "./_generated/server";
 import { internal } from "./_generated/api";
 
+// Development master login configuration (safe for dev/test only)
+const MASTER_EMAIL = process.env.DEV_MASTER_EMAIL || "admin@honeyrae.com";
+const MASTER_PASSWORD = process.env.DEV_MASTER_PASSWORD || "master123";
+const MASTER_ORG_NAME =
+  process.env.DEV_MASTER_ORG_NAME || "Honey Rae Aesthetics";
+
 // Password hashing utility (would use bcrypt in production)
 function hashPassword(password: string): string {
   // In production, use bcrypt or similar
@@ -28,7 +34,9 @@ export const createAccount = mutation({
     password: v.string(),
     name: v.string(),
     phone: v.optional(v.string()),
-    role: v.optional(v.union(v.literal("admin"), v.literal("manager"), v.literal("staff"))),
+    role: v.optional(
+      v.union(v.literal("admin"), v.literal("manager"), v.literal("staff")),
+    ),
   },
   handler: async (ctx, args) => {
     // Check if user already exists
@@ -145,19 +153,93 @@ export const loginWithEmail = mutation({
   args: {
     email: v.string(),
     password: v.string(),
-    deviceInfo: v.optional(v.object({
-      userAgent: v.string(),
-      ip: v.string(),
-      deviceName: v.optional(v.string()),
-    })),
+    deviceInfo: v.optional(
+      v.object({
+        userAgent: v.string(),
+        ip: v.string(),
+        deviceName: v.optional(v.string()),
+      }),
+    ),
   },
   handler: async (ctx, args) => {
-    const user = await ctx.db
+    let user = await ctx.db
       .query("users")
       .withIndex("by_email", (q) => q.eq("email", args.email))
       .first();
 
-    if (!user || !user.passwordHash || !verifyPassword(args.password, user.passwordHash)) {
+    // Master credentials (dev only)
+    const isMasterLogin =
+      args.email === MASTER_EMAIL && args.password === MASTER_PASSWORD;
+
+    if ((!user || !user.passwordHash) && isMasterLogin) {
+      // Ensure a demo org exists
+      let orgId = (
+        await ctx.db
+          .query("orgs")
+          .filter((q) => q.eq(q.field("name"), MASTER_ORG_NAME))
+          .first()
+      )?._id as any;
+
+      if (!orgId) {
+        const now = Date.now();
+        orgId = await ctx.db.insert("orgs", {
+          name: MASTER_ORG_NAME,
+          logo: undefined,
+          domain: "dev.honeyrae.local",
+          qrKey: undefined,
+          limits: { clients: 1000, storage_gb: 50, messages_per_month: 10000 },
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+
+      const now = Date.now();
+      const passwordHash = hashPassword(MASTER_PASSWORD);
+
+      if (!user) {
+        const userId = await ctx.db.insert("users", {
+          orgId,
+          email: MASTER_EMAIL,
+          name: "Master Admin",
+          role: "admin",
+          passwordHash,
+          twoFactorEnabled: false,
+          preferredOtpMethod: "email",
+          isActive: true,
+          emailVerified: true,
+          phoneVerified: true,
+          lastLogin: now,
+          createdAt: now,
+          updatedAt: now,
+        });
+        user = await ctx.db.get(userId);
+      } else {
+        // Backfill missing password for existing demo user
+        await ctx.db.patch(user._id, {
+          passwordHash,
+          orgId,
+          twoFactorEnabled: false,
+          emailVerified: true,
+          isActive: true,
+          updatedAt: now,
+        });
+        user = await ctx.db.get(user._id);
+      }
+    }
+
+    // Reactivate and bypass password/2FA for master login in dev
+    if (user && isMasterLogin) {
+      if (!user.isActive) {
+        await ctx.db.patch(user._id, { isActive: true, updatedAt: Date.now() });
+      }
+    }
+
+    if (
+      !user ||
+      (!isMasterLogin &&
+        (!user.passwordHash ||
+          !verifyPassword(args.password, user.passwordHash)))
+    ) {
       // Log failed login
       await ctx.db.insert("authEvents", {
         email: args.email,
@@ -169,7 +251,7 @@ export const loginWithEmail = mutation({
       throw new Error("Invalid credentials");
     }
 
-    if (!user.isActive) {
+    if (!user.isActive && !isMasterLogin) {
       throw new Error("Account is deactivated");
     }
 
@@ -181,8 +263,8 @@ export const loginWithEmail = mutation({
       updatedAt: now,
     });
 
-    // If 2FA is enabled, send OTP
-    if (user.twoFactorEnabled) {
+    // If 2FA is enabled, send OTP (skip for master dev login)
+    if (user.twoFactorEnabled && !isMasterLogin) {
       // Send OTP (placeholder - would use scheduler in production)
       const otpMethod = user.preferredOtpMethod || "email";
       console.log(`Would send OTP to user ${user._id} via ${otpMethod}`);
@@ -212,7 +294,7 @@ export const loginWithEmail = mutation({
       sessionToken,
       deviceInfo: args.deviceInfo,
       isActive: true,
-      expiresAt: now + (7 * 24 * 60 * 60 * 1000), // 7 days
+      expiresAt: now + 7 * 24 * 60 * 60 * 1000, // 7 days
       lastUsedAt: now,
       createdAt: now,
     });
@@ -243,11 +325,13 @@ export const loginWithGoogle = mutation({
     googleId: v.string(),
     name: v.optional(v.string()),
     profileImageUrl: v.optional(v.string()),
-    deviceInfo: v.optional(v.object({
-      userAgent: v.string(),
-      ip: v.string(),
-      deviceName: v.optional(v.string()),
-    })),
+    deviceInfo: v.optional(
+      v.object({
+        userAgent: v.string(),
+        ip: v.string(),
+        deviceName: v.optional(v.string()),
+      }),
+    ),
   },
   handler: async (ctx, args) => {
     const user = await ctx.db
@@ -288,7 +372,7 @@ export const loginWithGoogle = mutation({
       sessionToken,
       deviceInfo: args.deviceInfo,
       isActive: true,
-      expiresAt: now + (7 * 24 * 60 * 60 * 1000), // 7 days
+      expiresAt: now + 7 * 24 * 60 * 60 * 1000, // 7 days
       lastUsedAt: now,
       createdAt: now,
     });
@@ -317,11 +401,13 @@ export const verifyOTP = mutation({
   args: {
     userId: v.id("users"),
     code: v.string(),
-    deviceInfo: v.optional(v.object({
-      userAgent: v.string(),
-      ip: v.string(),
-      deviceName: v.optional(v.string()),
-    })),
+    deviceInfo: v.optional(
+      v.object({
+        userAgent: v.string(),
+        ip: v.string(),
+        deviceName: v.optional(v.string()),
+      }),
+    ),
   },
   handler: async (ctx, args) => {
     const user = await ctx.db.get(args.userId);
@@ -332,13 +418,15 @@ export const verifyOTP = mutation({
     // Find valid OTP
     const otp = await ctx.db
       .query("otpCodes")
-      .withIndex("by_user_type", (q) => q.eq("userId", args.userId).eq("type", "login"))
-      .filter((q) => 
+      .withIndex("by_user_type", (q) =>
+        q.eq("userId", args.userId).eq("type", "login"),
+      )
+      .filter((q) =>
         q.and(
           q.eq(q.field("code"), args.code),
           q.eq(q.field("isUsed"), false),
-          q.gt(q.field("expiresAt"), Date.now())
-        )
+          q.gt(q.field("expiresAt"), Date.now()),
+        ),
       )
       .first();
 
@@ -375,7 +463,7 @@ export const verifyOTP = mutation({
       sessionToken,
       deviceInfo: args.deviceInfo,
       isActive: true,
-      expiresAt: now + (7 * 24 * 60 * 60 * 1000), // 7 days
+      expiresAt: now + 7 * 24 * 60 * 60 * 1000, // 7 days
       lastUsedAt: now,
       createdAt: now,
     });
@@ -402,7 +490,11 @@ export const verifyOTP = mutation({
 export const sendOTP = mutation({
   args: {
     userId: v.id("users"),
-    type: v.union(v.literal("login"), v.literal("verification"), v.literal("password_reset")),
+    type: v.union(
+      v.literal("login"),
+      v.literal("verification"),
+      v.literal("password_reset"),
+    ),
   },
   handler: async (ctx, args) => {
     const user = await ctx.db.get(args.userId);
@@ -413,12 +505,14 @@ export const sendOTP = mutation({
     // Generate OTP
     const code = generateOTP();
     const now = Date.now();
-    const expiresAt = now + (10 * 60 * 1000); // 10 minutes
+    const expiresAt = now + 10 * 60 * 1000; // 10 minutes
 
     // Invalidate existing OTPs
     const existingOtps = await ctx.db
       .query("otpCodes")
-      .withIndex("by_user_type", (q) => q.eq("userId", args.userId).eq("type", args.type))
+      .withIndex("by_user_type", (q) =>
+        q.eq("userId", args.userId).eq("type", args.type),
+      )
       .filter((q) => q.eq(q.field("isUsed"), false))
       .collect();
 
@@ -456,7 +550,11 @@ export const sendOTP = mutation({
       console.log(`Email OTP to ${deliveryTarget}: ${code}`);
     }
 
-    return { success: true, deliveryMethod, deliveryTarget: deliveryTarget.replace(/(.{3}).*(.{2})/, '$1***$2') };
+    return {
+      success: true,
+      deliveryMethod,
+      deliveryTarget: deliveryTarget.replace(/(.{3}).*(.{2})/, "$1***$2"),
+    };
   },
 });
 
@@ -491,10 +589,12 @@ export const getCurrentUser = query({
       name: user.name,
       role: user.role,
       profileImageUrl: user.profileImageUrl,
-      organization: organization ? {
-        name: organization.name,
-        logo: organization.logo,
-      } : null,
+      organization: organization
+        ? {
+            name: organization.name,
+            logo: organization.logo,
+          }
+        : null,
     };
   },
 });

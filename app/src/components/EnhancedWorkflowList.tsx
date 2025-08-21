@@ -429,7 +429,15 @@ export function EnhancedWorkflowList({
           data-theme-aware="true"
           data-variant="light"
           style={{ paddingLeft: `${level * 20 + 8}px` }}
-          onClick={() => setSelectedDirectory(directory._id)}
+          onClick={() => {
+            if (viewMode === "sidebar") {
+              const selectedKey = `workflowTreeSelected:${orgId}`;
+              localStorage.setItem(selectedKey, directory._id);
+              router.push("/workflows");
+            } else {
+              setSelectedDirectory(directory._id);
+            }
+          }}
           onDragOver={(e) => handleDragOver(e, directory._id)}
           onDragLeave={handleDragLeave}
           onDrop={(e) => handleDrop(e, directory._id)}

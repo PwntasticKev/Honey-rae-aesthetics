@@ -106,11 +106,6 @@
   }
   body {
     @apply bg-background text-foreground;
-    background: linear-gradient(
-      135deg,
-      oklch(0.99 0.005 300) 0%,
-      oklch(0.97 0.01 320) 100%
-    );
     min-height: 100vh;
   }
 }
@@ -530,18 +525,24 @@ button[data-theme-aware="true"]:not([data-variant="solid"]):hover {
 
 /* Override any rose/pink hover states - REMOVED DUE TO CSS PARSING ERRORS */
 
-/* Apply font family globally */
+/* Apply PP Mori font family globally as default */
+:root {
+  --default-font-family:
+    "PP Mori", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+}
+
 body {
-  font-family: var(--font-family, "Inter");
+  font-family: var(--font-family, var(--default-font-family));
 }
 
 html {
-  font-family: var(--font-family, "Inter");
+  font-family: var(--font-family, var(--default-font-family));
 }
 
-/* Apply font family to all elements */
+/* Apply PP Mori font family to all elements by default */
 * {
-  font-family: var(--font-family, "Inter");
+  font-family: var(--font-family, var(--default-font-family));
 }
 
 /* Modern Hover Animations */
@@ -819,6 +820,14 @@ select:focus {
 }
 .themed-scroll::-webkit-scrollbar-thumb:hover {
   background: var(--primary);
+}
+
+/* Hide scrollbars for directory sidebar container on workflow editor */
+[data-directory_menu_fix="true"] {
+  scrollbar-width: none; /* Firefox */
+}
+[data-directory_menu_fix="true"]::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
 }
 
 /* Prevent overflow for theme-aware elements (exclude badges) */

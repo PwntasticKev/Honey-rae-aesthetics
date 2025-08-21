@@ -42,7 +42,7 @@ describe("Settings Page Layout", () => {
 
     // Main content container should have left margin on large screens
     const mainContent = screen.getByRole("main").closest("div");
-    expect(mainContent).toHaveClass("lg:ml-56");
+    expect(mainContent).toHaveClass("lg:ml-48");
   });
 
   it("should render tab navigation without custom solid backgrounds", () => {
