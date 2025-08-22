@@ -128,7 +128,7 @@ export default function WorkflowsPage() {
           </header>
 
           {/* Page Content - Remove padding and max-width for full height */}
-          <main className="flex-1 pl-6">
+          <main className="flex-1 pl-0">
             <div className="h-full">
               <div className="flex items-center justify-between mb-6">
                 <div>
@@ -231,7 +231,7 @@ export default function WorkflowsPage() {
         </header>
 
         {/* Page Content - Remove padding and max-width for full height */}
-        <main className="flex-1 pl-6">
+        <main className="flex-1 pl-0">
           <div className="h-full">
             {orgId ? (
               <EnhancedWorkflowList orgId={orgId} />
