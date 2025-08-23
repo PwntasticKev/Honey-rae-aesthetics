@@ -352,6 +352,17 @@ select {
   border-color: var(--primary-light) !important;
 }
 
+/* Ensure pink default accents (e.g., Radix/XYFlow focus/hover) are neutral/theme */
+.text-pink-500,
+.bg-pink-50,
+.border-pink-200,
+.border-pink-300,
+.focus\:border-pink-300:focus {
+  color: var(--primary-dark) !important;
+  background-color: var(--primary-light) !important;
+  border-color: var(--primary-light) !important;
+}
+
 select:focus {
   background-color: var(--primary-light) !important;
   color: var(--primary-dark) !important;
@@ -802,7 +813,7 @@ select:focus {
 }
 
 .edge-flow {
-  animation: edge-draw 4.5s linear infinite;
+  animation: edge-draw 7.5s linear infinite; /* slower animation */
   stroke-dashoffset: 0;
 }
 

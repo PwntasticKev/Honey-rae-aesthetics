@@ -144,7 +144,8 @@ const DeletableEdge: React.FC<any> = ({
   // Build a smooth cubic bezier path for minimal curved connection
   const dx = Math.abs(targetX - sourceX);
   const dy = Math.abs(targetY - sourceY);
-  const curvature = Math.max(40, Math.min(200, Math.max(dx, dy) * 0.5));
+  // Make lines less curvy
+  const curvature = Math.max(20, Math.min(120, Math.max(dx, dy) * 0.25));
   const c1x = sourceX + curvature;
   const c1y = sourceY;
   const c2x = targetX - curvature;
@@ -205,13 +206,17 @@ const DeletableEdge: React.FC<any> = ({
           x={midX - 12}
           y={midY - 12}
           className="overflow-visible"
+          style={{ pointerEvents: "all" }}
         >
           <button
             className="w-6 h-6 bg-white border-2 border-red-500 text-red-500 rounded-full flex items-center justify-center hover:bg-red-50 transition-colors shadow-md"
             data-edge-delete={id}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
-            onClick={() => data?.onEdgeDelete?.(id)}
+            onClick={(e) => {
+              e.stopPropagation();
+              data?.onEdgeDelete?.(id);
+            }}
             title="Delete connection"
           >
             <X className="w-3 h-3" />
@@ -282,12 +287,6 @@ const TriggerNode: React.FC<{
 
       {/* ReactFlow Handles - Now top input (hidden) and bottom output */}
       <Handle
-        type="target"
-        position={Position.Top}
-        className="!w-3 !h-3 !bg-blue-500 !border-2 !border-white !opacity-0"
-        style={{ left: "50%", zIndex: 50 }}
-      />
-      <Handle
         type="source"
         position={Position.Bottom}
         className="!w-3 !h-3 !bg-blue-500 !border-2 !border-white"
@@ -332,7 +331,7 @@ const ActionNode: React.FC<{
 
     {/* Hover delete button - right side, middle */}
     <button
-      className="absolute -right-2 top-1/2 -translate-y-1/2 w-6 h-6 bg-white border-2 border-red-500 text-red-500 rounded-full flex items-center justify-center hover:bg-red-50 transition-colors shadow-md opacity-0 group-hover:opacity-100 z-20"
+      className="absolute right-[-10px] top-1/2 -translate-y-1/2 w-6 h-6 bg-white border-2 border-red-500 text-red-500 rounded-full flex items-center justify-center hover:bg-red-50 transition-colors shadow-md opacity-0 group-hover:opacity-100 z-20"
       onClick={(e) => {
         e.stopPropagation();
         data.onNodeDelete?.(data.nodeId || "");
@@ -371,12 +370,14 @@ const ActionNode: React.FC<{
       <Handle
         type="target"
         position={Position.Top}
+        id="in"
         className="!w-3 !h-3 !bg-green-500 !border-2 !border-white"
         style={{ left: "50%", zIndex: 50 }}
       />
       <Handle
         type="source"
         position={Position.Bottom}
+        id="out"
         className="!w-3 !h-3 !bg-green-500 !border-2 !border-white"
         style={{ left: "50%", zIndex: 50 }}
       />
@@ -419,7 +420,7 @@ const DelayNode: React.FC<{
 
     {/* Hover delete button - right side, middle */}
     <button
-      className="absolute -right-2 top-1/2 -translate-y-1/2 w-6 h-6 bg-white border-2 border-red-500 text-red-500 rounded-full flex items-center justify-center hover:bg-red-50 transition-colors shadow-md opacity-0 group-hover:opacity-100 z-20"
+      className="absolute right-[-10px] top-1/2 -translate-y-1/2 w-6 h-6 bg-white border-2 border-red-500 text-red-500 rounded-full flex items-center justify-center hover:bg-red-50 transition-colors shadow-md opacity-0 group-hover:opacity-100 z-20"
       onClick={(e) => {
         e.stopPropagation();
         data.onNodeDelete?.(data.nodeId || "");
@@ -456,12 +457,14 @@ const DelayNode: React.FC<{
       <Handle
         type="target"
         position={Position.Top}
+        id="in"
         className="!w-3 !h-3 !bg-yellow-500 !border-2 !border-white"
         style={{ left: "50%", zIndex: 50 }}
       />
       <Handle
         type="source"
         position={Position.Bottom}
+        id="out"
         className="!w-3 !h-3 !bg-yellow-500 !border-2 !border-white"
         style={{ left: "50%", zIndex: 50 }}
       />
@@ -504,7 +507,7 @@ const ConditionNode: React.FC<{
 
     {/* Hover delete button - right side, middle */}
     <button
-      className="absolute -right-2 top-1/2 -translate-y-1/2 w-6 h-6 bg-white border-2 border-red-500 text-red-500 rounded-full flex items-center justify-center hover:bg-red-50 transition-colors shadow-md opacity-0 group-hover:opacity-100 z-20"
+      className="absolute right-[-10px] top-1/2 -translate-y-1/2 w-6 h-6 bg-white border-2 border-red-500 text-red-500 rounded-full flex items-center justify-center hover:bg-red-50 transition-colors shadow-md opacity-0 group-hover:opacity-100 z-20"
       onClick={(e) => {
         e.stopPropagation();
         data.onNodeDelete?.(data.nodeId || "");
@@ -539,6 +542,7 @@ const ConditionNode: React.FC<{
       <Handle
         type="target"
         position={Position.Top}
+        id="in"
         className="!w-3 !h-3 !bg-purple-500 !border-2 !border-white"
         style={{ left: "50%", zIndex: 50 }}
       />
@@ -1491,14 +1495,18 @@ function WorkflowEditorInner({
   // Handle edge connections
   const onConnect = useCallback(
     (params: Connection) => {
-      // Prevent connecting into trigger nodes (targets cannot be triggers)
+      // Enforce top target handle and bottom source handle
+      const sourceNode = nodes.find((n) => n.id === params.source);
       const targetNode = nodes.find((n) => n.id === params.target);
+
       if (targetNode && targetNode.type === "trigger") {
         return; // disallow connections that target triggers
       }
 
       const edge = {
         ...params,
+        sourceHandle: "out",
+        targetHandle: "in",
         type: "deletable",
         markerEnd: {
           type: MarkerType.ArrowClosed,
@@ -1506,7 +1514,7 @@ function WorkflowEditorInner({
         data: {
           onEdgeDelete: handleEdgeDelete,
         },
-      };
+      } as any;
       setEdges((eds) => addEdge(edge, eds));
     },
     [setEdges, handleEdgeDelete, nodes],
