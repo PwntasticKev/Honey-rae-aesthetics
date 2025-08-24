@@ -26,8 +26,18 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    console.log("📧 Attempting to send email with Resend:", {
+      from: process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev",
+      to,
+      subject: subject || "Workflow Test Email",
+      hasApiKey: !!process.env.RESEND_API_KEY,
+    });
+
+    // Use verified email domain for Resend - you may need to change this
+    const fromEmail = process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev";
+    
     const { data, error } = await resend.emails.send({
-      from: "Honey Rae <noreply@honeyraeaesthetics.com>",
+      from: fromEmail,
       to: [to],
       subject: subject || "Workflow Test Email",
       html: body.replace(/\n/g, "<br>"),

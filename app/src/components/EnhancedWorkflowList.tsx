@@ -49,6 +49,7 @@ import {
   TrendingUp,
   ChevronRight,
   ChevronDown,
+  ChevronLeft,
   BarChart3,
   Eye,
   Trash2,
@@ -135,6 +136,9 @@ export function EnhancedWorkflowList({
   const [testEmail, setTestEmail] = useState("");
   const [testPhone, setTestPhone] = useState("");
   const [isTesting, setIsTesting] = useState(false);
+  
+  // Directory sidebar collapse state
+  const [directorySidebarOpen, setDirectorySidebarOpen] = useState(true);
 
   // Restore tree UI state from localStorage
   React.useEffect(() => {
@@ -235,28 +239,50 @@ export function EnhancedWorkflowList({
 
   const handleTestWorkflow = async () => {
     if (!workflowToTest) return;
-    if (!testEmail && !testPhone) {
-      alert("Please provide an email or phone number to send the test to.");
-      return;
-    }
+    
     setIsTesting(true);
-    // This is a simulation. In a real scenario, you'd call a Convex action.
-    console.log("Simulating test for workflow:", {
-      workflowId: workflowToTest._id,
-      name: workflowToTest.name,
-      testEmail,
-      testPhone,
-    });
-    setTimeout(() => {
+    
+    try {
+      console.log("🧪 Testing workflow:", {
+        workflowId: workflowToTest._id,
+        name: workflowToTest.name,
+        testEmail,
+        testPhone,
+      });
+
+      const response = await fetch("/api/test-workflow", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          workflowId: workflowToTest._id,
+          testContactEmail: testEmail || undefined,
+          testContactPhone: testPhone || undefined,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        console.log("✅ Workflow test completed:", result);
+        alert(
+          `Test for "${workflowToTest.name}" completed successfully!\n\nExecuted ${result.successfulSteps}/${result.totalSteps} steps.\n\nCheck the console for detailed results.`
+        );
+      } else {
+        console.error("❌ Workflow test failed:", result);
+        alert(`Test failed: ${result.error || "Unknown error"}`);
+      }
+    } catch (error) {
+      console.error("❌ Error testing workflow:", error);
+      alert("Error testing workflow. Please try again.");
+    } finally {
       setIsTesting(false);
       setTestDialogOpen(false);
-      alert(
-        `Test for "${workflowToTest.name}" has been initiated to:\nEmail: ${testEmail}\nPhone: ${testPhone}`,
-      );
       setWorkflowToTest(null);
       setTestEmail("");
       setTestPhone("");
-    }, 1500);
+    }
   };
 
   const handleCreateDirectory = async () => {
@@ -746,11 +772,37 @@ export function EnhancedWorkflowList({
   };
 
   return (
-    <div className="flex h-[calc(100vh-5rem)]">
+    <div className="flex h-[calc(100vh-5rem)] relative">
+      {/* Directory Sidebar Toggle Button */}
+      <button
+        onClick={() => setDirectorySidebarOpen(!directorySidebarOpen)}
+        className="absolute top-1/2 -translate-y-1/2 z-50 bg-white border border-gray-200 rounded-r-md shadow-md hover:shadow-lg transition-all duration-200 p-2 hover:bg-gray-50"
+        style={{ 
+          left: directorySidebarOpen 
+            ? (viewMode === "sidebar" ? "100%" : `${sidebarWidth}px`) 
+            : 0 
+        }}
+        title={
+          directorySidebarOpen ? "Close directory sidebar" : "Open directory sidebar"
+        }
+      >
+        {directorySidebarOpen ? (
+          <ChevronLeft className="h-4 w-4 text-gray-600" />
+        ) : (
+          <ChevronRight className="h-4 w-4 text-gray-600" />
+        )}
+      </button>
+
       {/* Directory Sidebar */}
       <div
-        className="border-r bg-gray-50 p-2 relative"
-        style={{ width: viewMode === "sidebar" ? "100%" : `${sidebarWidth}px` }}
+        className={`border-r bg-gray-50 p-2 relative transition-all duration-300 ease-in-out overflow-hidden ${
+          directorySidebarOpen ? "" : "w-0 p-0"
+        }`}
+        style={{ 
+          width: directorySidebarOpen 
+            ? (viewMode === "sidebar" ? "100%" : `${sidebarWidth}px`) 
+            : 0 
+        }}
       >
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-semibold text-gray-900">Directories</h3>
@@ -845,10 +897,12 @@ export function EnhancedWorkflowList({
         </div>
 
         {/* Resize Handle */}
-        <div
-          className="absolute top-0 right-0 w-1 h-full cursor-col-resize bg-gray-300 hover:bg-gray-400 transition-colors"
-          onMouseDown={handleMouseDown}
-        />
+        {directorySidebarOpen && viewMode !== "sidebar" && (
+          <div
+            className="absolute top-0 right-0 w-1 h-full cursor-col-resize bg-gray-300 hover:bg-gray-400 transition-colors"
+            onMouseDown={handleMouseDown}
+          />
+        )}
       </div>
 
       {/* Main Content */}
@@ -1009,6 +1063,20 @@ export function EnhancedWorkflowList({
                         </Button>
                       )}
 
+                      {/* Test Workflow Button */}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setWorkflowToTest(workflow);
+                          setTestDialogOpen(true);
+                        }}
+                        title="Test Workflow"
+                        data-testid="test-workflow"
+                      >
+                        <Send className="h-4 w-4" />
+                      </Button>
+
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
@@ -1036,16 +1104,6 @@ export function EnhancedWorkflowList({
                           >
                             <BarChart3 className="h-4 w-4 mr-2" />
                             View Step Tracking
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            data-theme-aware="false"
-                            onClick={() => {
-                              setWorkflowToTest(workflow);
-                              setTestDialogOpen(true);
-                            }}
-                          >
-                            <Send className="h-4 w-4 mr-2" />
-                            Test
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             className="text-red-600"

@@ -5,6 +5,7 @@ import {
   action,
   internalMutation,
   internalQuery,
+  internalAction,
 } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { getRecipientEmail, getRecipientPhone } from "./utils";
@@ -642,12 +643,14 @@ export const testWorkflow = mutation({
               );
               break;
             case "add_tag":
+              stepResult = await testAddTagStep(ctx, testClient, block.config);
+              break;
             case "remove_tag":
-              stepResult = {
-                action: block.type,
-                config: block.config,
-                simulated: true,
-              };
+              stepResult = await testRemoveTagStep(
+                ctx,
+                testClient,
+                block.config,
+              );
               break;
             case "delay":
               stepResult = {
@@ -703,7 +706,221 @@ export const testWorkflow = mutation({
   },
 });
 
-// Test SMS step (sends real SMS)
+// Test SMS step with action (sends real SMS)
+async function testSMSStepWithAction(
+  ctx: any,
+  client: any,
+  org: any,
+  appointment: any,
+  stepConfig: any,
+) {
+  const message = substituteVariables(
+    stepConfig.message,
+    client,
+    org,
+    appointment,
+  );
+
+  // Use dev environment routing - getRecipientPhone will handle this
+  const recipientPhone = getRecipientPhone(client);
+
+  console.log(`🧪📱 TEST SMS to ${recipientPhone}: ${message}`);
+
+  try {
+    // Call the sendTestSMS action
+    const result = await ctx.runAction(
+      internal.enhancedWorkflowEngine.internalSendTestSMS,
+      {
+        to: recipientPhone,
+        body: message,
+      },
+    );
+
+    return {
+      type: "sms",
+      recipient: recipientPhone,
+      content: message,
+      sent: result.success,
+      testMode: true,
+      message: result.message,
+      error: result.success ? undefined : result.error,
+    };
+  } catch (error) {
+    console.error("Failed to send test SMS:", error);
+    return {
+      type: "sms",
+      recipient: recipientPhone,
+      content: message,
+      sent: false,
+      testMode: true,
+      error: String(error),
+    };
+  }
+}
+
+// Test Email step with action (sends real email)
+async function testEmailStepWithAction(
+  ctx: any,
+  client: any,
+  org: any,
+  appointment: any,
+  stepConfig: any,
+) {
+  const subject = substituteVariables(
+    stepConfig.subject,
+    client,
+    org,
+    appointment,
+  );
+  const body = substituteVariables(stepConfig.body, client, org, appointment);
+
+  // Use dev environment routing - getRecipientEmail will handle this
+  const recipientEmail = getRecipientEmail(client);
+
+  console.log(`🧪📧 TEST EMAIL to ${recipientEmail}:`);
+  console.log(`Subject: ${subject}`);
+  console.log(`Body: ${body}`);
+
+  try {
+    // Call the sendTestEmail action
+    const result = await ctx.runAction(
+      internal.enhancedWorkflowEngine.internalSendTestEmail,
+      {
+        to: recipientEmail,
+        subject,
+        body,
+      },
+    );
+
+    return {
+      type: "email",
+      recipient: recipientEmail,
+      subject,
+      body,
+      sent: result.success,
+      testMode: true,
+      message: result.message,
+      messageId: result.messageId,
+      error: result.success ? undefined : result.error,
+    };
+  } catch (error) {
+    console.error("Failed to send test email:", error);
+    return {
+      type: "email",
+      recipient: recipientEmail,
+      subject,
+      body,
+      sent: false,
+      testMode: true,
+      error: String(error),
+    };
+  }
+}
+
+// Test Add Tag step (simulates adding tag for test client)
+async function testAddTagStep(ctx: any, testClient: any, stepConfig: any) {
+  const tagToAdd = stepConfig.tag;
+  if (!tagToAdd) {
+    return {
+      action: "add_tag",
+      error: "No tag specified to add",
+      success: false,
+    };
+  }
+
+  // For test client, we simulate the tag addition
+  console.log(
+    `🧪🏷️ TEST ADD TAG: Adding "${tagToAdd}" to test client ${testClient.fullName}`,
+  );
+
+  const currentTags = testClient.tags || [];
+
+  if (!currentTags.includes(tagToAdd)) {
+    const updatedTags = [...currentTags, tagToAdd];
+    testClient.tags = updatedTags; // Update the mock client
+
+    return {
+      action: "tag_added",
+      tag: tagToAdd,
+      previousTags: currentTags,
+      newTags: updatedTags,
+      success: true,
+      simulated: true,
+    };
+  }
+
+  return {
+    action: "tag_already_exists",
+    tag: tagToAdd,
+    tags: currentTags,
+    success: true,
+    simulated: true,
+  };
+}
+
+// Test Remove Tag step (simulates removing tag for test client)
+async function testRemoveTagStep(ctx: any, testClient: any, stepConfig: any) {
+  const tagToRemove = stepConfig.tag;
+  const removeAll = stepConfig.removeAll || false;
+
+  if (!tagToRemove) {
+    return {
+      action: "remove_tag",
+      error: "No tag specified to remove",
+      success: false,
+    };
+  }
+
+  console.log(
+    `🧪🏷️ TEST REMOVE TAG: Removing "${tagToRemove}" from test client ${testClient.fullName}`,
+  );
+
+  const currentTags = testClient.tags || [];
+
+  if (removeAll) {
+    // Remove all instances of the tag
+    const updatedTags = currentTags.filter(
+      (tag: string) => tag !== tagToRemove,
+    );
+    testClient.tags = updatedTags; // Update the mock client
+
+    return {
+      action: "tag_removed_all",
+      tag: tagToRemove,
+      previousTags: currentTags,
+      newTags: updatedTags,
+      success: true,
+      simulated: true,
+    };
+  } else {
+    // Remove first instance of the tag
+    const tagIndex = currentTags.indexOf(tagToRemove);
+    if (tagIndex > -1) {
+      const updatedTags = [...currentTags];
+      updatedTags.splice(tagIndex, 1);
+      testClient.tags = updatedTags; // Update the mock client
+
+      return {
+        action: "tag_removed",
+        tag: tagToRemove,
+        previousTags: currentTags,
+        newTags: updatedTags,
+        success: true,
+        simulated: true,
+      };
+    }
+  }
+
+  return {
+    action: "tag_not_found",
+    tag: tagToRemove,
+    tags: currentTags,
+    success: true,
+    simulated: true,
+  };
+}
+
+// Test SMS step (sends real SMS) - Legacy function for compatibility
 async function testSMSStep(
   client: any,
   org: any,
@@ -717,19 +934,19 @@ async function testSMSStep(
     appointment,
   );
 
-  // For testing, always send to the test phone number
-  const testPhone = "+18018850601";
+  // Use dev environment routing - getRecipientPhone will handle this
+  const recipientPhone = getRecipientPhone(client);
 
-  console.log(`🧪📱 TEST SMS to ${testPhone}: ${message}`);
+  console.log(`🧪📱 TEST SMS to ${recipientPhone}: ${message}`);
 
-  // Here you would integrate with your actual SMS service
-  // For now, we'll just log it
+  // Log the SMS for now - will integrate with actual sending later
+  console.log(`🧪📱 TEST SMS (would send to ${recipientPhone}): ${message}`);
 
   return {
     type: "sms",
-    recipient: testPhone,
+    recipient: recipientPhone,
     content: message,
-    sent: true,
+    sent: true, // Set to true for testing purposes
     testMode: true,
   };
 }
@@ -749,22 +966,183 @@ async function testEmailStep(
   );
   const body = substituteVariables(stepConfig.body, client, org, appointment);
 
-  // For testing, always send to the test email
-  const testEmail = "pwntastickevin@gmail.com";
+  // Use dev environment routing - getRecipientEmail will handle this
+  const recipientEmail = getRecipientEmail(client);
 
-  console.log(`🧪📧 TEST EMAIL to ${testEmail}:`);
+  console.log(`🧪📧 TEST EMAIL to ${recipientEmail}:`);
   console.log(`Subject: ${subject}`);
   console.log(`Body: ${body}`);
 
-  // Here you would integrate with your actual email service
-  // For now, we'll just log it
+  // Log the email for now - will integrate with actual sending later
+  console.log(
+    `🧪📧 TEST EMAIL (would send to ${recipientEmail}): Subject: ${subject}, Body: ${body}`,
+  );
 
   return {
     type: "email",
-    recipient: testEmail,
+    recipient: recipientEmail,
     subject,
     body,
-    sent: true,
+    sent: true, // Set to true for testing purposes
     testMode: true,
   };
 }
+
+// Convex actions for making HTTP requests to send real SMS/email
+export const sendTestSMS = action({
+  args: {
+    to: v.string(),
+    body: v.string(),
+  },
+  handler: async (ctx, args) => {
+    try {
+      const response = await fetch(`${process.env.SITE_URL}/api/send-sms`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          to: args.to,
+          body: args.body,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to send SMS");
+      }
+
+      return {
+        success: true,
+        message: result.message,
+      };
+    } catch (error) {
+      console.error("Failed to send SMS:", error);
+      return {
+        success: false,
+        error: String(error),
+      };
+    }
+  },
+});
+
+export const sendTestEmail = action({
+  args: {
+    to: v.string(),
+    subject: v.string(),
+    body: v.string(),
+  },
+  handler: async (ctx, args) => {
+    try {
+      const response = await fetch(`${process.env.SITE_URL}/api/send-email`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          to: args.to,
+          subject: args.subject,
+          body: args.body,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to send email");
+      }
+
+      return {
+        success: true,
+        message: result.message,
+        messageId: result.data?.id,
+      };
+    } catch (error) {
+      console.error("Failed to send email:", error);
+      return {
+        success: false,
+        error: String(error),
+      };
+    }
+  },
+});
+
+export const internalSendTestSMS = internalAction({
+  args: {
+    to: v.string(),
+    body: v.string(),
+  },
+  handler: async (ctx, args) => {
+    try {
+      const response = await fetch(`${process.env.SITE_URL}/api/send-sms`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          to: args.to,
+          body: args.body,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to send SMS");
+      }
+
+      return {
+        success: true,
+        message: result.message,
+      };
+    } catch (error) {
+      console.error("Failed to send SMS:", error);
+      return {
+        success: false,
+        error: String(error),
+      };
+    }
+  },
+});
+
+export const internalSendTestEmail = internalAction({
+  args: {
+    to: v.string(),
+    subject: v.string(),
+    body: v.string(),
+  },
+  handler: async (ctx, args) => {
+    try {
+      const response = await fetch(`${process.env.SITE_URL}/api/send-email`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          to: args.to,
+          subject: args.subject,
+          body: args.body,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to send email");
+      }
+
+      return {
+        success: true,
+        message: result.message,
+        messageId: result.data?.id,
+      };
+    } catch (error) {
+      console.error("Failed to send email:", error);
+      return {
+        success: false,
+        error: String(error),
+      };
+    }
+  },
+});

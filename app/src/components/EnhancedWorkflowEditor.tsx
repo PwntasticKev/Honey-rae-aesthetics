@@ -289,8 +289,10 @@ const TriggerNode: React.FC<{
       <Handle
         type="source"
         position={Position.Bottom}
+        id="out"
         className="!w-3 !h-3 !bg-blue-500 !border-2 !border-white"
         style={{ left: "50%", zIndex: 50 }}
+        isConnectable={true}
       />
 
       {/* Plus button for adding connected nodes */}
@@ -373,6 +375,7 @@ const ActionNode: React.FC<{
         id="in"
         className="!w-3 !h-3 !bg-green-500 !border-2 !border-white"
         style={{ left: "50%", zIndex: 50 }}
+        isConnectable={true}
       />
       <Handle
         type="source"
@@ -380,6 +383,7 @@ const ActionNode: React.FC<{
         id="out"
         className="!w-3 !h-3 !bg-green-500 !border-2 !border-white"
         style={{ left: "50%", zIndex: 50 }}
+        isConnectable={true}
       />
 
       {/* Plus button for adding connected nodes */}
@@ -460,6 +464,7 @@ const DelayNode: React.FC<{
         id="in"
         className="!w-3 !h-3 !bg-yellow-500 !border-2 !border-white"
         style={{ left: "50%", zIndex: 50 }}
+        isConnectable={true}
       />
       <Handle
         type="source"
@@ -467,6 +472,7 @@ const DelayNode: React.FC<{
         id="out"
         className="!w-3 !h-3 !bg-yellow-500 !border-2 !border-white"
         style={{ left: "50%", zIndex: 50 }}
+        isConnectable={true}
       />
 
       {/* Plus button for adding connected nodes */}
@@ -545,6 +551,7 @@ const ConditionNode: React.FC<{
         id="in"
         className="!w-3 !h-3 !bg-purple-500 !border-2 !border-white"
         style={{ left: "50%", zIndex: 50 }}
+        isConnectable={true}
       />
       <Handle
         type="source"
@@ -552,6 +559,7 @@ const ConditionNode: React.FC<{
         id="true"
         style={{ left: "25%", zIndex: 50 }}
         className="!w-3 !h-3 !bg-green-500 !border-2 !border-white"
+        isConnectable={true}
       />
       <Handle
         type="source"
@@ -559,6 +567,7 @@ const ConditionNode: React.FC<{
         id="false"
         style={{ left: "75%", zIndex: 50 }}
         className="!w-3 !h-3 !bg-red-500 !border-2 !border-white"
+        isConnectable={true}
       />
 
       {/* Plus buttons for adding connected nodes - one for each output */}
@@ -1190,8 +1199,9 @@ function WorkflowEditorInner({
       if (sourceNodeId === null) return;
 
       // Create new node
+      const nodeId = `node-${Date.now()}`;
       const newNode = {
-        id: `node-${Date.now()}`,
+        id: nodeId,
         type: nodeType,
         position: { x: 0, y: 0 }, // Will be positioned relative to source
         data: {
@@ -1203,7 +1213,7 @@ function WorkflowEditorInner({
           onDetailsClick: handleNodeDetailsClick,
           onPlusClick: handleNodePlusClick,
           onNodeDelete: handleNodeDelete,
-          nodeId: `node-${Date.now()}`,
+          nodeId: nodeId,
         },
       };
 
@@ -1254,23 +1264,26 @@ function WorkflowEditorInner({
   // Handler for edge deletion
   const handleEdgeDelete = useCallback(
     (edgeId: string) => {
-      const edgeToDelete = edges.find((e) => e.id === edgeId);
-      if (!edgeToDelete) return;
+      // Use functional update to get current edges
+      setEdges((currentEdges) => {
+        const edgeToDelete = currentEdges.find((e) => e.id === edgeId);
+        if (!edgeToDelete) return currentEdges;
 
-      // Store deleted edge for undo
-      setDeletedEdges((prev) => [...prev, edgeToDelete]);
+        // Store deleted edge for undo
+        setDeletedEdges((prev) => [...prev, edgeToDelete]);
 
-      // Remove edge
-      setEdges((edges) => edges.filter((e) => e.id !== edgeId));
+        // Show undo notification
+        setShowUndoDelete(true);
 
-      // Show undo notification
-      setShowUndoDelete(true);
+        // Hide undo after 5 seconds
+        setTimeout(() => setShowUndoDelete(false), 5000);
 
-      // Hide undo after 5 seconds
-      setTimeout(() => setShowUndoDelete(false), 5000);
+        // Return filtered edges
+        return currentEdges.filter((e) => e.id !== edgeId);
+      });
     },
-    [edges],
-  ); // Removed setEdges to prevent infinite loop
+    [], // No dependencies needed since we use functional updates
+  );
 
   // Handler for node deletion
   const handleNodeDelete = useCallback(
@@ -1917,8 +1930,9 @@ function WorkflowEditorInner({
         y: event.clientY - reactFlowBounds.top,
       });
 
+      const nodeId = `${nodeData.type}-${Date.now()}`;
       const newNode: Node = {
-        id: `${nodeData.type}-${Date.now()}`,
+        id: nodeId,
         type: nodeData.type,
         position,
         data: {
@@ -1930,7 +1944,7 @@ function WorkflowEditorInner({
           onDetailsClick: handleNodeDetailsClick,
           onPlusClick: handleNodePlusClick,
           onNodeDelete: handleNodeDelete,
-          nodeId: `${nodeData.type}-${Date.now()}`,
+          nodeId: nodeId,
         },
       };
 
@@ -1962,8 +1976,9 @@ function WorkflowEditorInner({
   // Add new node from sidebar (fallback for click)
   const addNode = useCallback(
     (type: string, label: string) => {
+      const nodeId = `${type}-${Date.now()}`;
       const newNode: Node = {
-        id: `${type}-${Date.now()}`,
+        id: nodeId,
         type,
         position: {
           x: Math.random() * 300 + 100,
@@ -1978,7 +1993,7 @@ function WorkflowEditorInner({
           onDetailsClick: handleNodeDetailsClick,
           onPlusClick: handleNodePlusClick,
           onNodeDelete: handleNodeDelete,
-          nodeId: `${type}-${Date.now()}`,
+          nodeId: nodeId,
         },
       };
       setNodes((nds) => [...nds, newNode]);
@@ -2394,6 +2409,10 @@ function WorkflowEditorInner({
             zoomOnScroll={true}
             zoomOnPinch={true}
             multiSelectionKeyCode={"Meta"}
+            connectOnClick={false}
+            nodesDraggable={true}
+            elementsSelectable={true}
+            deleteKeyCode={["Backspace", "Delete"]}
           >
             <Background variant={BackgroundVariant.Dots} gap={20} size={1} />
             <Controls />

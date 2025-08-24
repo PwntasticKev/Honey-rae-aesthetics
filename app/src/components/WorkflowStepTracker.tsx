@@ -217,8 +217,7 @@ export function WorkflowStepTracker({
                   <div key={step.id} className="relative">
                     {/* Step Card */}
                     <Card
-                      className={`cursor-pointer transition-colors ${getStepColor(step)}`}
-                      onClick={() => setSelectedStep(step.id)}
+                      className={`transition-colors ${getStepColor(step)}`}
                     >
                       <CardContent className="p-4">
                         <div className="flex items-center justify-between">
@@ -235,15 +234,23 @@ export function WorkflowStepTracker({
                           </div>
 
                           <div className="flex items-center space-x-4">
-                            {/* Client Counts */}
-                            <div className="text-center">
+                            {/* Client Counts - Clickable */}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="flex flex-col items-center p-2 h-auto hover:bg-blue-50"
+                              onClick={(e) => {
+                                e.stopPropagation(); // Prevent card click
+                                setSelectedStep(step.id);
+                              }}
+                            >
                               <div className="text-lg font-bold text-blue-600">
                                 {step.clientCount}
                               </div>
                               <div className="text-xs text-gray-500">
                                 Clients
                               </div>
-                            </div>
+                            </Button>
 
                             {/* Status Indicators */}
                             <div className="flex space-x-1">
@@ -263,19 +270,6 @@ export function WorkflowStepTracker({
                                 </Badge>
                               )}
                             </div>
-
-                            <Sheet
-                              open={selectedStep === step.id}
-                              onOpenChange={(open) =>
-                                !open && setSelectedStep(null)
-                              }
-                            >
-                              <SheetTrigger asChild>
-                                <Button variant="ghost" size="sm">
-                                  <Eye className="h-4 w-4" />
-                                </Button>
-                              </SheetTrigger>
-                            </Sheet>
                           </div>
                         </div>
                       </CardContent>

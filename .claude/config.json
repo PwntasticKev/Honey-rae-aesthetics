@@ -11,6 +11,20 @@
       ],
       "transport": "stdio",
       "timeoutMs": 120000
+    },
+    "serena": {
+      "command": "npx",
+      "args": ["-y", "<PKG>@latest"],
+      "transport": "stdio",
+      "timeoutMs": 120000,
+      "autoApprove": []
+    },
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "<PKG>@latest"],
+      "transport": "stdio",
+      "timeoutMs": 120000,
+      "autoApprove": []
     }
   }
 }
