@@ -34,6 +34,8 @@
     "start:www": "turbo --filter=www start",
     "dev:cli": "turbo --filter=create-t3-app dev",
     "dev:www": "turbo --filter=www dev",
+    "dev:full": "turbo --filter=www dev",
+    "dev": "npm run dev:full",
     "clean": "turbo clean && rm -rf node_modules",
     "lint": "turbo lint && manypkg check",
     "lint:fix": "turbo lint:fix && manypkg fix",
@@ -43,6 +45,8 @@
     "release": "changeset version",
     "pub:beta": "cd cli && pnpm pub:beta",
     "pub:release": "cd cli && pnpm pub:release",
+    "db:generate": "node --env-file=.env.local ./node_modules/.bin/drizzle-kit generate",
+    "db:push": "node --env-file=.env.local ./node_modules/.bin/tsx app/src/db/migrate.ts",
     "prepare": "husky"
   },
   "dependencies": {
@@ -52,14 +56,17 @@
     "@eslint/eslintrc": "^3.3.1",
     "@ianvs/prettier-plugin-sort-imports": "^4.2.1",
     "@manypkg/cli": "^0.20.0",
+    "@tanstack/react-query": "^5.89.0",
     "@total-typescript/ts-reset": "^0.3.7",
     "@types/node": "^20.14.10",
     "convex": "^1.25.4",
+    "drizzle-orm": "^0.44.5",
     "eslint": "^9.23.0",
     "eslint-plugin-import-x": "^4.9.1",
     "eslint-plugin-isaacscript": "^4.0.0",
     "eslint-plugin-react": "^7.37.4",
     "eslint-plugin-react-hooks": "^5.2.0",
+    "mysql2": "^3.15.0",
     "prettier": "^3.5.3",
     "turbo": "1.13.3-canary.3",
     "typescript": "^5.8.2",
@@ -71,6 +78,10 @@
     "@types/history": "^4.7.11",
     "@types/react-router": "^5.1.20",
     "@types/react-router-dom": "^5.3.3",
-    "playwright": "^1.55.0"
+    "dotenv": "^17.2.2",
+    "dotenv-cli": "^10.0.0",
+    "drizzle-kit": "^0.31.4",
+    "playwright": "^1.55.0",
+    "tsx": "^4.20.5"
   }
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { ConvexProviderWrapper } from "@/components/ConvexProvider";
+import { Providers } from "@/components/Providers";
 import { EnvironmentProvider } from "@/contexts/EnvironmentContext";
 import { OptimizedThemeLoader } from "@/components/OptimizedThemeLoader";
 import { AuthProvider } from "@/hooks/useAuth";
@@ -12,12 +12,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <head>
-        <script 
-          dangerouslySetInnerHTML={{ __html: getThemePreloadScript() }}
-        />
+        <script dangerouslySetInnerHTML={{ __html: getThemePreloadScript() }} />
       </head>
       <body>
-        <ConvexProviderWrapper>
+        <Providers>
           <AuthProvider>
             <EnvironmentProvider>
               <OptimizedThemeLoader />
@@ -28,7 +26,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               </ErrorBoundary>
             </EnvironmentProvider>
           </AuthProvider>
-        </ConvexProviderWrapper>
+        </Providers>
       </body>
     </html>
   );

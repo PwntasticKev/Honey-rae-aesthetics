@@ -579,7 +579,7 @@ export const testWorkflow = mutation({
     testContactEmail: v.optional(v.string()),
     testContactPhone: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<any> => {
     console.log(`🧪 Testing workflow ${args.workflowId}`);
 
     try {
@@ -627,7 +627,8 @@ export const testWorkflow = mutation({
 
           switch (block.type) {
             case "send_sms":
-              stepResult = await testSMSStep(
+              stepResult = await testSMSStepWithAction(
+                ctx,
                 testClient,
                 org,
                 mockAppointment,
@@ -635,7 +636,8 @@ export const testWorkflow = mutation({
               );
               break;
             case "send_email":
-              stepResult = await testEmailStep(
+              stepResult = await testEmailStepWithAction(
+                ctx,
                 testClient,
                 org,
                 mockAppointment,
@@ -713,7 +715,7 @@ async function testSMSStepWithAction(
   org: any,
   appointment: any,
   stepConfig: any,
-) {
+): Promise<any> {
   const message = substituteVariables(
     stepConfig.message,
     client,
@@ -765,7 +767,7 @@ async function testEmailStepWithAction(
   org: any,
   appointment: any,
   stepConfig: any,
-) {
+): Promise<any> {
   const subject = substituteVariables(
     stepConfig.subject,
     client,
@@ -1075,7 +1077,10 @@ export const internalSendTestSMS = internalAction({
   },
   handler: async (ctx, args) => {
     try {
-      const response = await fetch(`${process.env.SITE_URL}/api/send-sms`, {
+      const url = `${process.env.SITE_URL}/api/send-sms`;
+      console.log(`Attempting to send SMS via fetch to: ${url}`);
+
+      const response = await fetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -1086,7 +1091,9 @@ export const internalSendTestSMS = internalAction({
         }),
       });
 
+      console.log(`Fetch response status for SMS: ${response.status}`);
       const result = await response.json();
+      console.log(`Fetch response body for SMS:`, result);
 
       if (!response.ok) {
         throw new Error(result.error || "Failed to send SMS");
@@ -1114,7 +1121,10 @@ export const internalSendTestEmail = internalAction({
   },
   handler: async (ctx, args) => {
     try {
-      const response = await fetch(`${process.env.SITE_URL}/api/send-email`, {
+      const url = `${process.env.SITE_URL}/api/send-email`;
+      console.log(`Attempting to send email via fetch to: ${url}`);
+
+      const response = await fetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -1126,7 +1136,9 @@ export const internalSendTestEmail = internalAction({
         }),
       });
 
+      console.log(`Fetch response status for email: ${response.status}`);
       const result = await response.json();
+      console.log(`Fetch response body for email:`, result);
 
       if (!response.ok) {
         throw new Error(result.error || "Failed to send email");
