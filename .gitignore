@@ -58,3 +58,6 @@ Thumbs.db
 
 # TYPESCRIPT
 *.tsbuildinfo
+
+# TEST USERS
+test-users.txt

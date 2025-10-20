@@ -9,7 +9,7 @@ import { clients as clientsSchema } from "@/db/schema";
 import { InferSelectModel, InferInsertModel } from "drizzle-orm";
 import { Button } from "@/components/ui/button";
 import { Menu, LogOut } from "lucide-react";
-import { GlobalSearch } from "@/components/GlobalSearch";
+import { SimpleSearch } from "@/components/SimpleSearch";
 import { NotificationDropdown } from "@/components/NotificationDropdown";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
@@ -17,11 +17,12 @@ type Client = InferSelectModel<typeof clientsSchema>;
 type NewClient = InferInsertModel<typeof clientsSchema>;
 
 async function fetchClients(): Promise<Client[]> {
-  const res = await fetch("/api/clients");
+  const res = await fetch("/api/clients/simple");
   if (!res.ok) {
     throw new Error("Network response was not ok");
   }
-  return res.json();
+  const data = await res.json();
+  return data.clients || [];
 }
 
 async function createClient(newClient: NewClient): Promise<Client> {
@@ -127,31 +128,31 @@ export default function ClientsPage() {
                 <Menu className="h-5 w-5" />
               </Button>
               <div>
-                <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+                <h1 className="text-xl font-bold text-gray-900">
                   Clients
                 </h1>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
+                <p className="text-sm text-gray-600">
                   Manage your patient database
                 </p>
               </div>
             </div>
             <div className="flex items-center space-x-4">
               <div className="hidden md:block">
-                <GlobalSearch />
+                <SimpleSearch />
               </div>
               <NotificationDropdown />
               <div className="flex items-center space-x-3">
                 <Avatar className="w-8 h-8">
                   <AvatarImage src="/avatar.jpg" />
-                  <AvatarFallback className="text-white avatar-fallback">
+                  <AvatarFallback className="bg-gray-100 text-gray-900">
                     {user?.email?.charAt(0).toUpperCase() || "A"}
                   </AvatarFallback>
                 </Avatar>
                 <div className="hidden md:block">
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">
+                  <p className="text-sm font-medium text-gray-900">
                     Dr. Rae
                   </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                  <p className="text-xs text-gray-500">
                     Admin
                   </p>
                 </div>
@@ -160,7 +161,7 @@ export default function ClientsPage() {
                   size="icon"
                   onClick={logout}
                   title="Logout"
-                  className="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
+                  className="text-gray-600 hover:text-gray-900"
                 >
                   <LogOut className="h-4 w-4" />
                 </Button>

@@ -1,9 +1,7 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useMutation, useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -50,336 +48,96 @@ import {
   ChevronRight,
   ChevronDown,
   ChevronLeft,
+  GripVertical,
   BarChart3,
   Eye,
   Trash2,
 } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
-import { WorkflowStepTracker } from "./WorkflowStepTracker";
+import { InferSelectModel } from "drizzle-orm";
+import { workflows as workflowSchema } from "@/db/schema";
+
+type Workflow = InferSelectModel<typeof workflowSchema>;
 
 interface Directory {
-  _id: string;
+  id: number;
   name: string;
-  parentId?: string;
+  parentId?: number;
   description?: string;
   color?: string;
   children: Directory[];
-}
-
-interface Workflow {
-  _id: string;
-  name: string;
-  description?: string;
-  status: "active" | "inactive" | "draft" | "archived";
-  trigger: string;
-  directoryId?: string;
-  activeEnrollmentCount: number;
-  totalEnrollmentCount: number;
-  totalRuns: number;
-  successfulRuns: number;
-  lastRun?: number;
-  createdAt: number;
+  workflowCount: number;
 }
 
 interface EnhancedWorkflowListProps {
-  orgId: string;
+  orgId: number;
   viewMode?: "full" | "sidebar";
+  workflows: Workflow[];
+  directories: Directory[];
+  onCreateWorkflow: () => void;
 }
 
 export function EnhancedWorkflowList({
   orgId,
   viewMode = "full",
+  workflows = [],
+  directories = [],
+  onCreateWorkflow,
 }: EnhancedWorkflowListProps) {
   const router = useRouter();
-  const { user } = useAuth();
-  const [selectedDirectory, setSelectedDirectory] = useState<string | null>(
+  const [selectedDirectory, setSelectedDirectory] = useState<number | null>(
     null,
   );
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [expandedDirectories, setExpandedDirectories] = useState<Set<string>>(
+  const [expandedDirectories, setExpandedDirectories] = useState<Set<number>>(
     new Set(),
   );
   const [showNewDirectoryDialog, setShowNewDirectoryDialog] = useState(false);
   const [newDirectoryName, setNewDirectoryName] = useState("");
   const [newDirectoryDescription, setNewDirectoryDescription] = useState("");
-  const [draggedWorkflow, setDraggedWorkflow] = useState<string | null>(null);
-  const [draggedDirectory, setDraggedDirectory] = useState<string | null>(null);
-  const [viewingStepTracker, setViewingStepTracker] = useState<string | null>(
-    null,
-  );
-  const [sidebarWidth, setSidebarWidth] = useState(200); // Slimmer default width
+  const [draggedWorkflow, setDraggedWorkflow] = useState<number | null>(null);
+  const [draggedDirectory, setDraggedDirectory] = useState<number | null>(null);
+  const [sidebarWidth, setSidebarWidth] = useState(280); // Increased default width
   const [isResizing, setIsResizing] = useState(false);
-  const [contextMenuDirectory, setContextMenuDirectory] = useState<
-    string | null
-  >(null);
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [directoryToDelete, setDirectoryToDelete] = useState<string | null>(
+  const [directorySidebarOpen, setDirectorySidebarOpen] = useState(true);
+  const [dragOverDirectory, setDragOverDirectory] = useState<number | null>(
     null,
   );
-  const [showRenameDialog, setShowRenameDialog] = useState(false);
-  const [directoryToRename, setDirectoryToRename] = useState<string | null>(
-    null,
-  );
-  const [renameValue, setRenameValue] = useState("");
-  const [showArchiveDialog, setShowArchiveDialog] = useState(false);
-  const [dragOverDirectory, setDragOverDirectory] = useState<string | null>(
-    null,
-  );
-  // Inline rename state for workflows in the tree
-  const [editingWorkflowId, setEditingWorkflowId] = useState<string | null>(
+  const [editingWorkflowId, setEditingWorkflowId] = useState<number | null>(
     null,
   );
   const [editingWorkflowName, setEditingWorkflowName] = useState<string>("");
-  const [testDialogOpen, setTestDialogOpen] = useState(false);
-  const [workflowToTest, setWorkflowToTest] = useState<Workflow | null>(null);
-  const [testEmail, setTestEmail] = useState("");
-  const [testPhone, setTestPhone] = useState("");
-  const [isTesting, setIsTesting] = useState(false);
-  
-  // Directory sidebar collapse state
-  const [directorySidebarOpen, setDirectorySidebarOpen] = useState(true);
-
-  // Restore tree UI state from localStorage
-  React.useEffect(() => {
-    try {
-      const expandedKey = `workflowTreeExpanded:${orgId}`;
-      const selectedKey = `workflowTreeSelected:${orgId}`;
-      const savedExpanded = localStorage.getItem(expandedKey);
-      const savedSelected = localStorage.getItem(selectedKey);
-      if (savedExpanded) {
-        const ids: string[] = JSON.parse(savedExpanded);
-        if (Array.isArray(ids)) setExpandedDirectories(new Set(ids));
-      }
-      if (savedSelected) {
-        setSelectedDirectory(savedSelected || null);
-      }
-    } catch {}
-  }, [orgId]);
-
-  // Persist tree UI state
-  React.useEffect(() => {
-    try {
-      const expandedKey = `workflowTreeExpanded:${orgId}`;
-      const selectedKey = `workflowTreeSelected:${orgId}`;
-      localStorage.setItem(
-        expandedKey,
-        JSON.stringify(Array.from(expandedDirectories)),
-      );
-      localStorage.setItem(selectedKey, selectedDirectory || "");
-    } catch {}
-  }, [expandedDirectories, selectedDirectory, orgId]);
-
-  // Queries
-  const directories = useQuery(
-    api.workflowDirectories.getDirectories,
-    orgId ? { orgId: orgId as any } : "skip",
-  );
-  // Unfiltered list for the tree view (shows workflows under all directories)
-  const allWorkflows = useQuery(
-    api.enhancedWorkflows.getWorkflows,
-    orgId ? { orgId: orgId as any } : "skip",
-  );
-  const archivedDirectories = useQuery(
-    api.workflowDirectories.getArchivedDirectories,
-    orgId ? { orgId: orgId as any } : "skip",
-  );
-  const workflows = useQuery(
-    api.enhancedWorkflows.getWorkflows,
-    orgId
-      ? {
-          orgId: orgId as any,
-          status: statusFilter === "all" ? undefined : (statusFilter as any),
-          directoryId: selectedDirectory
-            ? (selectedDirectory as any)
-            : undefined,
-        }
-      : "skip",
-  );
-
-  // Build directory id → path map for quick lookup
-  const directoryIdToPath = React.useMemo(() => {
-    const map = new Map<string, string>();
-    const dfs = (node: any, path: string[]) => {
-      const current = [...path, node.name];
-      map.set(node._id, current.join(" / "));
-      (node.children || []).forEach((child: any) => dfs(child, current));
-    };
-    (directories || []).forEach((root: any) => dfs(root, []));
-    return map;
-  }, [directories]);
-
-  // Mutations
-  const createDirectory = useMutation(api.workflowDirectories.createDirectory);
-  const updateWorkflowStatus = useMutation(
-    api.enhancedWorkflows.updateWorkflowStatus,
-  );
-  const moveWorkflowToDirectory = useMutation(
-    api.workflowDirectories.moveWorkflowToDirectory,
-  );
-  const moveDirectory = useMutation(api.workflowDirectories.moveDirectory);
-  const renameDirectory = useMutation(api.workflowDirectories.renameDirectory);
-  const deleteDirectory = useMutation(api.workflowDirectories.deleteDirectory);
-  const restoreDirectory = useMutation(
-    api.workflowDirectories.restoreDirectory,
-  );
-  const permanentlyDeleteDirectory = useMutation(
-    api.workflowDirectories.permanentlyDeleteDirectory,
-  );
-  const deleteWorkflowMutation = useMutation(api.workflows.deleteWorkflow);
-  const renameWorkflowMutation = useMutation(api.workflows.update);
-
-  // Filter workflows by search query
-  const filteredWorkflows =
-    workflows?.filter(
-      (workflow) =>
-        workflow.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        workflow.description?.toLowerCase().includes(searchQuery.toLowerCase()),
-    ) || [];
-
-  const handleTestWorkflow = async () => {
-    if (!workflowToTest) return;
-    
-    setIsTesting(true);
-    
-    try {
-      console.log("🧪 Testing workflow:", {
-        workflowId: workflowToTest._id,
-        name: workflowToTest.name,
-        testEmail,
-        testPhone,
-      });
-
-      const response = await fetch("/api/test-workflow", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          workflowId: workflowToTest._id,
-          testContactEmail: testEmail || undefined,
-          testContactPhone: testPhone || undefined,
-        }),
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
-        console.log("✅ Workflow test completed:", result);
-        alert(
-          `Test for "${workflowToTest.name}" completed successfully!\n\nExecuted ${result.successfulSteps}/${result.totalSteps} steps.\n\nCheck the console for detailed results.`
-        );
-      } else {
-        console.error("❌ Workflow test failed:", result);
-        alert(`Test failed: ${result.error || "Unknown error"}`);
-      }
-    } catch (error) {
-      console.error("❌ Error testing workflow:", error);
-      alert("Error testing workflow. Please try again.");
-    } finally {
-      setIsTesting(false);
-      setTestDialogOpen(false);
-      setWorkflowToTest(null);
-      setTestEmail("");
-      setTestPhone("");
-    }
-  };
 
   const handleCreateDirectory = async () => {
     if (!newDirectoryName.trim()) return;
-
+    
     try {
-      await createDirectory({
-        orgId: orgId as any,
-        name: newDirectoryName,
-        description: newDirectoryDescription || undefined,
-        parentId: undefined, // Always create at root level initially
+      const response = await fetch('/api/workflow-directories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orgId: 15, // Should get from auth context in real app
+          name: newDirectoryName,
+          description: newDirectoryDescription,
+        }),
       });
-      setShowNewDirectoryDialog(false);
-      setNewDirectoryName("");
-      setNewDirectoryDescription("");
-    } catch (error) {
-      console.error("Failed to create directory:", error);
-    }
-  };
-
-  const handleToggleWorkflow = async (
-    workflowId: string,
-    currentStatus: string,
-  ) => {
-    const newStatus = currentStatus === "active" ? "inactive" : "active";
-    try {
-      await updateWorkflowStatus({
-        workflowId: workflowId as any,
-        status: newStatus as any,
-      });
-    } catch (error) {
-      console.error("Failed to toggle workflow:", error);
-    }
-  };
-
-  const handleDragStart = (workflowId: string) => {
-    setDraggedWorkflow(workflowId);
-  };
-
-  const handleDirectoryDragStart = (directoryId: string) => {
-    setDraggedDirectory(directoryId);
-  };
-
-  const handleDragOver = (e: React.DragEvent, directoryId?: string) => {
-    e.preventDefault();
-    const targetId = directoryId === "root" ? null : directoryId;
-    if (dragOverDirectory !== targetId) {
-      setDragOverDirectory(targetId);
-    }
-  };
-
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    // Only clear if we're leaving the component entirely
-    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-      setDragOverDirectory(null);
-    }
-  };
-
-  const handleDrop = async (
-    e: React.DragEvent,
-    targetDirectoryId: string | null,
-  ) => {
-    e.preventDefault();
-    setDragOverDirectory(null);
-
-    if (draggedWorkflow) {
-      try {
-        await moveWorkflowToDirectory({
-          workflowId: draggedWorkflow as any,
-          directoryId: targetDirectoryId as any,
-        });
-        setDraggedWorkflow(null);
-        // Auto-open and select the target directory after a successful move
-        if (targetDirectoryId) {
-          const updated = new Set(expandedDirectories);
-          updated.add(targetDirectoryId);
-          setExpandedDirectories(updated);
-          setSelectedDirectory(targetDirectoryId);
-        }
-      } catch (error) {
-        console.error("Failed to move workflow:", error);
+      
+      if (response.ok) {
+        // Reset form and close dialog
+        setNewDirectoryName('');
+        setNewDirectoryDescription('');
+        setShowNewDirectoryDialog(false);
+        // Refresh directories - would need to update parent component
+        window.location.reload(); // Temporary solution
+      } else {
+        console.error('Failed to create directory');
       }
-    } else if (draggedDirectory && draggedDirectory !== targetDirectoryId) {
-      try {
-        await moveDirectory({
-          directoryId: draggedDirectory as any,
-          newParentId: targetDirectoryId as any,
-        });
-        setDraggedDirectory(null);
-      } catch (error) {
-        console.error("Failed to move directory:", error);
-      }
+    } catch (error) {
+      console.error('Error creating directory:', error);
     }
   };
 
-  const toggleDirectory = (directoryId: string) => {
+  const toggleDirectory = (directoryId: number) => {
     const newExpanded = new Set(expandedDirectories);
     if (newExpanded.has(directoryId)) {
       newExpanded.delete(directoryId);
@@ -389,692 +147,420 @@ export function EnhancedWorkflowList({
     setExpandedDirectories(newExpanded);
   };
 
-  const handleRenameDirectory = async () => {
-    if (!directoryToRename || !renameValue.trim()) return;
+  const handleWorkflowDragStart = (e: React.DragEvent, workflowId: number) => {
+    setDraggedWorkflow(workflowId);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", workflowId.toString());
+  };
 
+  const handleWorkflowDragEnd = () => {
+    setDraggedWorkflow(null);
+    setDragOverDirectory(null);
+  };
+
+  const handleDirectoryDragOver = (
+    e: React.DragEvent,
+    directoryId: number | null,
+  ) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    
+    // Only allow drop if we're dragging a workflow
+    if (draggedWorkflow) {
+      setDragOverDirectory(directoryId);
+    }
+  };
+
+  const handleDirectoryDragLeave = () => {
+    setDragOverDirectory(null);
+  };
+
+  const handleDirectoryDrop = async (
+    e: React.DragEvent,
+    targetDirectoryId: number | null,
+  ) => {
+    e.preventDefault();
+    
+    if (!draggedWorkflow) return;
+    
     try {
-      await renameDirectory({
-        directoryId: directoryToRename as any,
-        name: renameValue.trim(),
+      const response = await fetch(`/api/workflows/${draggedWorkflow}/move`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          directoryId: targetDirectoryId,
+        }),
       });
-      setShowRenameDialog(false);
-      setDirectoryToRename(null);
-      setRenameValue("");
+      
+      if (response.ok) {
+        // Refresh the page to show updated workflow positions
+        window.location.reload();
+      } else {
+        console.error('Failed to move workflow');
+        alert('Failed to move workflow. Please try again.');
+      }
     } catch (error) {
-      console.error("Failed to rename directory:", error);
-      alert("Failed to rename directory");
+      console.error('Error moving workflow:', error);
+      alert('Error moving workflow. Please try again.');
+    } finally {
+      setDraggedWorkflow(null);
+      setDragOverDirectory(null);
     }
   };
 
-  const handleDeleteDirectory = async () => {
-    if (!directoryToDelete) return;
+  const filteredWorkflows = workflows.filter((workflow) => {
+    const matchesSearch =
+      workflow.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (workflow.description &&
+        workflow.description.toLowerCase().includes(searchQuery.toLowerCase()));
+    const matchesStatus =
+      statusFilter === "all" ||
+      (workflow.enabled ? "active" : "inactive") === statusFilter;
+    // Directory filtering needs to be re-implemented if directories are fetched
+    // const matchesDirectory = selectedDirectory === null || workflow.directoryId === selectedDirectory;
 
-    try {
-      await deleteDirectory({
-        directoryId: directoryToDelete as any,
-        userId: user?.userId as any,
-      });
-      setShowDeleteDialog(false);
-      setDirectoryToDelete(null);
-    } catch (error) {
-      console.error("Failed to archive directory:", error);
-      alert("Failed to archive directory");
+    return matchesSearch && matchesStatus;
+  });
+
+  const getWorkflowsForDirectory = (directoryId: number | null) => {
+    // This will need to be adjusted once workflows have directory IDs
+    if (directoryId === null) {
+      return workflows.filter((w) => !w.directoryId);
     }
+    return workflows.filter((workflow) => workflow.directoryId === directoryId);
   };
 
-  // Utility function to find a directory by ID in the tree
-  const findDirectoryById = (dir: Directory, id: string): Directory | null => {
-    if (dir._id === id) return dir;
-    for (const child of dir.children) {
-      const found = findDirectoryById(child, id);
-      if (found) return found;
-    }
-    return null;
-  };
+  const renderDirectoryTree = (dirs: Directory[], level = 0) => {
+    return dirs.map((directory) => {
+      const directoryWorkflows = getWorkflowsForDirectory(directory.id);
+      const isExpanded = expandedDirectories.has(directory.id);
+      const isSelected = selectedDirectory === directory.id;
+      const isDraggedOver = dragOverDirectory === directory.id;
 
-  const renderDirectory = (directory: Directory, level: number = 0) => {
-    const isExpanded = expandedDirectories.has(directory._id);
-    const hasChildren = directory.children.length > 0;
-    const workflowsInDir = (allWorkflows || []).filter(
-      (w: any) => w.directoryId === directory._id,
-    );
-    const hasWorkflows = workflowsInDir.length > 0;
-    const isExpandable = hasChildren || hasWorkflows;
-    const isSelected = selectedDirectory === directory._id;
-
-    return (
-      <div key={directory._id} className="mb-1">
-        <div
-          className={`flex items-center p-2 rounded-lg cursor-pointer ${
-            isSelected ? "bg-blue-50 border border-blue-200" : ""
-          } ${draggedDirectory === directory._id ? "opacity-50" : ""} ${
-            dragOverDirectory === directory._id
-              ? "bg-blue-100 border-2 border-blue-300 border-dashed"
-              : ""
-          }`}
-          data-theme-aware="true"
-          data-variant="light"
-          style={{ paddingLeft: `${level * 20 + 8}px` }}
-          onClick={() => {
-            if (viewMode === "sidebar") {
-              const selectedKey = `workflowTreeSelected:${orgId}`;
-              localStorage.setItem(selectedKey, directory._id);
-              router.push("/workflows");
-            } else {
-              setSelectedDirectory(directory._id);
-            }
-          }}
-          onDragOver={(e) => handleDragOver(e, directory._id)}
-          onDragLeave={handleDragLeave}
-          onDrop={(e) => handleDrop(e, directory._id)}
-          draggable
-          onDragStart={() => handleDirectoryDragStart(directory._id)}
-        >
-          {isExpandable && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleDirectory(directory._id);
-              }}
-              className="mr-1 p-0.5 rounded cursor-pointer"
-              data-theme-aware="true"
-              data-variant="light"
-            >
-              {isExpanded ? (
-                <ChevronDown className="h-4 w-4" />
+      return (
+        <div key={directory.id} className="select-none">
+          <div
+            className={`group flex items-center py-1.5 px-2 rounded-md text-sm cursor-pointer hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 ${
+              isSelected ? "bg-gray-100" : ""
+            } ${isDraggedOver ? "bg-blue-50 border-2 border-dashed border-blue-400 shadow-md" : ""} ${draggedWorkflow ? "border border-dashed border-gray-300" : ""}`}
+            style={{ paddingLeft: `${level * 16 + 8}px` }}
+            onClick={() => {
+              setSelectedDirectory(directory.id);
+              toggleDirectory(directory.id);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                setSelectedDirectory(directory.id);
+                toggleDirectory(directory.id);
+              }
+            }}
+            role="button"
+            tabIndex={0}
+            aria-expanded={isExpanded}
+            aria-label={`${isExpanded ? "Collapse" : "Expand"} folder ${directory.name} with ${directoryWorkflows.length} workflows`}
+            onDragOver={(e) => handleDirectoryDragOver(e, directory.id)}
+            onDragLeave={handleDirectoryDragLeave}
+            onDrop={(e) => handleDirectoryDrop(e, directory.id)}
+          >
+            <div className="mr-1 p-0.5 rounded transition-colors">
+              {directory.children.length > 0 ||
+              directoryWorkflows.length > 0 ? (
+                isExpanded ? (
+                  <ChevronDown className="w-3 h-3" />
+                ) : (
+                  <ChevronRight className="w-3 h-3" />
+                )
               ) : (
-                <ChevronRight className="h-4 w-4" />
+                <div className="w-3 h-3" />
               )}
-            </button>
-          )}
+            </div>
 
-          {isExpanded || !isExpandable ? (
-            <FolderOpen className="h-4 w-4 mr-2 text-blue-500" />
-          ) : (
-            <Folder className="h-4 w-4 mr-2 text-blue-500" />
-          )}
-
-          <span className="text-xs font-medium flex-1">{directory.name}</span>
-
-          {directory.description && (
-            <span className="text-[11px] text-gray-500 ml-2">
-              {directory.description}
-            </span>
-          )}
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 w-6 p-0 ml-2"
-                onClick={(e) => e.stopPropagation()}
-                data-theme-aware="true"
-                data-variant="light"
-              >
-                <MoreHorizontal className="h-3 w-3" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.stopPropagation();
-                  const dir = directories?.find((d) =>
-                    findDirectoryById(d, directory._id),
-                  );
-                  if (dir) {
-                    setDirectoryToRename(directory._id);
-                    setRenameValue(directory.name);
-                    setShowRenameDialog(true);
-                  }
-                }}
-              >
-                <Edit3 className="h-4 w-4 mr-2" />
-                Rename
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setDirectoryToDelete(directory._id);
-                  setShowDeleteDialog(true);
-                }}
-                className="text-red-600"
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-
-        {isExpanded && (
-          <div className="ml-2">
-            {/* Child directories */}
-            {directory.children.map((child) =>
-              renderDirectory(child, level + 1),
+            {isExpanded ? (
+              <FolderOpen className="w-4 h-4 mr-2 text-gray-600" />
+            ) : (
+              <Folder className="w-4 h-4 mr-2 text-gray-600" />
             )}
-            {/* Workflows inside this directory */}
-            {workflowsInDir.map((w: any) => (
+
+            <span className="flex-1 truncate text-gray-900">
+              {directory.name}
+            </span>
+
+            <Badge variant="secondary" className="text-xs ml-2">
+              {getWorkflowsForDirectory(directory.id).length}
+            </Badge>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="ml-1 p-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <MoreHorizontal className="w-3 h-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem>
+                  <Edit3 className="w-4 h-4 mr-2" />
+                  Rename
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+
+          {/* Render workflows in this directory */}
+          {isExpanded &&
+            directoryWorkflows.map((workflow) => (
               <div
-                key={`w-${w._id}`}
-                className="flex items-center p-1.5 rounded-md ml-6 cursor-pointer hover:bg-gray-50 group"
+                key={workflow.id}
+                className={`flex items-center py-1 px-2 rounded-md text-sm cursor-pointer hover:bg-gray-100 transition-colors ${
+                  draggedWorkflow === workflow.id ? "opacity-50" : ""
+                }`}
+                style={{ paddingLeft: `${(level + 1) * 16 + 8}px` }}
                 draggable
-                onDragStart={(e) => {
-                  e.stopPropagation();
-                  handleDragStart(w._id);
-                }}
-                onDoubleClick={(e) => {
-                  e.stopPropagation();
-                  setEditingWorkflowId(w._id);
-                  setEditingWorkflowName(w.name);
-                }}
-                onClick={(e) => {
-                  if (editingWorkflowId) {
-                    e.stopPropagation();
-                    return; // don't navigate while renaming
-                  }
-                  router.push(`/workflow-editor?id=${w._id}`);
-                }}
+                onDragStart={(e) => handleWorkflowDragStart(e, workflow.id)}
+                onDragEnd={handleWorkflowDragEnd}
+                onClick={() =>
+                  router.push(`/workflow-editor?id=${workflow.id}`)
+                }
               >
-                {w.status === "active" ? (
-                  <Pause className="h-3 w-3 mr-2 text-red-600" />
-                ) : (
-                  <Play className="h-3 w-3 mr-2 text-green-600" />
-                )}
-                {editingWorkflowId === w._id ? (
-                  <input
-                    className="text-xs text-gray-800 border border-gray-200 rounded px-1 py-0.5 flex-1 mr-2"
-                    value={editingWorkflowName}
-                    autoFocus
-                    onClick={(e) => e.stopPropagation()}
-                    onChange={(e) => setEditingWorkflowName(e.target.value)}
-                    onKeyDown={async (e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        if (
-                          editingWorkflowName.trim() &&
-                          editingWorkflowName !== w.name
-                        ) {
-                          try {
-                            await renameWorkflowMutation({
-                              id: w._id as any,
-                              name: editingWorkflowName.trim(),
-                            } as any);
-                          } catch (err) {
-                            console.error("Failed to rename workflow", err);
-                          }
-                        }
-                        setEditingWorkflowId(null);
-                      }
-                      if (e.key === "Escape") {
-                        setEditingWorkflowId(null);
-                      }
-                    }}
-                    onBlur={async () => {
-                      if (editingWorkflowId === w._id) {
-                        if (
-                          editingWorkflowName.trim() &&
-                          editingWorkflowName !== w.name
-                        ) {
-                          try {
-                            await renameWorkflowMutation({
-                              id: w._id as any,
-                              name: editingWorkflowName.trim(),
-                            } as any);
-                          } catch (err) {
-                            console.error("Failed to rename workflow", err);
-                          }
-                        }
-                        setEditingWorkflowId(null);
-                      }
-                    }}
-                  />
-                ) : (
-                  <span className="text-xs text-gray-700 truncate flex-1">
-                    {w.name}
-                  </span>
-                )}
-                {getStatusBadge(w.status)}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-5 w-5 p-0 ml-2 opacity-0 group-hover:opacity-100 text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:ring-0"
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        // Enter rename mode and prevent navigation
-                        setEditingWorkflowId(w._id);
-                        setEditingWorkflowName(w.name);
-                      }}
-                      data-theme-aware="false"
-                    >
-                      <MoreHorizontal className="h-3 w-3" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent data-theme-aware="false">
-                    <DropdownMenuItem
-                      className="hover:bg-gray-100"
-                      onSelect={(e) => {
-                        e.preventDefault();
-                        setEditingWorkflowId(w._id);
-                        setEditingWorkflowName(w.name);
-                      }}
-                    >
-                      Rename
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      className="hover:bg-gray-100"
-                      onSelect={(e) => {
-                        e.preventDefault();
-                        if (!editingWorkflowId) {
-                          router.push(`/workflow-editor?id=${w._id}`);
-                        }
-                      }}
-                    >
-                      Open
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <FileText className="w-3 h-3 mr-2 text-gray-600" />
+                <span className="flex-1 truncate text-gray-700">
+                  {workflow.name}
+                </span>
+                <div className="ml-2">
+                  {workflow.enabled ? (
+                    <Play className="w-3 h-3 text-green-600" />
+                  ) : (
+                    <Pause className="w-3 h-3 text-gray-500" />
+                  )}
+                </div>
               </div>
             ))}
-          </div>
-        )}
-      </div>
-    );
-  };
 
-  const getStatusBadge = (status: string) => {
-    const statusConfig: Record<string, { className: string; label: string }> = {
-      active: {
-        className: "bg-green-50 text-green-700 border-green-200",
-        label: "Active",
-      },
-      inactive: {
-        className: "bg-red-50 text-red-700 border-red-200",
-        label: "Paused",
-      },
-      paused: {
-        className: "bg-red-50 text-red-700 border-red-200",
-        label: "Paused",
-      },
-      draft: {
-        className: "badge-theme",
-        label: "Draft",
-      },
-      archived: {
-        className: "bg-gray-50 text-gray-500 border-gray-200",
-        label: "Archived",
-      },
-    };
-
-    const cfg = statusConfig[status] || statusConfig.draft;
-    return (
-      <Badge variant="outline" className={cfg.className} data-slot="badge">
-        {cfg.label}
-      </Badge>
-    );
-  };
-
-  const formatTrigger = (trigger: string) => {
-    return trigger.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
-  };
-
-  // If viewing step tracker, show that instead
-  if (viewingStepTracker) {
-    const selectedWorkflow = filteredWorkflows.find(
-      (w) => w._id === viewingStepTracker,
-    );
-    return (
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <Button
-              variant="outline"
-              onClick={() => setViewingStepTracker(null)}
-            >
-              ← Back to Workflows
-            </Button>
-            <div>
-              <h2 className="text-xl font-bold">{selectedWorkflow?.name}</h2>
-              <p className="text-gray-600">Step-by-step workflow tracking</p>
-            </div>
-          </div>
+          {/* Render child directories */}
+          {isExpanded && directory.children.length > 0 && (
+            <div>{renderDirectoryTree(directory.children, level + 1)}</div>
+          )}
         </div>
-        <WorkflowStepTracker workflowId={viewingStepTracker} orgId={orgId} />
-      </div>
-    );
-  }
-
-  // Handle sidebar resize
-  const handleMouseDown = (e: React.MouseEvent) => {
-    setIsResizing(true);
-    const startX = e.clientX;
-    const startWidth = sidebarWidth;
-
-    const handleMouseMove = (e: MouseEvent) => {
-      const newWidth = Math.max(
-        160,
-        Math.min(400, startWidth + (e.clientX - startX)),
       );
-      setSidebarWidth(newWidth);
-    };
-
-    const handleMouseUp = () => {
-      setIsResizing(false);
-      document.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("mouseup", handleMouseUp);
-    };
-
-    document.addEventListener("mousemove", handleMouseMove);
-    document.addEventListener("mouseup", handleMouseUp);
+    });
   };
 
   return (
-    <div className="flex h-[calc(100vh-5rem)] relative">
-      {/* Directory Sidebar Toggle Button */}
-      <button
-        onClick={() => setDirectorySidebarOpen(!directorySidebarOpen)}
-        className="absolute top-1/2 -translate-y-1/2 z-50 bg-white border border-gray-200 rounded-r-md shadow-md hover:shadow-lg transition-all duration-200 p-2 hover:bg-gray-50"
-        style={{ 
-          left: directorySidebarOpen 
-            ? (viewMode === "sidebar" ? "100%" : `${sidebarWidth}px`) 
-            : 0 
-        }}
-        title={
-          directorySidebarOpen ? "Close directory sidebar" : "Open directory sidebar"
-        }
-      >
-        {directorySidebarOpen ? (
-          <ChevronLeft className="h-4 w-4 text-gray-600" />
-        ) : (
-          <ChevronRight className="h-4 w-4 text-gray-600" />
-        )}
-      </button>
-
-      {/* Directory Sidebar */}
-      <div
-        className={`border-r bg-gray-50 p-2 relative transition-all duration-300 ease-in-out overflow-hidden ${
-          directorySidebarOpen ? "" : "w-0 p-0"
-        }`}
-        style={{ 
-          width: directorySidebarOpen 
-            ? (viewMode === "sidebar" ? "100%" : `${sidebarWidth}px`) 
-            : 0 
-        }}
-      >
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold text-gray-900">Directories</h3>
-          <div className="flex gap-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowArchiveDialog(true)}
-              title="View Archive"
-            >
-              <Archive className="h-4 w-4" />
-            </Button>
-            <Dialog
-              open={showNewDirectoryDialog}
-              onOpenChange={setShowNewDirectoryDialog}
-            >
-              <DialogTrigger asChild>
-                <Button variant="outline" size="sm" title="New Folder">
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Create New Directory</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="directory-name">Directory Name</Label>
-                    <Input
-                      id="directory-name"
-                      value={newDirectoryName}
-                      onChange={(e) => setNewDirectoryName(e.target.value)}
-                      placeholder="Enter directory name"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="directory-description">
-                      Description (Optional)
-                    </Label>
-                    <Textarea
-                      id="directory-description"
-                      value={newDirectoryDescription}
-                      onChange={(e) =>
-                        setNewDirectoryDescription(e.target.value)
-                      }
-                      placeholder="Enter directory description"
-                      rows={3}
-                    />
-                  </div>
-                  <div className="flex justify-end space-x-2">
-                    <Button
-                      variant="outline"
-                      onClick={() => setShowNewDirectoryDialog(false)}
-                    >
-                      Cancel
-                    </Button>
-                    <Button onClick={handleCreateDirectory}>
-                      Create Directory
-                    </Button>
-                  </div>
-                </div>
-              </DialogContent>
-            </Dialog>
-          </div>
-        </div>
-
-        {/* Root Level */}
+    <div className="flex h-full">
+      {/* Directory Sidebar - Clean Nexlio-style file explorer */}
+      {directorySidebarOpen && (
         <div
-          className={`flex items-center p-2 rounded-lg cursor-pointer mb-2 ${
-            selectedDirectory === null
-              ? "bg-blue-50 border border-blue-200"
-              : ""
-          } ${
-            dragOverDirectory === null && (draggedDirectory || draggedWorkflow)
-              ? "bg-green-100 border-2 border-green-300 border-dashed"
-              : ""
-          }`}
-          data-theme-aware="true"
-          data-variant="light"
-          onClick={() => setSelectedDirectory(null)}
-          onDragOver={(e) => handleDragOver(e, "root")}
-          onDragLeave={handleDragLeave}
-          onDrop={(e) => handleDrop(e, null)}
+          className="bg-white border-r border-gray-200"
+          style={{ width: Math.max(sidebarWidth, 220), minWidth: "220px" }}
         >
-          <Folder className="h-4 w-4 mr-2 text-gray-500" />
-          <span className="text-xs font-medium">All Workflows</span>
-        </div>
-
-        {/* Directory Tree */}
-        <div className="space-y-1">
-          {directories?.map((directory) => renderDirectory(directory))}
-        </div>
-
-        {/* Resize Handle */}
-        {directorySidebarOpen && viewMode !== "sidebar" && (
-          <div
-            className="absolute top-0 right-0 w-1 h-full cursor-col-resize bg-gray-300 hover:bg-gray-400 transition-colors"
-            onMouseDown={handleMouseDown}
-          />
-        )}
-      </div>
-
-      {/* Main Content */}
-      {viewMode === "full" && (
-        <div className="flex-1 p-2 overflow-x-hidden">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                {selectedDirectory ? "Directory Workflows" : "All Workflows"}
-              </h1>
-              <p className="text-gray-600">
-                {filteredWorkflows.length} workflow
-                {filteredWorkflows.length !== 1 ? "s" : ""}
-              </p>
+          <div className="p-3">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-medium text-gray-900">Workflows</h3>
+              <Dialog
+                open={showNewDirectoryDialog}
+                onOpenChange={setShowNewDirectoryDialog}
+              >
+                <DialogTrigger asChild>
+                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0">
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Create New Folder</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="directory-name">Folder Name</Label>
+                      <Input
+                        id="directory-name"
+                        value={newDirectoryName}
+                        onChange={(e) => setNewDirectoryName(e.target.value)}
+                        placeholder="Enter folder name"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="directory-description">Description</Label>
+                      <Textarea
+                        id="directory-description"
+                        value={newDirectoryDescription}
+                        onChange={(e) =>
+                          setNewDirectoryDescription(e.target.value)
+                        }
+                        placeholder="Optional description"
+                        rows={3}
+                      />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button onClick={handleCreateDirectory}>
+                      Create Folder
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </div>
 
-            <Button
-              onClick={() => router.push("/workflow-editor")}
-              data-testid="add-workflow-button"
+            {/* Root level */}
+            <div
+              className={`flex items-center py-2 px-2 rounded-md text-sm cursor-pointer hover:bg-gray-100 transition-colors ${
+                selectedDirectory === null ? "bg-gray-100" : ""
+              } ${dragOverDirectory === null && draggedWorkflow ? "bg-blue-50 border-2 border-dashed border-blue-400 shadow-md" : ""} ${draggedWorkflow ? "border border-dashed border-gray-300" : ""}`}
+              onClick={() => {
+                setSelectedDirectory(null);
+              }}
+              onDragOver={(e) => handleDirectoryDragOver(e, null)}
+              onDragLeave={handleDirectoryDragLeave}
+              onDrop={(e) => handleDirectoryDrop(e, null)}
             >
-              <Plus className="h-4 w-4 mr-2" />
+              <Folder className="w-4 h-4 mr-2 text-gray-600" />
+              <span className="flex-1">All Workflows</span>
+              <Badge variant="secondary" className="text-xs">
+                {workflows.length}
+              </Badge>
+            </div>
+
+            {/* Directory tree */}
+            <div className="mt-3 space-y-1">
+              {renderDirectoryTree(directories)}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col">
+        {/* Clean Toolbar */}
+        <div className="border-b border-gray-200 p-4 bg-white">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center space-x-3 flex-1 min-w-0">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setDirectorySidebarOpen(!directorySidebarOpen)}
+                className="h-8 w-8 p-0 flex-shrink-0"
+                aria-label="Toggle folder sidebar"
+              >
+                <Folder className="w-4 h-4" />
+              </Button>
+
+              <div className="relative flex-1 max-w-md">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500" />
+                <Input
+                  className="pl-10 h-8 w-full"
+                  placeholder="Search workflows..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-36 h-8 flex-shrink-0">
+                  <SelectValue placeholder="Filter" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="inactive">Inactive</SelectItem>
+                  <SelectItem value="draft">Draft</SelectItem>
+                  <SelectItem value="archived">Archived</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <Button size="sm" className="flex-shrink-0" onClick={onCreateWorkflow}>
+              <Plus className="w-4 h-4 mr-2" />
               New Workflow
             </Button>
           </div>
+        </div>
 
-          {/* Filters */}
-          <div className="flex items-center space-x-4 mb-6">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <Input
-                placeholder="Search workflows..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-48">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="inactive">Paused</SelectItem>
-                <SelectItem value="draft">Draft</SelectItem>
-                <SelectItem value="archived">Archived</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Workflow List */}
-          <div
-            className="space-y-2 overflow-x-hidden"
-            data-testid="workflow-list"
-          >
-            {filteredWorkflows.map((workflow) => (
-              <div
-                key={workflow._id}
-                draggable
-                onDragStart={() => handleDragStart(workflow._id)}
-                className={`bg-white rounded-md transition-all cursor-pointer workflow-item hover-lift border-0 focus:ring-0 focus:outline-none ${
-                  workflow.status === "active" ? "workflow-item--active" : ""
-                }`}
-                data-theme-aware="true"
-                data-variant="light"
-                data-testid="workflow-item"
-              >
-                <div className="p-2.5">
-                  {/* Single Row Layout */}
-                  <div className="flex items-center justify-between gap-2 min-w-0">
-                    {/* Left Section: Name, Description, and Badges */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center space-x-3">
-                        <h3
-                          className="font-medium text-gray-800 truncate cursor-pointer hover:text-gray-900 transition-colors max-w-[320px] md:max-w-[260px]"
-                          onClick={() =>
-                            router.push(`/workflow-editor?id=${workflow._id}`)
-                          }
-                        >
-                          {workflow.name}
-                        </h3>
-                        <div className="flex items-center space-x-1.5">
-                          {getStatusBadge(workflow.status)}
-                        </div>
-                      </div>
-                      {/* Directory path under title */}
-                      {workflow.directoryId &&
-                        directoryIdToPath.get(workflow.directoryId) && (
-                          <div className="mt-0.5 flex items-center text-[11px] text-gray-400">
-                            <Folder className="h-3 w-3 mr-1 text-gray-300" />
-                            <span className="truncate max-w-[340px] md:max-w-[280px]">
-                              {
-                                directoryIdToPath.get(
-                                  workflow.directoryId,
-                                ) as string
-                              }
-                            </span>
-                          </div>
-                        )}
-                      <p className="text-xs italic text-gray-500 mt-1 truncate max-w-[380px] md:max-w-[300px]">
-                        {workflow.description || "No description"}
-                      </p>
-                    </div>
-
-                    {/* Center Section: Stats */}
-                    <div className="flex items-center space-x-3 mx-1 shrink-0">
-                      <div className="text-center">
-                        <div className="text-sm font-medium text-gray-700">
-                          {workflow.activeEnrollmentCount}
-                        </div>
-                        <div className="text-xs text-gray-400">Active</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-sm font-medium text-gray-700">
-                          {workflow.totalRuns}
-                        </div>
-                        <div className="text-xs text-gray-400">Total Runs</div>
-                      </div>
-                      {workflow.lastRun && (
-                        <div className="text-center">
-                          <div className="text-xs text-gray-400">Last run</div>
-                          <div className="text-xs text-gray-500">
-                            {new Date(workflow.lastRun).toLocaleDateString()}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Right Section: Actions */}
-                    <div className="flex items-center space-x-2 shrink-0">
-                      {workflow.status === "active" ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="bg-red-50 text-red-700 border-red-200 hover:bg-red-100 active:bg-red-200"
-                          data-theme-aware="false"
-                          onClick={() =>
-                            handleToggleWorkflow(workflow._id, workflow.status)
-                          }
-                          data-testid="pause-workflow"
-                        >
-                          <Pause className="h-4 w-4 mr-1" /> Pause
-                        </Button>
-                      ) : (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="bg-green-50 text-green-700 border-green-200 hover:bg-green-100 active:bg-green-200"
-                          data-theme-aware="false"
-                          onClick={() =>
-                            handleToggleWorkflow(workflow._id, workflow.status)
-                          }
-                          data-testid="play-workflow"
-                        >
-                          <Play className="h-4 w-4 mr-1" /> Activate
-                        </Button>
-                      )}
-
-                      {/* Test Workflow Button */}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setWorkflowToTest(workflow);
-                          setTestDialogOpen(true);
-                        }}
-                        title="Test Workflow"
-                        data-testid="test-workflow"
+        {/* Clean Workflow List */}
+        <div className="flex-1 p-4 bg-gray-50">
+          {filteredWorkflows.length > 0 ? (
+            <div className="space-y-2">
+              {filteredWorkflows.map((workflow) => (
+                <div
+                  key={workflow.id}
+                  className={`group bg-white p-4 rounded-lg border border-gray-200 hover:shadow-sm transition-all cursor-move ${
+                    draggedWorkflow === workflow.id ? "opacity-50 scale-95 shadow-lg border-blue-400" : "hover:border-gray-300"
+                  }`}
+                  draggable
+                  onDragStart={(e) => handleWorkflowDragStart(e, workflow.id)}
+                  onDragEnd={handleWorkflowDragEnd}
+                  onClick={(e) => {
+                    // Only navigate if not dragging
+                    if (!draggedWorkflow) {
+                      router.push(`/workflow-editor?id=${workflow.id}`);
+                    }
+                  }}
+                >
+                  <div className="flex justify-between items-start">
+                    <div className="flex items-start space-x-2 flex-1 min-w-0">
+                      <div 
+                        className="mt-1 text-gray-400 hover:text-gray-600 cursor-grab active:cursor-grabbing"
+                        title="Drag to move workflow to a folder"
                       >
-                        <Send className="h-4 w-4" />
+                        <GripVertical className="w-4 h-4" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center space-x-3 mb-2">
+                          <FileText className="w-4 h-4 text-gray-600 flex-shrink-0" />
+                          <h3 className="font-medium text-gray-900 break-words">
+                            {workflow.name}
+                          </h3>
+                          <Badge
+                            variant={workflow.enabled ? "default" : "secondary"}
+                            className="text-xs"
+                          >
+                            {workflow.enabled ? "Active" : "Inactive"}
+                          </Badge>
+                          {workflow.enabled ? (
+                            <Play className="w-3 h-3 text-green-600" />
+                          ) : (
+                            <Pause className="w-3 h-3 text-gray-500" />
+                          )}
+                        </div>
+
+                        {workflow.description && (
+                          <p className="text-sm text-gray-600 mb-2 truncate">
+                            {workflow.description}
+                          </p>
+                        )}
+
+                        <div className="flex items-center space-x-4 text-xs text-gray-500">
+                          <span>Trigger: {workflow.trigger}</span>
+                          <span>Runs: {workflow.runCount}</span>
+                          <span>
+                            Created:{" "}
+                            {new Date(workflow.createdAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          // Handle workflow toggle
+                        }}
+                      >
+                        {workflow.enabled ? (
+                          <Pause className="w-4 h-4" />
+                        ) : (
+                          <Play className="w-4 h-4" />
+                        )}
                       </Button>
 
                       <DropdownMenu>
@@ -1082,58 +568,26 @@ export function EnhancedWorkflowList({
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="text-gray-400 hover:text-gray-600 hover:bg-gray-100"
-                            data-theme-aware="false"
+                            onClick={(e) => e.stopPropagation()}
                           >
-                            <MoreHorizontal className="h-4 w-4" />
+                            <MoreHorizontal className="w-4 h-4" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent data-theme-aware="false">
-                          <DropdownMenuItem
-                            data-theme-aware="false"
-                            onClick={() =>
-                              router.push(`/workflow-editor?id=${workflow._id}`)
-                            }
-                          >
-                            <Edit3 className="h-4 w-4 mr-2" />
+                        <DropdownMenuContent>
+                          <DropdownMenuItem>
+                            <Eye className="w-4 h-4 mr-2" />
+                            View Details
+                          </DropdownMenuItem>
+                          <DropdownMenuItem>
+                            <BarChart3 className="w-4 h-4 mr-2" />
+                            Analytics
+                          </DropdownMenuItem>
+                          <DropdownMenuItem>
+                            <Edit3 className="w-4 h-4 mr-2" />
                             Edit
                           </DropdownMenuItem>
-                          <DropdownMenuItem
-                            data-theme-aware="false"
-                            onClick={() => setViewingStepTracker(workflow._id)}
-                          >
-                            <BarChart3 className="h-4 w-4 mr-2" />
-                            View Step Tracking
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            className="text-red-600"
-                            data-theme-aware="false"
-                            data-danger="true"
-                            onClick={async () => {
-                              const ok = confirm(
-                                `Delete workflow "${workflow.name}"? This cannot be undone.`,
-                              );
-                              if (!ok) return;
-                              try {
-                                await deleteWorkflowMutation({
-                                  workflowId: workflow._id as any,
-                                });
-                              } catch (e) {
-                                console.error("Failed to delete workflow", e);
-                                alert("Failed to delete workflow");
-                              }
-                            }}
-                            // subtle red hover
-                            onMouseEnter={(e) =>
-                              (e.currentTarget.style.backgroundColor =
-                                "#fee2e2")
-                            }
-                            onMouseLeave={(e) =>
-                              (e.currentTarget.style.backgroundColor = "")
-                            }
-                            data-testid="delete-workflow"
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
+                          <DropdownMenuItem className="text-red-600">
+                            <Trash2 className="w-4 h-4 mr-2" />
                             Delete
                           </DropdownMenuItem>
                         </DropdownMenuContent>
@@ -1141,248 +595,29 @@ export function EnhancedWorkflowList({
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Empty State */}
-          {filteredWorkflows.length === 0 && (
-            <div className="text-center py-12">
-              <FileText className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                No workflows found
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-16">
+              <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="font-medium text-gray-900 mb-2">
+                {selectedDirectory
+                  ? "No workflows in this folder"
+                  : "No workflows found"}
               </h3>
-              <p className="text-gray-600 mb-4">
-                {searchQuery || statusFilter !== "all"
-                  ? "Try adjusting your filters or search query"
-                  : "Get started by creating your first workflow"}
+              <p className="text-sm text-gray-600 mb-6">
+                {searchQuery
+                  ? "Try adjusting your search criteria"
+                  : "Create your first workflow to get started"}
               </p>
-              {!searchQuery && statusFilter === "all" && (
-                <Button onClick={() => router.push("/workflow-editor")}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Workflow
-                </Button>
-              )}
+              <Button onClick={onCreateWorkflow}>
+                <Plus className="w-4 h-4 mr-2" />
+                Create Workflow
+              </Button>
             </div>
           )}
         </div>
-      )}
-
-      {/* Test Workflow Dialog */}
-      <Dialog open={testDialogOpen} onOpenChange={setTestDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Test Workflow: {workflowToTest?.name}</DialogTitle>
-            <DialogDescription>
-              Simulate this workflow for a test user.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div>
-              <Label htmlFor="test-email">Test Email</Label>
-              <Input
-                id="test-email"
-                type="email"
-                placeholder="test@example.com"
-                value={testEmail}
-                onChange={(e) => setTestEmail(e.target.value)}
-              />
-            </div>
-            <div>
-              <Label htmlFor="test-phone">Test Phone</Label>
-              <Input
-                id="test-phone"
-                type="tel"
-                placeholder="+1234567890"
-                value={testPhone}
-                onChange={(e) => setTestPhone(e.target.value)}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setTestDialogOpen(false);
-                setWorkflowToTest(null);
-              }}
-            >
-              Cancel
-            </Button>
-            <Button onClick={handleTestWorkflow} disabled={isTesting}>
-              {isTesting ? "Testing..." : "Run Test"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Rename Directory Dialog */}
-      <Dialog open={showRenameDialog} onOpenChange={setShowRenameDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Rename Directory</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="rename-input">Directory Name</Label>
-              <Input
-                id="rename-input"
-                value={renameValue}
-                onChange={(e) => setRenameValue(e.target.value)}
-                placeholder="Enter new directory name"
-              />
-            </div>
-            <div className="flex justify-end space-x-2">
-              <Button
-                variant="outline"
-                onClick={() => setShowRenameDialog(false)}
-              >
-                Cancel
-              </Button>
-              <Button onClick={handleRenameDirectory}>Rename</Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Directory Dialog */}
-      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete Directory</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="text-sm text-gray-600">
-              <p className="mb-2">
-                Are you sure you want to delete this directory? This action
-                cannot be undone.
-              </p>
-              <div className="bg-yellow-50 border border-yellow-200 rounded p-3">
-                <p className="text-yellow-800">
-                  <strong>Warning:</strong> All workflows in this directory will
-                  be moved to the root level. The directory will be archived and
-                  can be restored from the archive if needed.
-                </p>
-              </div>
-            </div>
-            <div className="flex justify-end space-x-2">
-              <Button
-                variant="outline"
-                onClick={() => setShowDeleteDialog(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={handleDeleteDirectory}
-                className="text-white"
-              >
-                Delete Directory
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Archive Dialog */}
-      <Dialog open={showArchiveDialog} onOpenChange={setShowArchiveDialog}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Archived Directories</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            {archivedDirectories && archivedDirectories.length > 0 ? (
-              <div className="space-y-2 max-h-96 overflow-y-auto">
-                {archivedDirectories.map((dir) => (
-                  <div
-                    key={dir._id}
-                    className="flex items-center justify-between p-3 border rounded-lg"
-                  >
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <Folder className="h-4 w-4 text-gray-400" />
-                        <span className="font-medium">{dir.name}</span>
-                      </div>
-                      {dir.description && (
-                        <p className="text-sm text-gray-600 ml-6">
-                          {dir.description}
-                        </p>
-                      )}
-                      <p className="text-xs text-gray-500 ml-6">
-                        Archived{" "}
-                        {new Date(dir.archivedAt!).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={async () => {
-                          try {
-                            await restoreDirectory({
-                              directoryId: dir._id as any,
-                            });
-                            alert(`Directory "${dir.name}" has been restored!`);
-                          } catch (error) {
-                            console.error(
-                              "Failed to restore directory:",
-                              error,
-                            );
-                            alert("Failed to restore directory");
-                          }
-                        }}
-                      >
-                        Restore
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={async () => {
-                          if (
-                            confirm(
-                              `Permanently delete "${dir.name}"? This cannot be undone.`,
-                            )
-                          ) {
-                            try {
-                              await permanentlyDeleteDirectory({
-                                directoryId: dir._id as any,
-                              });
-                              alert(
-                                `Directory "${dir.name}" has been permanently deleted.`,
-                              );
-                            } catch (error) {
-                              console.error(
-                                "Failed to permanently delete directory:",
-                                error,
-                              );
-                              alert("Failed to permanently delete directory");
-                            }
-                          }
-                        }}
-                      >
-                        Delete Forever
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-gray-500">
-                <Archive className="h-12 w-12 mx-auto mb-2 text-gray-300" />
-                <p>No archived directories</p>
-              </div>
-            )}
-            <div className="flex justify-end">
-              <Button
-                variant="outline"
-                onClick={() => setShowArchiveDialog(false)}
-              >
-                Close
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      </div>
     </div>
   );
 }

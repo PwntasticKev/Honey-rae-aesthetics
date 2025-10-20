@@ -1,24 +1,18 @@
 "use client";
 
-import { useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
+// Temporarily disabled Convex
+// import { useQuery } from "convex/react";
+// import { api } from "@/convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
 
 export function DebugInfo() {
   const { user: authUser } = useAuth();
-  const userData = useQuery(api.users.getByEmail, {
-    email: authUser?.email || "admin@honeyrae.com",
-  });
-
-  // Fallback: if user not found, use first organization
-  const orgs = useQuery(api.orgs.list);
-  const orgId = userData?.orgId || orgs?.[0]?._id;
-  const clients = useQuery(
-    api.clients.getByOrg,
-    orgId ? { orgId: orgId as any } : "skip",
-  );
-
-  const dbStats = useQuery(api.debug.getDatabaseStats);
+  // Temporarily disabled Convex queries
+  const userData = null;
+  const orgs: any[] = [];
+  const orgId = null;
+  const clients: any[] = [];
+  const dbStats = null;
 
   return (
     <div className="p-4 bg-yellow-100 border border-yellow-300 rounded-lg mb-4">

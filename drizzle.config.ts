@@ -5,6 +5,10 @@ export default {
   out: "./app/src/db/migrations",
   dialect: "mysql",
   dbCredentials: {
-    url: process.env.DATABASE_URL!,
+    host: "127.0.0.1",
+    port: 3306,
+    user: "honeyrae",
+    password: "honeyrae",
+    database: "honey_rae",
   },
 } satisfies Config;

@@ -19,8 +19,9 @@ import {
   ValidationError,
   WarningAlert,
 } from "@/components/ui/error-alert";
-import { useQuery, useMutation } from "convex/react";
-import { api } from "@/convex/_generated/api";
+// Temporarily disabled Convex during migration
+// import { useQuery, useMutation } from "convex/react";
+// import { api } from "@/convex/_generated/api";
 import {
   Card,
   CardContent,
@@ -129,88 +130,116 @@ export default function SettingsPage() {
     established: "2020",
   });
 
-  // Get real integration data from database
-  const userIntegrations = useQuery(
-    api.integrations.getUserIntegrations,
-    user?.userId && orgId
-      ? {
-          userId: user.userId as any,
-          orgId: orgId as any,
-        }
-      : "skip",
-  );
+  // Team management state
+  const [teamMembers, setTeamMembers] = useState<any[]>([]);
+  const [loadingTeam, setLoadingTeam] = useState(true);
+  
+  // Load team members on component mount
+  useEffect(() => {
+    loadTeamMembers();
+  }, []);
 
-  const upsertIntegration = useMutation(api.integrations.upsertIntegration);
-  const disconnectIntegration = useMutation(
-    api.integrations.disconnectIntegration,
-  );
+  const loadTeamMembers = async () => {
+    try {
+      setLoadingTeam(true);
+      const response = await fetch('/api/teams-test');
+      if (response.ok) {
+        const data = await response.json();
+        setTeamMembers(data.teamMembers || []);
+      } else {
+        console.error('Failed to load team members:', response.status);
+      }
+    } catch (error) {
+      console.error('Error loading team members:', error);
+    } finally {
+      setLoadingTeam(false);
+    }
+  };
 
-  // Team management queries
-  const teamMembers = useQuery(
-    api.teamManagement.getTeamMembers,
-    orgId ? { orgId: orgId as any } : "skip",
-  );
+  const inviteTeamMember = async (memberData: { email: string; name: string; role: string; }) => {
+    const response = await fetch('/api/teams-test', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(memberData),
+    });
+    if (response.ok) {
+      loadTeamMembers(); // Refresh the list
+      return response.json();
+    }
+    const errorData = await response.json();
+    throw new Error(errorData.error || 'Failed to create team member');
+  };
 
-  const inviteTeamMember = useMutation(api.teamManagement.inviteTeamMember);
-  const updateTeamMemberRole = useMutation(
-    api.teamManagement.updateTeamMemberRole,
-  );
-  const removeTeamMember = useMutation(api.teamManagement.removeTeamMember);
+  const updateTeamMemberRole = async (memberId: number, updates: { role?: string; isActive?: boolean; name?: string; }) => {
+    const response = await fetch(`/api/teams/${memberId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    });
+    if (response.ok) {
+      loadTeamMembers(); // Refresh the list
+      return response.json();
+    }
+    const errorData = await response.json();
+    throw new Error(errorData.error || 'Failed to update team member');
+  };
+
+  const removeTeamMember = async (memberId: number) => {
+    const response = await fetch(`/api/teams/${memberId}`, {
+      method: 'DELETE',
+    });
+    if (response.ok) {
+      loadTeamMembers(); // Refresh the list
+      return response.json();
+    }
+    const errorData = await response.json();
+    throw new Error(errorData.error || 'Failed to remove team member');
+  };
+  
+  // Integration management (temporarily disabled)
+  const userIntegrations: any[] = [];
+  const upsertIntegration = async () => {};
+  const disconnectIntegration = async () => {};
 
   // Team management handlers
   const handleInviteTeamMember = () => {
     const email = prompt("Enter team member's email:");
     const name = prompt("Enter team member's name:");
-    const role = prompt("Enter role (admin, manager, or staff):") as
-      | "admin"
-      | "manager"
-      | "staff";
+    const role = prompt("Enter role (admin, manager, or staff):");
 
-    if (email && name && role && user?.userId && orgId) {
+    if (email && name && role && ['admin', 'manager', 'staff'].includes(role)) {
       inviteTeamMember({
-        orgId: orgId as any,
         email,
         name,
         role,
-        invitedBy: user.userId as any,
       })
-        .then(() => {
-          alert(`Invitation sent to ${email}!`);
+        .then((result) => {
+          alert(`Team member created successfully!\nEmail: ${result.email}\nTemporary Password: ${result.temporaryPassword}`);
         })
         .catch((error) => {
-          alert(`Failed to send invitation: ${error.message}`);
+          alert(`Failed to create team member: ${error.message}`);
         });
+    } else {
+      alert('Please provide valid email, name, and role (admin, manager, or staff)');
     }
   };
 
   const handleUpdateRole = (
-    teamMemberId: any,
-    newRole: "admin" | "manager" | "staff",
+    teamMemberId: number,
+    newRole: "owner" | "admin" | "manager" | "staff",
   ) => {
-    if (user?.userId) {
-      updateTeamMemberRole({
-        teamMemberId,
-        newRole,
-        updatedBy: user.userId as any,
+    updateTeamMemberRole(teamMemberId, { role: newRole })
+      .then(() => {
+        alert("Role updated successfully!");
       })
-        .then(() => {
-          alert("Role updated successfully!");
-        })
-        .catch((error) => {
-          alert(`Failed to update role: ${error.message}`);
-        });
-    }
+      .catch((error) => {
+        alert(`Failed to update role: ${error.message}`);
+      });
   };
 
-  const handleRemoveMember = (teamMemberId: any) => {
-    if (
-      confirm("Are you sure you want to remove this team member?") &&
-      user?.userId
-    ) {
-      removeTeamMember({
-        teamMemberId,
-        removedBy: user.userId as any,
-      })
+  const handleRemoveMember = (teamMemberId: number) => {
+    if (confirm("Are you sure you want to remove this team member?")) {
+      removeTeamMember(teamMemberId)
         .then(() => {
           alert("Team member removed successfully!");
         })
@@ -1019,20 +1048,29 @@ export default function SettingsPage() {
                           </div>
                         </div>
 
+                        {/* Loading state */}
+                        {loadingTeam && (
+                          <div className="text-center py-8 text-gray-500">
+                            <div className="animate-spin w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+                            <p>Loading team members...</p>
+                          </div>
+                        )}
+
                         {/* Display team members */}
-                        {teamMembers?.map((member) => (
+                        {!loadingTeam && teamMembers?.map((member) => (
                           <div
-                            key={member._id}
+                            key={member.id}
                             className="flex items-center justify-between p-4 border rounded-lg"
                           >
                             <div className="flex items-center space-x-3">
                               <Avatar className="w-10 h-10">
+                                <AvatarImage src={member.avatar || ''} />
                                 <AvatarFallback
                                   className="text-white avatar-fallback"
                                   data-theme-aware="true"
                                 >
-                                  {member.user?.name?.charAt(0).toUpperCase() ||
-                                    member.user?.email
+                                  {member.name?.charAt(0).toUpperCase() ||
+                                    member.email
                                       ?.charAt(0)
                                       .toUpperCase() ||
                                     "U"}
@@ -1040,15 +1078,17 @@ export default function SettingsPage() {
                               </Avatar>
                               <div>
                                 <p className="font-medium">
-                                  {member.user?.name || "Team Member"}
+                                  {member.name || "Team Member"}
                                 </p>
                                 <p className="text-sm text-gray-600">
-                                  {member.user?.email}
+                                  {member.email}
                                 </p>
                                 <div className="flex items-center space-x-2 mt-1">
                                   <Badge
                                     className={
-                                      member.role === "admin"
+                                      member.role === "owner"
+                                        ? "bg-purple-100 text-purple-800"
+                                        : member.role === "admin"
                                         ? "bg-blue-100 text-blue-800"
                                         : member.role === "manager"
                                           ? "bg-green-100 text-green-800"
@@ -1058,9 +1098,19 @@ export default function SettingsPage() {
                                     {member.role.charAt(0).toUpperCase() +
                                       member.role.slice(1)}
                                   </Badge>
+                                  {member.isMasterOwner && (
+                                    <Badge className="bg-yellow-100 text-yellow-800">
+                                      Master
+                                    </Badge>
+                                  )}
                                   <span className="text-xs text-gray-500">
-                                    {member.status}
+                                    {member.isActive ? 'Active' : 'Inactive'}
                                   </span>
+                                  {member.lastLoginAt && (
+                                    <span className="text-xs text-gray-400">
+                                      Last: {new Date(member.lastLoginAt).toLocaleDateString()}
+                                    </span>
+                                  )}
                                 </div>
                               </div>
                             </div>
@@ -1069,25 +1119,29 @@ export default function SettingsPage() {
                                 value={member.role}
                                 onChange={(e) =>
                                   handleUpdateRole(
-                                    member._id,
+                                    member.id,
                                     e.target.value as
+                                      | "owner"
                                       | "admin"
                                       | "manager"
                                       | "staff",
                                   )
                                 }
                                 className="text-sm border rounded px-2 py-1"
-                                disabled={member.status !== "active"}
+                                disabled={!member.isActive || member.isMasterOwner}
                               >
                                 <option value="staff">Staff</option>
                                 <option value="manager">Manager</option>
                                 <option value="admin">Admin</option>
+                                <option value="owner">Owner</option>
                               </select>
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => handleRemoveMember(member._id)}
+                                onClick={() => handleRemoveMember(member.id)}
                                 className="text-red-600 hover:text-red-700"
+                                disabled={member.isMasterOwner}
+                                title={member.isMasterOwner ? "Cannot remove master owner" : "Remove team member"}
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
@@ -1096,13 +1150,12 @@ export default function SettingsPage() {
                         )) || []}
 
                         {/* Show placeholder when no team members */}
-                        {(!teamMembers || teamMembers.length === 0) && (
+                        {!loadingTeam && (!teamMembers || teamMembers.length === 0) && (
                           <div className="text-center py-8 text-gray-500">
                             <Users className="h-12 w-12 mx-auto mb-4 text-gray-300" />
                             <p>No team members yet</p>
                             <p className="text-sm mt-1">
-                              Invite team members to collaborate on your
-                              workflows
+                              Invite team members to collaborate on your workflows
                             </p>
                           </div>
                         )}
@@ -1122,7 +1175,27 @@ export default function SettingsPage() {
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <div className="grid gap-6 md:grid-cols-3">
+                      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+                        {/* Owner Role */}
+                        <div className="border rounded-lg p-4">
+                          <div className="flex items-center space-x-2 mb-3">
+                            <Badge className="bg-purple-100 text-purple-800">
+                              Owner
+                            </Badge>
+                            <span className="text-sm text-gray-600">
+                              Full Control
+                            </span>
+                          </div>
+                          <ul className="text-sm space-y-1 text-gray-600">
+                            <li>• Complete organization control</li>
+                            <li>• Manage all team members</li>
+                            <li>• Full analytics access</li>
+                            <li>• Organization settings</li>
+                            <li>• Billing management</li>
+                            <li>• Delete organization</li>
+                          </ul>
+                        </div>
+
                         {/* Admin Role */}
                         <div className="border rounded-lg p-4">
                           <div className="flex items-center space-x-2 mb-3">

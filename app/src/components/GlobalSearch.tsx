@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,10 +15,18 @@ import {
   ArrowDown,
   Command,
 } from "lucide-react";
-import { useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
-import { type SearchResult } from "@/lib/convexSearchService";
 import { useAuth } from "@/hooks/useAuth";
+
+type SearchResult = {
+  id: string;
+  title: string;
+  description: string;
+  type: string;
+  url: string;
+  icon: string;
+  metadata?: Record<string, any>;
+  score: number;
+};
 
 interface GlobalSearchProps {
   className?: string;
@@ -36,86 +44,45 @@ export function GlobalSearch({
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const { user } = useAuth();
-
-  // Get search results and suggestions from Convex
-  const searchResults = useQuery(api.search.global, 
-    user?.orgId && query.trim().length > 2 ? { 
-      orgId: user.orgId as any, 
-      query: query.trim(),
-      limit: 10
-    } : "skip"
-  );
   
-  const suggestionResults = useQuery(api.search.getSearchSuggestions,
-    user?.orgId && query.trim().length > 0 ? {
-      orgId: user.orgId as any,
-      query: query.trim(),
-      limit: 5
-    } : "skip"
-  );
+  // Mock search results for demonstration
+  const results: SearchResult[] = query.trim().length > 2 ? [
+    {
+      id: "1",
+      title: "Sarah Johnson",
+      description: "sarah@example.com • (555) 123-4567",
+      type: "client",
+      url: "/clients/1",
+      icon: "👤",
+      metadata: { email: "sarah@example.com", phone: "(555) 123-4567" },
+      score: 1
+    },
+    {
+      id: "2", 
+      title: "Facial Treatment Appointment",
+      description: "Dr. Rae • Oct 15, 2025",
+      type: "appointment",
+      url: "/appointments?id=2",
+      icon: "📅",
+      metadata: { date: "Oct 15, 2025", provider: "Dr. Rae", status: "scheduled" },
+      score: 1
+    },
+    {
+      id: "3",
+      title: "Welcome Email Workflow", 
+      description: "Send welcome message to new clients",
+      type: "workflow",
+      url: "/workflows?id=3",
+      icon: "⚡",
+      metadata: { trigger: "client_created", status: "active" },
+      score: 1
+    }
+  ].filter(item => 
+    item.title.toLowerCase().includes(query.toLowerCase()) ||
+    item.description.toLowerCase().includes(query.toLowerCase())
+  ) : [];
   
-  // Transform search results into the expected format
-  const results: SearchResult[] = useMemo(() => {
-    if (!searchResults) return [];
-    
-    const transformedResults: SearchResult[] = [];
-    
-    // Add clients
-    searchResults.clients?.forEach((client: any) => {
-      transformedResults.push({
-        id: client._id,
-        title: client.fullName,
-        description: client.email || client.phones[0] || 'No contact info',
-        type: 'client',
-        url: `/clients/${client._id}`,
-        icon: '👤',
-        metadata: {
-          email: client.email,
-          phone: client.phones[0],
-        },
-        score: 1
-      });
-    });
-    
-    // Add appointments
-    searchResults.appointments?.forEach((appointment: any) => {
-      transformedResults.push({
-        id: appointment._id,
-        title: `${appointment.type} Appointment`,
-        description: `${appointment.provider} - ${new Date(appointment.date).toLocaleDateString()}`,
-        type: 'appointment',
-        url: `/appointments?id=${appointment._id}`,
-        icon: '📅',
-        metadata: {
-          date: new Date(appointment.date).toLocaleDateString(),
-          provider: appointment.provider,
-          status: appointment.status
-        },
-        score: 1
-      });
-    });
-    
-    // Add workflows
-    searchResults.workflows?.forEach((workflow: any) => {
-      transformedResults.push({
-        id: workflow._id,
-        title: workflow.name,
-        description: workflow.description || 'No description',
-        type: 'workflow',
-        url: `/workflow-editor?id=${workflow._id}`,
-        icon: '⚡',
-        metadata: {
-          trigger: workflow.trigger,
-          status: workflow.enabled ? 'active' : 'inactive'
-        },
-        score: 1
-      });
-    });
-    
-    return transformedResults;
-  }, [searchResults]);
-  
-  const suggestions = suggestionResults || [];
+  const suggestions = ["recent search", "another search"];
 
   // Show suggestions when query is empty
   const shouldShowSuggestions = !query.trim() && showSuggestions;

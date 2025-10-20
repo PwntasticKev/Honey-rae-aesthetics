@@ -36,7 +36,7 @@ import {
 import { Sidebar } from "@/components/Sidebar";
 import { useAuth } from "@/hooks/useAuth";
 import { NotificationDropdown } from "@/components/NotificationDropdown";
-import { GlobalSearch } from "@/components/GlobalSearch";
+import { SimpleSearch } from "@/components/SimpleSearch";
 import { EnvironmentToggle } from "@/components/EnvironmentToggle";
 import { notificationService } from "@/lib/notificationService";
 import { AuthWrapper } from "@/components/AuthWrapper";
@@ -178,7 +178,7 @@ export default function Dashboard() {
 
   return (
     <AuthWrapper>
-      <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-rose-50">
+      <div className="min-h-screen bg-white">
         {/* Sidebar */}
         <Sidebar
           isOpen={sidebarOpen}
@@ -215,7 +215,7 @@ export default function Dashboard() {
               <div className="flex items-center space-x-4">
                 {/* Search */}
                 <div className="hidden md:block">
-                  <GlobalSearch />
+                  <SimpleSearch />
                 </div>
 
                 {/* Notifications */}
@@ -228,10 +228,7 @@ export default function Dashboard() {
                 <div className="flex items-center space-x-3">
                   <Avatar className="w-8 h-8">
                     <AvatarImage src="/avatar.jpg" />
-                    <AvatarFallback
-                      className="text-white avatar-fallback"
-                      data-theme-aware="true"
-                    >
+                    <AvatarFallback className="bg-black text-white">
                       {user?.email?.charAt(0).toUpperCase() || "A"}
                     </AvatarFallback>
                   </Avatar>
@@ -259,15 +256,15 @@ export default function Dashboard() {
             <div className="space-y-6">
               {/* Quick Stats */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <Card className="glass border-pink-200/50 hover:shadow-lg transition-all duration-300">
+                <Card className="hover-lift border-gray-200">
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">
                       Total Clients
                     </CardTitle>
-                    <Heart className="h-4 w-4" data-theme-aware="true" />
+                    <Heart className="h-4 w-4 text-gray-600" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold gradient-text">
+                    <div className="text-2xl font-bold text-black">
                       {clients.length}
                     </div>
                     <p className="text-xs text-muted-foreground">
@@ -276,15 +273,15 @@ export default function Dashboard() {
                   </CardContent>
                 </Card>
 
-                <Card className="glass border-pink-200/50 hover:shadow-lg transition-all duration-300">
+                <Card className="hover-lift border-gray-200">
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">
                       Today's Appointments
                     </CardTitle>
-                    <Calendar className="h-4 w-4" data-theme-aware="true" />
+                    <Calendar className="h-4 w-4 text-gray-600" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold gradient-text">
+                    <div className="text-2xl font-bold text-black">
                       {todayAppointments.length}
                     </div>
                     <p className="text-xs text-muted-foreground">
@@ -293,18 +290,15 @@ export default function Dashboard() {
                   </CardContent>
                 </Card>
 
-                <Card className="glass border-pink-200/50 hover:shadow-lg transition-all duration-300">
+                <Card className="hover-lift border-gray-200">
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">
                       Messages Sent
                     </CardTitle>
-                    <MessageSquare
-                      className="h-4 w-4"
-                      data-theme-aware="true"
-                    />
+                    <MessageSquare className="h-4 w-4 text-gray-600" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold gradient-text">
+                    <div className="text-2xl font-bold text-black">
                       {messages.length}
                     </div>
                     <p className="text-xs text-muted-foreground">
@@ -313,7 +307,7 @@ export default function Dashboard() {
                   </CardContent>
                 </Card>
 
-                <Card className="glass border-pink-200/50 hover:shadow-lg transition-all duration-300">
+                <Card className="hover-lift border-gray-200">
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">
                       Active Workflows
@@ -321,7 +315,7 @@ export default function Dashboard() {
                     <Zap className="h-4 w-4 text-yellow-500" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold gradient-text">
+                    <div className="text-2xl font-bold text-black">
                       {workflows.filter((w) => w.enabled).length}
                     </div>
                     <p className="text-xs text-muted-foreground">
@@ -331,15 +325,15 @@ export default function Dashboard() {
                   </CardContent>
                 </Card>
 
-                <Card className="glass border-pink-200/50 hover:shadow-lg transition-all duration-300">
+                <Card className="hover-lift border-gray-200">
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">
                       Photos Uploaded
                     </CardTitle>
-                    <Camera className="h-4 w-4" data-theme-aware="true" />
+                    <Camera className="h-4 w-4 text-gray-600" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold gradient-text">
+                    <div className="text-2xl font-bold text-black">
                       {files.length}
                     </div>
                     <p className="text-xs text-muted-foreground">
@@ -352,33 +346,30 @@ export default function Dashboard() {
               {/* Quick Actions & Recent Activity */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Quick Actions */}
-                <Card className="glass border-pink-200/50">
+                <Card className="border-gray-200">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <Zap className="h-5 w-5" data-theme-aware="true" />
+                      <Zap className="h-5 w-5 text-gray-600" />
                       Quick Actions
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <Button
-                      className="w-full justify-start"
-                      data-theme-aware="true"
+                      className="w-full justify-start bg-black text-white hover:bg-gray-800"
                     >
                       <UserPlus className="w-4 h-4 mr-2" />
                       Add New Client
                     </Button>
                     <Button
                       variant="outline"
-                      className="w-full justify-start"
-                      data-theme-aware="true"
+                      className="w-full justify-start bg-black text-white hover:bg-gray-800"
                     >
                       <Calendar className="w-4 h-4 mr-2" />
                       Schedule Appointment
                     </Button>
                     <Button
                       variant="outline"
-                      className="w-full justify-start"
-                      data-theme-aware="true"
+                      className="w-full justify-start bg-black text-white hover:bg-gray-800"
                     >
                       <Workflow className="w-4 h-4 mr-2" />
                       Create Workflow
@@ -387,20 +378,17 @@ export default function Dashboard() {
                 </Card>
 
                 {/* Recent Activity */}
-                <Card className="glass border-pink-200/50">
+                <Card className="border-gray-200">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <Activity className="h-5 w-5" data-theme-aware="true" />
+                      <Activity className="h-5 w-5 text-gray-600" />
                       Recent Activity
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
                       <div className="flex items-center space-x-3">
-                        <div
-                          className="w-2 h-2 rounded-full"
-                          data-theme-aware="true"
-                        ></div>
+                        <div className="w-2 h-2 rounded-full bg-black"></div>
                         <div className="flex-1">
                           <p className="text-sm font-medium">
                             New client added
@@ -411,10 +399,7 @@ export default function Dashboard() {
                         </div>
                       </div>
                       <div className="flex items-center space-x-3">
-                        <div
-                          className="w-2 h-2 rounded-full"
-                          data-theme-aware="true"
-                        ></div>
+                        <div className="w-2 h-2 rounded-full bg-black"></div>
                         <div className="flex-1">
                           <p className="text-sm font-medium">
                             Appointment scheduled
@@ -425,10 +410,7 @@ export default function Dashboard() {
                         </div>
                       </div>
                       <div className="flex items-center space-x-3">
-                        <div
-                          className="w-2 h-2 rounded-full"
-                          data-theme-aware="true"
-                        ></div>
+                        <div className="w-2 h-2 rounded-full bg-black"></div>
                         <div className="flex-1">
                           <p className="text-sm font-medium">Message sent</p>
                           <p className="text-xs text-muted-foreground">

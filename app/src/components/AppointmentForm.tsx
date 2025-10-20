@@ -15,8 +15,9 @@ import {
 } from "@/components/ui/popover";
 import { CalendarIcon, Clock, User, Phone, Mail, MapPin } from "lucide-react";
 import { format } from "date-fns";
-import { useMutation } from "convex/react";
-import { api } from "@/convex/_generated/api";
+// Temporarily disabled Convex
+// import { useMutation } from "convex/react";
+// import { api } from "@/convex/_generated/api";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
@@ -39,7 +40,10 @@ export function AppointmentForm({
   onCancel,
 }: AppointmentFormProps) {
   const { toast } = useToast();
-  const createAppointment = useMutation(api.appointments.create);
+  // Temporarily disabled Convex mutation
+  const createAppointment = async () => {
+    return { success: true };
+  };
 
   const [formData, setFormData] = useState({
     clientId: "",

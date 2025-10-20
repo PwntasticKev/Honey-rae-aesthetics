@@ -1,257 +1,139 @@
 "use client";
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { WorkflowList } from "@/components/WorkflowList";
+import React from "react";
+import { useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
+import { PageLayout } from "@/components/PageLayout";
 import { EnhancedWorkflowList } from "@/components/EnhancedWorkflowList";
-import { useWorkflows } from "@/hooks/useWorkflows";
-import { useEnvironment } from "@/contexts/EnvironmentContext";
-import { EnvironmentToggle } from "@/components/EnvironmentToggle";
-import { Sidebar } from "@/components/Sidebar";
-import { useAuth } from "@/hooks/useAuth";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Menu, Bell, LogOut, Plus } from "lucide-react";
-import { NotificationDropdown } from "@/components/NotificationDropdown";
-import { GlobalSearch } from "@/components/GlobalSearch";
+import { workflows as workflowSchema } from "@/db/schema";
+import { InferSelectModel } from "drizzle-orm";
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+
+type Workflow = InferSelectModel<typeof workflowSchema>;
+
+async function fetchWorkflows(orgId: number): Promise<{ workflows: Workflow[] }> {
+  const res = await fetch(`/api/workflows?orgId=${orgId}`);
+  if (!res.ok) throw new Error("Failed to fetch workflows");
+  return res.json();
+}
+
+async function fetchTemplates(): Promise<{ templates: any[] }> {
+  const res = await fetch("/api/workflows/templates");
+  if (!res.ok) throw new Error("Failed to fetch templates");
+  return res.json();
+}
+
+async function fetchDirectories(orgId: number): Promise<{ directories: any[] }> {
+  const res = await fetch(`/api/workflow-directories?orgId=${orgId}`);
+  if (!res.ok) throw new Error("Failed to fetch directories");
+  return res.json();
+}
 
 export default function WorkflowsPage() {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const workflows = useWorkflows(null); // Pass null for all workflows
-  const { environment } = useEnvironment();
-  const { user, orgId, logout } = useAuth();
+  const router = useRouter();
+  const orgId = 15; // Updated to use test orgId
 
-  // Transform real workflow data to match the list format
-  const transformedWorkflows =
-    workflows?.map((workflow: any) => ({
-      _id: workflow._id,
-      name: workflow.name,
-      description: workflow.description,
-      trigger: workflow.trigger,
-      enabled: workflow.isActive || false,
-      steps: workflow.actions || [],
-      createdAt: workflow._creationTime,
-      lastRun: workflow.updatedAt || workflow._creationTime,
-      runCount: 0, // TODO: Add run count tracking
-    })) || [];
+  const {
+    data: workflowsData,
+    isLoading: isLoadingWorkflows,
+    error: workflowsError,
+  } = useQuery({
+    queryKey: ["workflows", orgId],
+    queryFn: () => fetchWorkflows(orgId),
+  });
 
-  const allWorkflows = transformedWorkflows;
+  const {
+    data: directoriesData,
+    isLoading: isLoadingDirectories,
+    error: directoriesError,
+  } = useQuery({
+    queryKey: ["workflowDirectories", orgId],
+    queryFn: () => fetchDirectories(orgId),
+  });
 
-  // Filter workflows based on search term
-  const filteredWorkflows = allWorkflows.filter(
-    (workflow: any) =>
-      workflow.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      workflow.description?.toLowerCase().includes(searchTerm.toLowerCase()),
+  const {
+    data: templatesData,
+    isLoading: isLoadingTemplates,
+    error: templatesError,
+  } = useQuery({
+    queryKey: ["workflowTemplates"],
+    queryFn: fetchTemplates,
+  });
+
+  const headerRightContent = (
+    <Button onClick={() => router.push("/workflow-editor")}>
+      <Plus className="w-4 h-4 mr-2" />
+      Create Workflow
+    </Button>
   );
 
-  const handleAddWorkflow = () => {
-    // Navigate to workflow editor with new workflow
-    window.location.href = "/workflow-editor?id=new";
-  };
-
-  if (!workflows) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-rose-50 flex">
-        {/* Sidebar */}
-        <Sidebar
-          isOpen={sidebarOpen}
-          onToggle={() => setSidebarOpen(!sidebarOpen)}
-        />
-
-        {/* Main Content */}
-        <div className="flex-1 flex flex-col lg:ml-48 relative">
-          {/* Header */}
-          <header className="bg-white border-b border-gray-200 shadow-sm">
-            <div className="flex items-center justify-between pl-6 pr-6 h-16">
-              <div className="flex items-center space-x-6">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setSidebarOpen(true)}
-                  className="lg:hidden z-10"
-                  data-testid="mobile-menu-button"
-                >
-                  <Menu className="h-5 w-5" />
-                </Button>
-
-                {/* Page Title and Greeting */}
-                <div>
-                  <h1 className="text-xl font-bold text-gray-900">Workflows</h1>
-                  <p className="text-sm text-gray-600">
-                    Manage automation workflows
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center space-x-4">
-                {/* Environment Toggle */}
-                <EnvironmentToggle />
-
-                {/* Environment Display */}
-                <div className="hidden md:block">
-                  <Badge variant="outline" className="px-3 py-1">
-                    {environment}
-                  </Badge>
-                </div>
-
-                {/* Notifications */}
-                <NotificationDropdown />
-
-                {/* User Menu */}
-                <div className="flex items-center space-x-3">
-                  <Avatar className="w-8 h-8">
-                    <AvatarImage src="/avatar.jpg" />
-                    <AvatarFallback
-                      className="text-white avatar-fallback"
-                      data-theme-aware="true"
-                    >
-                      {user?.email?.charAt(0).toUpperCase() || "A"}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="hidden md:block">
-                    <p className="text-sm font-medium text-gray-900">Dr. Rae</p>
-                    <p className="text-xs text-gray-500">Admin</p>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={logout}
-                    title="Logout"
-                    className="text-gray-600 hover:text-gray-900"
-                  >
-                    <LogOut className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </header>
-
-          {/* Page Content - Remove padding and max-width for full height */}
-          <main className="flex-1 pl-0">
-            <div className="h-full">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h1 className="text-2xl font-bold text-gray-900">
-                    Workflows
-                  </h1>
-                  <p className="text-gray-600">
-                    Manage your automation workflows
-                  </p>
-                </div>
-                <div className="flex items-center gap-4">
-                  <EnvironmentToggle />
-                </div>
-              </div>
-              <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-600 mx-auto"></div>
-                <p className="mt-2 text-gray-600">Loading workflows...</p>
-              </div>
-            </div>
-          </main>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-rose-50 flex">
-      {/* Sidebar */}
-      <Sidebar
-        isOpen={sidebarOpen}
-        onToggle={() => setSidebarOpen(!sidebarOpen)}
-      />
-
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col lg:ml-48 relative">
-        {/* Header */}
-        <header className="bg-white border-b border-gray-200 shadow-sm">
-          <div className="flex items-center justify-between pl-0 pr-6 h-16">
-            <div className="flex items-center space-x-6">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setSidebarOpen(true)}
-                className="lg:hidden z-10"
-                data-testid="mobile-menu-button"
-              >
-                <Menu className="h-5 w-5" />
-              </Button>
-
-              {/* Page Title and Greeting */}
-              <div>
-                <h1 className="text-xl font-bold text-gray-900">Workflows</h1>
-                <p className="text-sm text-gray-600">
-                  Manage automation workflows
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center space-x-4">
-              {/* Environment Toggle */}
-              <EnvironmentToggle />
-
-              {/* Environment Display */}
-              <div className="hidden md:block">
-                <Badge variant="outline" className="px-3 py-1">
-                  {environment}
-                </Badge>
-              </div>
-
-              {/* Notifications */}
-              <NotificationDropdown />
-
-              {/* User Menu */}
-              <div className="flex items-center space-x-3">
-                <Avatar className="w-8 h-8">
-                  <AvatarImage src="/avatar.jpg" />
-                  <AvatarFallback
-                    className="text-white avatar-fallback"
-                    data-theme-aware="true"
-                  >
-                    {user?.email?.charAt(0).toUpperCase() || "A"}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="hidden md:block">
-                  <p className="text-sm font-medium text-gray-900">Dr. Rae</p>
-                  <p className="text-xs text-gray-500">Admin</p>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={logout}
-                  title="Logout"
-                  className="text-gray-600 hover:text-gray-900"
-                >
-                  <LogOut className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          </div>
-        </header>
-
-        {/* Page Content - Remove padding and max-width for full height */}
-        <main className="flex-1 pl-0">
+    <PageLayout
+      title="Workflow Automation"
+      subtitle="Automate your business processes"
+      headerRightContent={headerRightContent}
+    >
+      <Tabs defaultValue="workflows" className="h-full">
+        <TabsList>
+          <TabsTrigger value="workflows">My Workflows</TabsTrigger>
+          <TabsTrigger value="templates">Templates</TabsTrigger>
+        </TabsList>
+        <TabsContent value="workflows" className="h-full">
           <div className="h-full">
-            {orgId ? (
-              <EnhancedWorkflowList orgId={orgId} />
-            ) : (
-              <div className="text-center py-12">
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  Authentication Required
-                </h3>
-                <p className="text-gray-600 mb-4">
-                  Please log in to view your workflows.
-                </p>
-                <Button onClick={() => (window.location.href = "/login")}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Login
-                </Button>
-              </div>
+            {(isLoadingWorkflows || isLoadingDirectories) && <div>Loading workflows...</div>}
+            {(workflowsError || directoriesError) && <div>Error loading workflows.</div>}
+            {workflowsData && directoriesData && (
+              <EnhancedWorkflowList
+                orgId={orgId}
+                viewMode="full"
+                workflows={workflowsData.workflows || []}
+                directories={directoriesData.directories || []}
+                onCreateWorkflow={() => router.push("/workflow-editor")}
+              />
             )}
           </div>
-        </main>
-      </div>
-    </div>
+        </TabsContent>
+        <TabsContent value="templates">
+          {isLoadingTemplates && <div>Loading templates...</div>}
+          {templatesError && <div>Error loading templates.</div>}
+          {templatesData && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
+              {templatesData.templates.map((template) => (
+                <Card
+                  key={template.id}
+                  className="p-4 flex flex-col justify-between"
+                >
+                  <div>
+                    <h3 className="font-bold">{template.name}</h3>
+                    <p className="text-sm text-gray-500">
+                      {template.description}
+                    </p>
+                    <div className="mt-2">
+                      {template.tags.map((tag: string) => (
+                        <Badge key={tag} variant="secondary" className="mr-1">
+                          {tag}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                  <Button
+                    className="mt-4 w-full"
+                    onClick={() =>
+                      router.push(`/workflow-editor?templateId=${template.id}`)
+                    }
+                  >
+                    Use Template
+                  </Button>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
+    </PageLayout>
   );
 }

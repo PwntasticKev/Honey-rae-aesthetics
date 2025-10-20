@@ -129,7 +129,7 @@ export function ClientList({
           <Avatar className="w-10 h-10">
             <AvatarImage src="/avatar.jpg" />
             <AvatarFallback
-              className="text-white avatar-fallback"
+              className="bg-gray-100 text-gray-900"
               data-theme-aware="true"
             >
               {row.fullName.charAt(0).toUpperCase()}

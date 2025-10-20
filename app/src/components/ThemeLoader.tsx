@@ -2,8 +2,9 @@
 
 import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
+// Temporarily disabled Convex
+// import { useQuery } from "convex/react";
+// import { api } from "@/convex/_generated/api";
 
 const themes = [
   {
@@ -66,16 +67,9 @@ export function ThemeLoader() {
   const { user } = useAuth();
 
   // Get user's organization
-  const userData = useQuery(
-    api.users.getByEmail,
-    user?.email ? { email: user.email } : "skip",
-  );
-
-  // Get organization theme
-  const org = useQuery(
-    api.orgs.get,
-    userData?.orgId ? { id: userData.orgId as any } : "skip",
-  );
+  // Temporarily disabled Convex queries
+  const userData = null;
+  const org = null;
 
   console.log("🎨 ThemeLoader state:", {
     user: !!user,

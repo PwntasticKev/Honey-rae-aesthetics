@@ -35,7 +35,7 @@
     "dev:cli": "turbo --filter=create-t3-app dev",
     "dev:www": "turbo --filter=www dev",
     "dev:full": "turbo --filter=www dev",
-    "dev": "npm run dev:full",
+    "dev": "cd app && npm run dev",
     "clean": "turbo clean && rm -rf node_modules",
     "lint": "turbo lint && manypkg check",
     "lint:fix": "turbo lint:fix && manypkg fix",
@@ -46,8 +46,7 @@
     "pub:beta": "cd cli && pnpm pub:beta",
     "pub:release": "cd cli && pnpm pub:release",
     "db:generate": "node --env-file=.env.local ./node_modules/.bin/drizzle-kit generate",
-    "db:push": "node --env-file=.env.local ./node_modules/.bin/tsx app/src/db/migrate.ts",
-    "prepare": "husky"
+    "db:push": "dotenv -e .env.local -- tsx app/src/db/migrate.ts"
   },
   "dependencies": {
     "@changesets/changelog-github": "^0.4.8",
@@ -56,6 +55,7 @@
     "@eslint/eslintrc": "^3.3.1",
     "@ianvs/prettier-plugin-sort-imports": "^4.2.1",
     "@manypkg/cli": "^0.20.0",
+    "@radix-ui/react-switch": "^1.2.6",
     "@tanstack/react-query": "^5.89.0",
     "@total-typescript/ts-reset": "^0.3.7",
     "@types/node": "^20.14.10",
@@ -80,7 +80,7 @@
     "@types/react-router-dom": "^5.3.3",
     "dotenv": "^17.2.2",
     "dotenv-cli": "^10.0.0",
-    "drizzle-kit": "^0.31.4",
+    "drizzle-kit": "^0.31.5",
     "playwright": "^1.55.0",
     "tsx": "^4.20.5"
   }

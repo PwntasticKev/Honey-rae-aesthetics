@@ -2,50 +2,47 @@
 
 import { useSearchParams } from "next/navigation";
 import EnhancedWorkflowEditor from "@/components/EnhancedWorkflowEditor";
-import { useAuth } from "@/hooks/useAuth";
-import { ErrorAlert } from "@/components/ui/error-alert";
-import { Button } from "@/components/ui/button";
 import { Suspense } from "react";
-import { MainLayout } from "@/components/MainLayout";
+import { PageLayout } from "@/components/PageLayout";
 
 function WorkflowEditorContent() {
   const searchParams = useSearchParams();
   const workflowId = searchParams.get("id") || undefined;
-  const { user, orgId } = useAuth();
+  const templateId = searchParams.get("templateId") || undefined;
 
-  if (!user || !orgId) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading user and organization...</p>
-        </div>
-      </div>
-    );
-  }
+  // Mock orgId for testing
+  const mockOrgId = 15;
 
   return (
-    <div className="h-full">
-      <EnhancedWorkflowEditor workflowId={workflowId} orgId={orgId} />
-    </div>
+    <EnhancedWorkflowEditor
+      workflowId={workflowId}
+      orgId={mockOrgId}
+      templateId={templateId}
+    />
   );
 }
 
 export default function WorkflowEditorPage() {
   return (
-    <MainLayout>
-      <Suspense
-        fallback={
-          <div className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
-              <p className="text-gray-600">Loading workflow editor...</p>
+    <PageLayout
+      title="Workflow Editor"
+      subtitle="Design and automate your business processes"
+      fullHeight={true}
+    >
+      <div className="h-full flex flex-col">
+        <Suspense
+          fallback={
+            <div className="flex items-center justify-center h-64">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
+                <p className="text-gray-600">Loading workflow editor...</p>
+              </div>
             </div>
-          </div>
-        }
-      >
-        <WorkflowEditorContent />
-      </Suspense>
-    </MainLayout>
+          }
+        >
+          <WorkflowEditorContent />
+        </Suspense>
+      </div>
+    </PageLayout>
   );
 }

@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState } from "react";
-import { useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
+// Temporarily disabled Convex
+// import { useQuery } from "convex/react";
+// import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -54,23 +55,21 @@ export function WorkflowStepTracker({
   const [selectedStep, setSelectedStep] = useState<string | null>(null);
   const [showClientDetails, setShowClientDetails] = useState(false);
 
-  // Fetch workflow details
-  const workflow = useQuery(
-    api.workflows.get,
-    workflowId ? { id: workflowId as any } : "skip",
-  );
-  const workflowStats = useQuery(
-    api.enhancedWorkflows.getWorkflowStats,
-    workflowId ? { workflowId: workflowId as any } : "skip",
-  );
-  const enrollments = useQuery(
-    api.enhancedWorkflows.getWorkflowEnrollments,
-    workflowId ? { workflowId: workflowId as any } : "skip",
-  );
-  const executionLogs = useQuery(
-    api.enhancedWorkflows.getExecutionLogs,
-    workflowId ? { workflowId: workflowId as any, limit: 100 } : "skip",
-  );
+  // Temporarily disabled Convex queries
+  const workflow = {
+    name: "Sample Workflow",
+    description: "This is a placeholder workflow",
+    status: "active",
+    blocks: []
+  };
+  const workflowStats = {
+    totalEnrollments: 0,
+    activeEnrollments: 0,
+    completedEnrollments: 0,
+    successRate: 0
+  };
+  const enrollments: any[] = [];
+  const executionLogs: any[] = [];
 
   if (!workflow) {
     return <div className="p-4">Loading workflow...</div>;

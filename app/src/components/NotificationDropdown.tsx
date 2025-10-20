@@ -18,14 +18,24 @@ import {
   Trash2,
 } from "lucide-react";
 import { format } from "date-fns";
-import {
-  useNotifications,
-  useUnreadCount,
-  useMarkAsRead,
-  useMarkAllAsRead,
-  useClearAllNotifications,
-  type NotificationData,
-} from "@/lib/convexNotificationService";
+// Temporarily disabled Convex notifications
+// import {
+//   useNotifications,
+//   useUnreadCount,
+//   useMarkAsRead,
+//   useMarkAllAsRead,
+//   useClearAllNotifications,
+//   type NotificationData,
+// } from "@/lib/convexNotificationService";
+
+type NotificationData = {
+  _id: string;
+  title: string;
+  message: string;
+  type: "info" | "warning" | "success" | "update";
+  isRead: boolean;
+  createdAt: number;
+};
 import { useAuth } from "@/hooks/useAuth";
 
 interface NotificationDropdownProps {

@@ -11,8 +11,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
-import { useQuery, useMutation } from "convex/react";
-import { api } from "@/convex/_generated/api";
+// Temporarily disabled Convex
+// import { useQuery, useMutation } from "convex/react";
+// import { api } from "@/convex/_generated/api";
 import { Palette } from "lucide-react";
 import { themes, fonts, applyTheme } from "@/lib/theme-utils";
 
@@ -21,20 +22,10 @@ export function ThemeSelector() {
   const [selectedTheme, setSelectedTheme] = useState("default");
   const [selectedFont, setSelectedFont] = useState("inter");
 
-  // Get user's organization
-  const userData = useQuery(
-    api.users.getByEmail,
-    user?.email ? { email: user.email } : "skip",
-  );
-
-  // Get organization theme
-  const org = useQuery(
-    api.orgs.get,
-    userData?.orgId ? { id: userData.orgId as any } : "skip",
-  );
-
-  // Update theme mutation
-  const updateTheme = useMutation(api.orgs.updateTheme);
+  // Temporarily disabled Convex queries
+  const userData = null;
+  const org = null;
+  const updateTheme = async () => {};
 
   // Load saved theme on mount
   useEffect(() => {

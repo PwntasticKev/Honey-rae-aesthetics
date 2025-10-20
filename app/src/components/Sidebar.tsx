@@ -171,77 +171,67 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
         data-testid="sidebar"
         data-sidebar="true"
         className={cn(
-          "fixed left-0 top-0 z-40 h-full w-48 bg-white border-r border-gray-200 transition-transform duration-300 ease-in-out lg:translate-x-0",
+          "fixed left-0 top-0 z-40 h-screen w-48 bg-white border-r border-gray-200 transition-transform duration-300 ease-in-out lg:translate-x-0 overflow-hidden",
           isOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
         <div className="flex h-full flex-col">
           {/* Header with Logo */}
-          <div className="flex items-center p-6 border-b border-gray-200">
+          <div className="flex items-center px-4 py-5 border-b border-gray-200">
             <div className="flex items-center space-x-3">
-              <div className="flex items-center justify-center">
-                <Sparkles className="w-5 h-5" data-theme-aware="true" />
+              <div className="flex items-center justify-center w-8 h-8 bg-gray-100 rounded-lg">
+                <Sparkles className="w-4 h-4 text-gray-700" />
               </div>
               <div>
-                <h1 className="text-lg font-bold text-gray-900">Honey Rae</h1>
+                <h1 className="text-base font-semibold text-gray-900">Honey Rae</h1>
+                <p className="text-xs text-gray-500">Aesthetics</p>
               </div>
             </div>
             <Button
               variant="ghost"
               size="icon"
               onClick={onToggle}
-              className="lg:hidden ml-auto"
+              className="lg:hidden ml-auto h-8 w-8"
               data-testid="mobile-menu-button"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
             </Button>
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
+          <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto min-h-0">
             {menuItems.map((item) => (
               <button
                 key={item.id}
                 data-testid={`sidebar-item-${item.id}`}
                 onClick={() => handleNavigation(item.href)}
                 className={cn(
-                  "w-full flex items-center justify-between p-3 text-left transition-all duration-200 group cursor-pointer rounded-lg hover:bg-gray-50",
+                  "w-full flex items-center justify-between px-3 py-2.5 text-left transition-all duration-200 group cursor-pointer rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2",
+                  isActive(item.href)
+                    ? "bg-gray-100 text-gray-900 font-medium"
+                    : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
                 )}
-                data-active={isActive(item.href) ? "true" : "false"}
-                data-theme-aware={isActive(item.href) ? "true" : undefined}
-                data-hover-aware="true"
+                aria-label={`Navigate to ${item.label}`}
+                aria-current={isActive(item.href) ? "page" : undefined}
               >
                 <div className="flex items-center space-x-3">
                   <item.icon
                     className={cn(
-                      "w-5 h-5 transition-all duration-200",
+                      "w-4 h-4 transition-colors duration-200",
                       isActive(item.href)
-                        ? ""
-                        : "text-gray-500 group-hover:text-gray-700",
+                        ? "text-gray-900"
+                        : "text-gray-500 group-hover:text-gray-700"
                     )}
-                    data-theme-aware={isActive(item.href) ? "true" : undefined}
-                    data-hover-aware="true"
                   />
-                  <span
-                    className={cn(
-                      "text-sm font-medium transition-colors",
-                      isActive(item.href)
-                        ? ""
-                        : "text-gray-700 group-hover:text-gray-900",
-                    )}
-                    data-theme-aware={isActive(item.href) ? "true" : undefined}
-                  >
+                  <span className="text-sm font-medium">
                     {item.label}
                   </span>
                 </div>
                 {item.notification && (
                   <Badge
-                    className="w-5 h-5 rounded-full p-0 flex items-center justify-center bg-red-500 hover:bg-red-600 border-0"
-                    data-theme-aware="false"
+                    className="w-5 h-5 rounded-full p-0 flex items-center justify-center bg-red-500 text-white text-xs font-medium border-0"
                   >
-                    <span className="text-xs font-medium text-white">
-                      {item.notification}
-                    </span>
+                    {item.notification}
                   </Badge>
                 )}
               </button>

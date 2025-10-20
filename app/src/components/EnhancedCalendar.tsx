@@ -49,8 +49,8 @@ import {
   type GoogleCalendarEvent,
   type GoogleCalendar,
 } from "@/lib/simpleGoogleCalendarService";
-import { useMutation, useQuery } from "convex/react";
-import { api } from "../../convex/_generated/api";
+// import { useMutation, useQuery } from "convex/react"; // Temporarily disabled during Convex migration
+// import { api } from "../../convex/_generated/api"; // Temporarily disabled during Convex migration
 import { AppointmentForm } from "./AppointmentForm";
 import {
   Dialog,
@@ -85,11 +85,11 @@ export function EnhancedCalendar({ orgId, clients }: EnhancedCalendarProps) {
     string | null
   >(null);
 
-  // Convex mutations
-  const saveProvider = useMutation(api.googleCalendarProviders.saveProvider);
-  const disconnectProvider = useMutation(
-    api.googleCalendarProviders.disconnect,
-  );
+  // Mock functions - temporarily disabled during Convex migration
+  // const saveProvider = useMutation(api.googleCalendarProviders.saveProvider);
+  // const disconnectProvider = useMutation(api.googleCalendarProviders.disconnect);
+  const saveProvider = async () => {};
+  const disconnectProvider = async () => {};
 
   // Load selected calendar from localStorage
   useEffect(() => {
@@ -139,15 +139,10 @@ export function EnhancedCalendar({ orgId, clients }: EnhancedCalendarProps) {
       try {
         await simpleGoogleCalendarService.initialize();
 
-        // Check if API keys are configured
-        const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
-        const apiKey = process.env.NEXT_PUBLIC_GOOGLE_API_KEY;
-
-        if (!clientId || !apiKey) {
-          setApiKeysConfigured(false);
-          setIsInitializing(false);
-          return;
-        }
+        // For development: Skip Google Calendar check and show local appointments
+        // TODO: Re-enable when Google Calendar API is configured
+        console.log('Development mode: Using local appointments API instead of Google Calendar');
+        setApiKeysConfigured(true); // Temporarily set to true for development
 
         const authenticated =
           await simpleGoogleCalendarService.isAuthenticated();
@@ -305,9 +300,18 @@ export function EnhancedCalendar({ orgId, clients }: EnhancedCalendarProps) {
 
   const loadCalendars = async () => {
     try {
-      console.log("📋 Loading calendars...");
-      const calendarList = await simpleGoogleCalendarService.getCalendars();
-      console.log("📋 Calendars loaded:", calendarList.length);
+      console.log("📋 Loading calendars from local API...");
+      // For development: Use a mock calendar instead of Google Calendar API
+      const calendarList = [
+        {
+          id: 'local-appointments',
+          name: 'Local Appointments',
+          description: 'Appointments from local database',
+          primary: true,
+          isSelected: true
+        }
+      ];
+      console.log("📋 Mock calendars loaded:", calendarList.length);
 
       // Check for saved calendar selections
       const savedCalendars = localStorage.getItem("selected_calendars");
@@ -370,38 +374,30 @@ export function EnhancedCalendar({ orgId, clients }: EnhancedCalendarProps) {
       setIsLoadingEvents(true);
       console.log("🔄 Loading events...");
 
-      if (!isAuthenticated || calendars.length === 0) {
-        console.log("❌ Not authenticated or no calendars");
-        return;
-      }
-
-      const selectedCalendars = calendars.filter((cal) => cal.isSelected);
-      console.log("📅 Selected calendars:", selectedCalendars.length);
-
-      if (selectedCalendars.length === 0) {
-        console.log("❌ No calendars selected");
-        return;
-      }
-
+      // For development: Load appointments from our local API instead of Google Calendar
+      console.log("🔄 Loading appointments from local API...");
+      
       const startDate = startOfMonth(currentDate);
       const endDate = endOfMonth(currentDate);
-
-      console.log(
-        "📅 Date range:",
-        startDate.toISOString(),
-        "to",
-        endDate.toISOString(),
-      );
-
-      const allEvents =
-        await simpleGoogleCalendarService.getEventsFromMultipleCalendars(
-          selectedCalendars,
-          startDate,
-          endDate,
-        );
-
-      console.log("📅 Loaded events:", allEvents.length);
-      setEvents(allEvents);
+      
+      const response = await fetch(`/api/appointments/simple?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`);
+      const data = await response.json();
+      
+      // Transform appointments to event format
+      const appointmentEvents = (data.appointments || []).map((appointment: any) => ({
+        id: `appointment-${appointment.id}`,
+        title: appointment.title || appointment.service,
+        start: new Date(appointment.dateTime),
+        end: new Date(new Date(appointment.dateTime).getTime() + (appointment.duration || 60) * 60000),
+        description: appointment.notes || '',
+        location: appointment.location || '',
+        attendees: appointment.client ? [appointment.client.fullName] : [],
+        calendarId: 'local-appointments',
+        source: 'local'
+      }));
+      
+      console.log("📅 Loaded appointments:", appointmentEvents.length);
+      setEvents(appointmentEvents);
     } catch (error) {
       console.error("Failed to load events:", error);
 

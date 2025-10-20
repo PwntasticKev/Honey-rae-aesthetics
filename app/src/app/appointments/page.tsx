@@ -10,9 +10,10 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Menu, Bell, LogOut, Plus, Calendar, X, RefreshCw } from "lucide-react";
 import { NotificationDropdown } from "@/components/NotificationDropdown";
-import { GlobalSearch } from "@/components/GlobalSearch";
-import { useQuery, useMutation } from "convex/react";
-import { api } from "@/convex/_generated/api";
+import { SimpleSearch } from "@/components/SimpleSearch";
+// import { GlobalSearch } from "@/components/GlobalSearch"; // Temporarily disabled during Convex migration
+// import { useQuery, useMutation } from "convex/react"; // Temporarily disabled during Convex migration
+// import { api } from "@/convex/_generated/api"; // Temporarily disabled during Convex migration
 
 export default function AppointmentsPage() {
   const { user, logout } = useAuth();
@@ -20,18 +21,32 @@ export default function AppointmentsPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loadingTimeout, setLoadingTimeout] = useState(false);
 
-  // Get or create demo org
-  const orgs = useQuery(api.orgs.list);
-  const createDemoOrg = useMutation(api.orgs.createDemoOrg);
+  // Mock org and clients data - temporarily disabled during Convex migration
+  // const orgs = useQuery(api.orgs.list);
+  // const createDemoOrg = useMutation(api.orgs.createDemoOrg);
+  const orgs = [{ _id: "demo-org-1", name: "Demo Organization" }];
+  const createDemoOrg = async () => {};
 
   // Get the first org or create a demo org
   const orgId = orgs && orgs.length > 0 ? orgs[0]._id : null;
 
-  // Get clients for the appointment form
-  const clients =
-    useQuery(api.clients.getByOrg, orgId ? { orgId: orgId as any } : "skip") ||
-    [];
-  const createDemoClients = useMutation(api.clients.createDemoClients);
+  // Mock clients data - temporarily disabled during Convex migration
+  // const clients = useQuery(api.clients.getByOrg, orgId ? { orgId: orgId as any } : "skip") || [];
+  const clients = [
+    {
+      _id: "client-1",
+      fullName: "Sarah Johnson",
+      email: "sarah@example.com",
+      phones: ["+15551234567"],
+    },
+    {
+      _id: "client-2", 
+      fullName: "Michael Chen",
+      email: "michael@example.com",
+      phones: ["+15559876543"],
+    },
+  ];
+  const createDemoClients = async () => {};
 
   // Create demo org if none exists
   const handleCreateDemoOrg = async () => {
@@ -126,7 +141,7 @@ export default function AppointmentsPage() {
 
               {/* Search */}
               <div className="hidden md:block">
-                <GlobalSearch />
+                <SimpleSearch />
               </div>
 
               {/* Notifications */}
@@ -137,8 +152,7 @@ export default function AppointmentsPage() {
                 <Avatar className="w-8 h-8">
                   <AvatarImage src="/avatar.jpg" />
                   <AvatarFallback
-                    className="text-white avatar-fallback"
-                    data-theme-aware="true"
+                    className="bg-gray-100 text-gray-900"
                   >
                     {user?.email?.charAt(0).toUpperCase() || "A"}
                   </AvatarFallback>
