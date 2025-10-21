@@ -193,8 +193,14 @@ export function EnhancedWorkflowList({
       });
       
       if (response.ok) {
-        // Refresh the page to show updated workflow positions
-        window.location.reload();
+        // Update local state to reflect the move without page reload
+        setWorkflows((prevWorkflows) =>
+          prevWorkflows.map((workflow) =>
+            workflow.id === draggedWorkflow
+              ? { ...workflow, directoryId: targetDirectoryId }
+              : workflow
+          )
+        );
       } else {
         console.error('Failed to move workflow');
         alert('Failed to move workflow. Please try again.');
@@ -216,10 +222,11 @@ export function EnhancedWorkflowList({
     const matchesStatus =
       statusFilter === "all" ||
       (workflow.enabled ? "active" : "inactive") === statusFilter;
-    // Directory filtering needs to be re-implemented if directories are fetched
-    // const matchesDirectory = selectedDirectory === null || workflow.directoryId === selectedDirectory;
+    
+    // Directory filtering - show workflows in selected directory or all if none selected
+    const matchesDirectory = selectedDirectory === null || workflow.directoryId === selectedDirectory;
 
-    return matchesSearch && matchesStatus;
+    return matchesSearch && matchesStatus && matchesDirectory;
   });
 
   const getWorkflowsForDirectory = (directoryId: number | null) => {
@@ -323,7 +330,7 @@ export function EnhancedWorkflowList({
                   draggedWorkflow === workflow.id ? "opacity-50" : ""
                 }`}
                 style={{ paddingLeft: `${(level + 1) * 16 + 8}px` }}
-                draggable
+                draggable={true}
                 onDragStart={(e) => handleWorkflowDragStart(e, workflow.id)}
                 onDragEnd={handleWorkflowDragEnd}
                 onClick={() =>

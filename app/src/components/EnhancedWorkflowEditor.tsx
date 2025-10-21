@@ -228,7 +228,7 @@ export default function EnhancedWorkflowEditor({
       setNodes(initialNodes);
       setEdges(initialEdges);
     }
-  }, [data, workflowId, setNodes, setEdges, initialNodes, initialEdges]);
+  }, [data, workflowId, setNodes, setEdges]);
 
   const handleSave = () => {
     if (!workflowId) return;
